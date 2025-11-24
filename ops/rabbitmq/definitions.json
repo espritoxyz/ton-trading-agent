@@ -1,0 +1,16 @@
+{
+  "users": [{ "name": "app_user", "password": "app_pass", "tags": "management" }],
+  "vhosts": [{ "name": "/app" }],
+  "permissions": [{ "user": "app_user", "vhost": "/app", "configure": ".*", "write": ".*", "read": ".*" }],
+  "exchanges": [
+    { "name": "app.events", "vhost": "/app", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    { "name": "agent-backend.in", "vhost": "/app", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "recipe-processor-node.in",   "vhost": "/app", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "vhost": "/app", "source": "app.events", "destination": "agent-backend.in", "destination_type": "queue", "routing_key": "user.*", "arguments": {} },
+    { "vhost": "/app", "source": "app.events", "destination": "recipe-processor-node.in",   "destination_type": "queue", "routing_key": "user.*", "arguments": {} }
+  ]
+}

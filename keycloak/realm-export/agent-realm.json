@@ -1,0 +1,37 @@
+{
+  "realm": "agent",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "directGrantFlow": "direct grant",
+  "clients": [
+    {
+      "clientId": "agent-backend",
+      "name": "agent-backend",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "post.logout.redirect.uris": "*"
+      },
+      "secret": "NH0ClpAy9z3A5i4AYeSMXTiCk0oh8ERw",
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "zishkaz",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "zishkaz", "temporary": false }
+      ]
+    }
+  ]
+}

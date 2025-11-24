@@ -1,0 +1,24 @@
+spring:
+  profiles:
+    active: dev
+
+  main:
+    banner-mode: "off"
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: app_user
+    password: ${RABBITMQ_PASS}
+
+logging:
+  level:
+    root: INFO
+    org.springframework.amqp: INFO
+    com.agent.backend: INFO
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+
+server:
+  port: 8080

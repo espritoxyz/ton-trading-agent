@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  app-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agent
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: ${AGENT_DB_PASS}
+    volumes:
+      - app_pg_data:/var/lib/postgresql/data
+    networks: [ agent-net ]
+
+  kc-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASS}
+    volumes:
+      - keycloak_pg_data:/var/lib/postgresql/data
+    ports:
+      - "25432:5432"
+    networks: [ agent-net ]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - ./ops/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./ops/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+
+  agent-backend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        GITHUB_USERNAME: ${GITHUB_USERNAME}
+        GITHUB_PAT: ${GITHUB_PAT}
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      AGENT_DB_PASS: ${AGENT_DB_PASS}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+      KC_REALM: agent
+      KC_CLIENT_ID: agent-backend
+      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET}
+      KEYCLOAK_BASE_URL: "http://keycloak:8080/auth"  # <— service DNS name + relative path
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://keycloak:8080/auth/realms/agent/protocol/openid-connect/certs"
+      RABBIT_URL: amqp://app_user:app_pass@rabbitmq:5672/%2Fapp
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+      GITHUB_PAT: ${GITHUB_PAT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - app-db
+      - keycloak
+    ports:
+      - "8080:8080"
+    networks: [agent-net]
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://kc-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASS}
+
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_RELATIVE_PATH: ${KC_HTTP_RELATIVE_PATH}
+      KC_FEATURES: "hostname:v2"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_ADMIN: ${KC_HOSTNAME}
+      KC_HOSTNAME_STRICT: "false"
+
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-export:/opt/keycloak/data/import:ro
+    depends_on:
+      - kc-db
+    ports:
+      - "18080:8080"
+    networks: [ agent-net ]
+
+  nginx:
+    image: nginx:1.27
+    restart: unless-stopped
+    depends_on: [ agent-backend, keycloak ]
+    ports:
+      - "80:80"          # HTTP
+      # - "443:443"      # uncomment after TLS is set up
+    volumes:
+      - ./ops/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ui-dist:/usr/share/nginx/html:ro           # built Vue assets
+      # TLS (later):
+      # - ./nginx/certs:/etc/nginx/certs:ro
+    networks: [ agent-net ]
+
+networks:
+  agent-net:
+
+volumes:
+  app_pg_data:
+  keycloak_pg_data:
