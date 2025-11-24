@@ -27,6 +27,9 @@
   "users": [
     {
       "username": "zishkaz",
+      "firstName": "John",
+      "lastName": "Seana",
+      "email": "example@mail.com",
       "enabled": true,
       "emailVerified": true,
       "credentials": [

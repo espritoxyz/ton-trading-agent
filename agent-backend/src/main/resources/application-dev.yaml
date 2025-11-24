@@ -15,4 +15,4 @@ spring:
 keycloak:
   realm: agent
   client-id: agent-backend
-  client-secret: lkDLt5zfNAljgH3UCyUeMimxhmQ9oFOA
+  client-secret: NH0ClpAy9z3A5i4AYeSMXTiCk0oh8ERw
