@@ -23,5 +23,7 @@ class PrepareSendTonAgentTool(
     override fun payload(args: PrepareSendTonArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.requestSendTonConfirmation(args.tonAmount, args.receiverAddress)
+
+        return ""
     }
 }

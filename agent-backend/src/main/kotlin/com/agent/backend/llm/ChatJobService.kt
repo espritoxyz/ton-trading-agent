@@ -78,7 +78,7 @@ class ChatJobService {
 
             val chatter = OpenAIChatter(
                 chatHistory = job.request.history,
-                bcAdapter = AgentBlockchainAdapter
+                bcAdapter = AgentBlockchainAdapter(job.userId)
             )
 
             val reply = chatter.sendUserRequest(job.request.content)

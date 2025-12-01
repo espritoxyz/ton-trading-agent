@@ -1,18 +1,1 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://app-db:5432/agent
-    username: agent
-    password: ${AGENT_DB_PASS}
-    hikari:
-      maximum-pool-size: 10
-  jpa:
-    hibernate:
-      ddl-auto: update   # Switch to Flyway/Liquibase later (recommended)
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-keycloak:
-  realm: agent
-  client-id: agent-backend
-  client-secret: NH0ClpAy9z3A5i4AYeSMXTiCk0oh8ERw
