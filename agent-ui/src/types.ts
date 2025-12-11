@@ -1,11 +1,16 @@
 export type ChatRole = 'USER' | 'SYSTEM'
 
+export type ChatUtilityKind = 'CONFIRM_SEND_TON'
+
 export interface ChatItem {
     id: string
     role: ChatRole
     content: string
     createdAt: string
     backendMessageId?: string
+    // Optional UI utility widget kind and metadata
+    utilityKind?: ChatUtilityKind
+    utilityMeta?: Record<string, any>
 }
 
 export interface WalletBalances {

@@ -28,6 +28,11 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-AGENT_RMQ_COOKIE}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     ports:
       - "5672:5672"    # AMQP
       - "15672:15672"  # Management UI
@@ -37,9 +42,12 @@ services:
       timeout: 3s
       retries: 15
     volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_log:/var/log/rabbitmq
       - ./ops/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./ops/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    networks: [ agent-net ]
 
   agent-backend:
     build:
@@ -51,19 +59,21 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       AGENT_DB_PASS: ${AGENT_DB_PASS}
+      RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASS: ${RABBITMQ_PASS}
       KC_REALM: agent
       KC_CLIENT_ID: agent-backend
       KC_CLIENT_SECRET: ${KC_CLIENT_SECRET}
       KEYCLOAK_BASE_URL: "http://keycloak:8080/auth"  # <— service DNS name + relative path
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://keycloak:8080/auth/realms/agent/protocol/openid-connect/certs"
-      RABBIT_URL: amqp://app_user:app_pass@rabbitmq:5672/%2Fapp
+      RABBIT_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fapp
       GITHUB_USERNAME: ${GITHUB_USERNAME}
       GITHUB_PAT: ${GITHUB_PAT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       - app-db
       - keycloak
+      - rabbitmq
     ports:
       - "8080:8080"
     networks: [agent-net]
@@ -100,6 +110,20 @@ services:
       - "18080:8080"
     networks: [ agent-net ]
 
+  recipe-processor:
+    build:
+      context: ./recipe-processor-node
+      dockerfile: ./Dockerfile
+    restart: unless-stopped
+    environment:
+      RABBIT_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fapp
+      TONCENTER_ENDPOINT: ${TONCENTER_ENDPOINT}
+      TONCENTER_API_KEY: ${TONCENTER_API_KEY}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks: [ agent-net ]
+
   nginx:
     image: nginx:1.27
     restart: unless-stopped
@@ -120,3 +144,5 @@ networks:
 volumes:
   app_pg_data:
   keycloak_pg_data:
+  rabbitmq_data:
+  rabbitmq_log:

@@ -8,7 +8,7 @@ ENV GITHUB_PAT=${GITHUB_PAT}
 ENV OPENAI_API_KEY=${OPENAI_API_KEY}
 COPY . .
 
-RUN gradle :agent-backend:bootJar --no-daemon
+RUN gradle :agent-backend:bootJar
 
 
 FROM eclipse-temurin:21-jre

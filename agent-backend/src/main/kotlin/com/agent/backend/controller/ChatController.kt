@@ -30,16 +30,6 @@ class ChatController(
         return provisioning.resolveOrCreate(iss, sub, email).id!!
     }
 
-    /**
-     * POST /chat/message
-     * For now we immediately return a fixed reply "my life be like ooh aah"
-     * and mark the message as completed.
-     *
-     * In the future:
-     *  - return status="queued" with no reply
-     *  - push work to a queue
-     *  - let the client poll GET /chat/messages/{messageId}, or use SSE/WebSocket
-     */
     @PostMapping("/message")
     suspend fun postMessage(
         auth: JwtAuthenticationToken,
@@ -50,11 +40,6 @@ class ChatController(
         return ResponseEntity.ok(resp)
     }
 
-    /**
-     * GET /chat/messages/{messageId}
-     * Placeholder polling endpoint. For now it always returns the fixed reply as completed.
-     * Later you can load real status from a DB/cache.
-     */
     @GetMapping("/messages/{messageId}")
     fun getMessageStatus(
         auth: JwtAuthenticationToken,

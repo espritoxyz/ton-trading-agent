@@ -26,7 +26,16 @@ async function handleSend(text: string) {
     </div>
 
     <div ref="scroller" class="flex-1 space-y-3 overflow-y-auto p-4">
-      <MessageBubble v-for="(m, i) in messages" :key="m.id + i" :role="m.role" :text="m.content" />
+      <MessageBubble
+        v-for="(m, i) in messages"
+        :key="m.id + i"
+        :local-id="m.id"
+        :role="m.role"
+        :text="m.content"
+        :utilityKind="m.utilityKind"
+        :utilityMeta="m.utilityMeta"
+        @dismiss="(id) => { if (!id) return; const idx = messages.findIndex(x => x.id === id); if (idx !== -1) messages.splice(idx, 1) }"
+      />
       <div v-if="sending" class="text-xs text-gray-500">Sending…</div>
     </div>
 

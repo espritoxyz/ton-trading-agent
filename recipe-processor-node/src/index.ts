@@ -1,27 +1,61 @@
-import { setupRabbit, publishJson, startConsumer, shutdown } from "./rabbit.js";
-import crypto from "node:crypto";
+import { setupRabbit, startConsumer, shutdown, publishJson } from "./rabbit.js";
+import { sendTon } from "./transactions.js";
 
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
 
-const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE);
+// Subscribe to agent-llm.* events
+const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.*"]);
 
-// Consume all user.* events
 await startConsumer(ch, queue, async (_msg, body) => {
-    console.log(`[${SERVICE}] consumed:`, body);
-    // ...do work...
-});
+    try {
+        if (!body || typeof body !== "object") return;
+        const { type, data, occurredAt } = body;
+        if (type === "agent-llm.send-ton") {
+            const messageId = data?.messageId;
+            const userId = data?.userId;
+            const amount = data?.tonAmount;
+            const receiver = data?.receiverAddress;
+            console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
-// Publish a sample event every 5s
-setInterval(() => {
-    publishJson(ch, exchange, "user.created", {
-        type: "user.created",
-        messageId: crypto.randomUUID(),
-        occurredAt: new Date().toISOString(),
-        data: { id: crypto.randomUUID(), email: "user@example.com" }
-    });
-    console.log(`[${SERVICE}] published user.created`);
-}, 5000);
+            try {
+                const txId = await sendTon(amount, receiver);
+                console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
+                publishJson(ch, exchange, "agent-llm.send-ton.result", {
+                    type: "agent-llm.send-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tonAmount: amount,
+                        receiverAddress: receiver,
+                        success: true,
+                        txId,
+                    },
+                });
+            } catch (err: any) {
+                console.error(`[${SERVICE}] send-ton error:`, err);
+                publishJson(ch, exchange, "agent-llm.send-ton.result", {
+                    type: "agent-llm.send-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tonAmount: amount,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: String(err?.message || err),
+                    },
+                });
+            }
+        }
+    } catch (e) {
+        console.error(`[${SERVICE}] error handling message:`, e);
+        throw e; // let startConsumer nack
+    }
+});
 
 // Graceful stop
 process.on("SIGINT", async () => { await shutdown({ conn, ch, exchange, queue }); process.exit(0); });

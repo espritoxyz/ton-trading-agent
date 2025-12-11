@@ -2,8 +2,10 @@ package com.agent.llm
 
 import com.agent.llm.message.LlmChatMessage
 import com.agent.llm.message.LlmChatMessageType
-import com.agent.llm.tool.AgentTool
+import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.ToolDefinitions
+import com.agent.llm.tool.api.BlockchainAdapter
+import com.agent.llm.tool.api.ConfirmationRequired
 import com.explyt.ai.backend.http.ApiKeyParam
 import com.explyt.ai.dto.ChatRequest
 import com.explyt.ai.dto.ChatResponse
@@ -21,7 +23,7 @@ private val logger = KotlinLogging.logger {}
 
 class OpenAIChatter(
     private val chatHistory: List<LlmChatMessage>,
-    bcAdapter: BlockchainAdapter
+    private val bcAdapter: BlockchainAdapter
 ) {
     private val chatEnv: ChatEnvironment
     private val router = AiRouterLocal()
@@ -48,39 +50,50 @@ class OpenAIChatter(
         chatEnv = ChatEnvironment(historyMessages)
     }
 
-    suspend fun sendUserRequest(userRequestContent: String): String {
-        logger.debug { "Received user request: ${userRequestContent.take(30)}"  }
+    data class PlannedToolCall(
+        val call: ToolCall,
+        val requiresConfirmation: Boolean,
+        val confirmationText: String? = null
+    )
+
+    suspend fun planFirstStep(userRequestContent: String): Pair<List<PlannedToolCall>, ChatResponse?> {
+        logger.debug { "Received user request: ${userRequestContent.take(30)}" }
+        if (chatHistory.isEmpty()) {
+            val systemMessage = AgentPrompt.makeAgentMessage(bcAdapter)
+            chatEnv.saveMessage(systemMessage)
+        }
+
         val userMessage = Message.user(userRequestContent)
         chatEnv.saveMessage(userMessage)
-        val systemMessage = AgentPrompt.makeAgentMessage()
-        val prompt = Prompt(messages = listOf(systemMessage) + chatEnv.chatHistory)
-        var response = router.chat(ChatRequest(modelConfig, prompt))
-        while (response.toolCalls.isNotEmpty()) {
-            val assistantMessage = Message.assistant("", toolCalls = response.toolCalls)
-            chatEnv.saveMessage(assistantMessage)
-            response = processToolcall(response)
+        val prompt = Prompt(messages = chatEnv.chatHistory)
+        val response = router.chat(ChatRequest(modelConfig, prompt))
+        if (response.toolCalls.isEmpty()) {
+            return Pair(emptyList(), response)
         }
-
-        return response.response
+        val planned = response.toolCalls.map { tc ->
+            val tool = AgentTool.fromToolCall(allTools, tc)
+            val needs = tool is ConfirmationRequired
+            val text = if (needs) (tool as ConfirmationRequired).confirmationText(tc.arguments) else null
+            PlannedToolCall(tc, needs, text)
+        }
+        // Save assistant tool call message
+        val assistantMessage = Message.assistant("", toolCalls = response.toolCalls)
+        chatEnv.saveMessage(assistantMessage)
+        return planned to null
     }
 
-    private suspend fun processToolcall(response: ChatResponse): ChatResponse {
-        val toolResponses = response.toolCalls.map { toolCall ->
-            val agentTool = AgentTool.fromToolCall(allTools, toolCall)
-                ?: error("No agent tool matching $toolCall found")
-            val stringRes = callTool(agentTool, toolCall)
-            ToolResponse(toolCall.id, toolCall.name, stringRes)
+    @Suppress("UNCHECKED_CAST")
+    suspend fun executeApprovedToolsAndSummarize(approved: List<Triple<String, String, String>>): ChatResponse {
+        val toolResponses = approved.map { (toolCallId, name, argsJson) ->
+            val agentTool = allTools.firstOrNull { it.definition.name == name }
+                ?: error("No agent tool named $name found")
+            val anyTool = agentTool as AgentTool<Any?>
+            val args = Json.decodeFromString(anyTool.argsSerializer, argsJson)
+            val stringRes = anyTool.payload(args)
+            ToolResponse(toolCallId, name, stringRes)
         }
-
-        logger.debug { "Processing ${toolResponses.size} tools: ${toolResponses.joinToString { it.name }}" }
         val toolMessage = Message.tool(toolResponses)
         chatEnv.saveMessage(toolMessage)
         return router.chat(ChatRequest(modelConfig, Prompt(chatEnv.chatHistory)))
-    }
-
-    private fun <A> callTool(agentTool: AgentTool<A>, toolCall: ToolCall): String {
-        val args = Json.decodeFromString(agentTool.argsSerializer, toolCall.arguments)
-        logger.debug { "Calling ${agentTool.definition.name} with ${toolCall.arguments}" }
-        return agentTool.payload(args)
     }
 }

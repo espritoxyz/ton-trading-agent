@@ -4,17 +4,23 @@ import com.agent.backend.dto.ChatMessageRequest
 import com.agent.backend.dto.ChatMessageResponse
 import com.agent.backend.dto.ChatMessageStatusResponse
 import com.agent.backend.dto.DeliveryHint
+import com.agent.backend.service.ConfirmationItem
+import com.agent.backend.service.ConfirmationService
 import com.agent.llm.OpenAIChatter
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import jakarta.annotation.PreDestroy
-import kotlin.math.log
-import kotlinx.coroutines.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -27,13 +33,21 @@ data class ChatJob(
     val queuedAt: Instant,
     @Volatile var status: ChatJobStatus = ChatJobStatus.QUEUED,
     @Volatile var reply: String? = null,
-    @Volatile var completedAt: Instant? = null
+    @Volatile var completedAt: Instant? = null,
+    // All planned tool calls (toolCallId, name, argsJson)
+    @Volatile var plannedToolCalls: List<Triple<String, String, String>> = emptyList(),
+    // Subset that do NOT require confirmation (toolCallId, name, argsJson)
+    @Volatile var plannedNoConfirmCalls: List<Triple<String, String, String>> = emptyList()
 )
 
 @Service
-class ChatJobService {
+class ChatJobService(
+    private val rabbitTemplate: RabbitTemplate,
+    private val confirmations: ConfirmationService
+) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
+    private val sessionToChatter = ConcurrentHashMap<Long, OpenAIChatter>()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -72,25 +86,90 @@ class ChatJobService {
         )
     }
 
+    private fun ChatJob.getChatter(): OpenAIChatter = sessionToChatter.getOrPut(userId) {
+        OpenAIChatter(
+            chatHistory = request.history,
+            bcAdapter = AgentBlockchainAdapter(userId, rabbitTemplate, messageId)
+        )
+    }
+
     private suspend fun processJob(job: ChatJob) {
         try {
             job.status = ChatJobStatus.PROCESSING
 
-            val chatter = OpenAIChatter(
-                chatHistory = job.request.history,
-                bcAdapter = AgentBlockchainAdapter(job.userId)
-            )
+            val chatter = job.getChatter()
 
-            val reply = chatter.sendUserRequest(job.request.content)
-            job.reply = reply
-            job.completedAt = Instant.now()
-            job.status = ChatJobStatus.COMPLETED
+            val (planned, finalResponse) = chatter.planFirstStep(job.request.content)
+            if (finalResponse != null) {
+                job.reply = finalResponse.response
+                job.completedAt = Instant.now()
+                job.status = ChatJobStatus.COMPLETED
+                return
+            }
+
+            // Store planned calls for future execution
+            job.plannedToolCalls = planned.map { Triple(it.call.id, it.call.name, it.call.arguments) }
+            job.plannedNoConfirmCalls = planned.filter { !it.requiresConfirmation }
+                .map { Triple(it.call.id, it.call.name, it.call.arguments) }
+
+            // Create confirmation items for those requiring confirmation
+            planned.filter { it.requiresConfirmation }.forEach { p ->
+                val item = ConfirmationItem(
+                    messageId = job.messageId,
+                    userId = job.userId,
+                    toolCallId = p.call.id,
+                    toolName = p.call.name,
+                    argsJson = p.call.arguments,
+                    text = p.confirmationText ?: "Please confirm executing ${p.call.name}"
+                )
+                confirmations.add(job.messageId, item)
+            }
+
+            if (planned.none { it.requiresConfirmation }) {
+                // No confirmations required: execute all planned now
+                val resp = chatter.executeApprovedToolsAndSummarize(job.plannedToolCalls)
+                job.reply = resp.response
+                job.completedAt = Instant.now()
+                job.status = ChatJobStatus.COMPLETED
+            }
         } catch (e: Exception) {
             logger.error(e) {}
             job.reply = "Error while processing your request."
             job.completedAt = Instant.now()
             job.status = ChatJobStatus.ERROR
         }
+    }
+
+    fun resumeIfReady(messageId: UUID) {
+        val job = jobs[messageId] ?: return
+        if (!confirmations.allResolved(messageId)) return
+        scope.launch {
+            try {
+                val chatter = job.getChatter()
+                val approvedTriples = confirmations.approved(messageId)
+                    .map { Triple(it.toolCallId, it.toolName, it.argsJson) }
+                // Execute both: non-confirmation planned calls + approved confirmation-required ones
+                val toExecute = job.plannedNoConfirmCalls + approvedTriples
+                val resp = chatter.executeApprovedToolsAndSummarize(toExecute)
+                job.reply = resp.response
+                job.completedAt = Instant.now()
+                job.status = ChatJobStatus.COMPLETED
+            } catch (e: Exception) {
+                logger.error(e) {}
+                job.reply = "Error while processing your request."
+                job.completedAt = Instant.now()
+                job.status = ChatJobStatus.ERROR
+            }
+        }
+    }
+
+    suspend fun finalizeWithToolResult(messageId: UUID, userId: Long, toolName: String, toolResult: String) {
+        val job = jobs[messageId] ?: return
+        if (job.userId != userId) return
+        // Temporary working fix: set the final reply directly without invoking LLM summarization.
+        job.reply = toolResult
+        job.completedAt = Instant.now()
+        job.status = ChatJobStatus.COMPLETED
     }
 
     fun status(messageId: UUID, userId: Long): ChatMessageStatusResponse {

@@ -4,4 +4,8 @@ import com.agent.llm.tool.api.AgentToolArgs
 import kotlinx.serialization.Serializable
 
 @Serializable
-class GetTonToUSDTArgs : AgentToolArgs
+data class PrepareSendTonArgs(
+    val userId: Long,
+    val tonAmount: Double,
+    val receiverAddress: String,
+) : AgentToolArgs

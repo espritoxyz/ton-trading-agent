@@ -124,7 +124,7 @@ export function useChat(userId?: number) {
 
             // queued/processing: poll
             let delay = 600
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 20; i++) {
                 await new Promise((r) => setTimeout(r, delay))
                 const status = await poll(messageId)
                 if (status.status === 'completed' && status.reply) {
@@ -134,6 +134,22 @@ export function useChat(userId?: number) {
                 if (status.status === 'error') {
                     updateSystemMessage(messageId, status.reply || 'Error processing request.')
                     return
+                }
+                // fetch pending confirmations and render them as utility bubbles
+                const confs = await listConfirmations(messageId)
+                for (const c of confs) {
+                    const exists = messages.value.some(m => m.backendMessageId === c.id)
+                    if (!exists && c.status === 'PENDING') {
+                        messages.value.push({
+                            id: `CONFIRM_${c.id}`,
+                            role: 'SYSTEM',
+                            content: c.text,
+                            backendMessageId: c.id,
+                            createdAt: new Date().toISOString(),
+                            utilityKind: 'CONFIRM_SEND_TON',
+                            utilityMeta: { messageId, confirmationId: c.id }
+                        })
+                    }
                 }
                 delay = Math.min(delay * 1.6, 4000)
             }
@@ -149,6 +165,11 @@ export function useChat(userId?: number) {
 
     async function poll(messageId: string) {
         const { data } = await api.get<StatusResp>(`/chat/messages/${messageId}`)
+        return data
+    }
+
+    async function listConfirmations(messageId: string) {
+        const { data } = await api.get<Array<{ id: string; text: string; status: 'PENDING' | 'APPROVED' | 'DECLINED' }>>(`/chat/messages/${messageId}/confirmations`)
         return data
     }
 

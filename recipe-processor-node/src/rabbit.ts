@@ -1,6 +1,5 @@
 import client, { Connection, Channel, ConsumeMessage } from "amqplib";
 
-
 export type Rabbit = {
     conn: Connection;
     ch: Channel;
@@ -8,17 +7,40 @@ export type Rabbit = {
     queue: string;
 };
 
-export async function setupRabbit(url: string, serviceName = "recipe-processor-node"): Promise<Rabbit> {
-    const exchange = "app.events";
-    const queue = `${serviceName}.in`;
+async function connectWithRetry(url: string, attempts = 20, delayMs = 1500) {
+    let lastErr: any;
+    for (let i = 1; i <= attempts; i++) {
+        try {
+            console.log(`[rabbit] connecting (attempt ${i}/${attempts}) to`, url.replace(/:\\S*@/, ":***@"));
+            return await client.connect(url);
+        } catch (e) {
+            lastErr = e;
+            console.warn(`[rabbit] connect failed (attempt ${i}):`, (e as any)?.code || e);
+            if (i < attempts) await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+    throw lastErr;
+}
 
-    const channelModel = await client.connect(url);
-    const conn = channelModel.connection
+export async function setupRabbit(
+    url: string,
+    serviceName = "recipe-processor-node",
+    routingKeys: string[] = ["agent-llm.*"],
+    exchangeName = "app.events",
+    queueName = process.env.RABBIT_QUEUE || `${serviceName}.in`
+): Promise<Rabbit> {
+    const exchange = exchangeName;
+    const queue = queueName;
+
+    const channelModel = await connectWithRetry(url);
+    const conn = channelModel.connection;
     const ch: Channel = await channelModel.createChannel();
 
     await ch.assertExchange(exchange, "topic", { durable: true });
     await ch.assertQueue(queue, { durable: true });
-    await ch.bindQueue(queue, exchange, "user.*");
+    for (const key of routingKeys) {
+        await ch.bindQueue(queue, exchange, key);
+    }
     ch.prefetch(10);
 
     return { conn, ch, exchange, queue };
@@ -34,7 +56,7 @@ export function publishJson(ch: Channel, exchange: string, routingKey: string, p
             contentEncoding: "utf-8",
             persistent: true,
             type: routingKey,
-            timestamp: Math.floor(Date.now() / 1000)
+            timestamp: Math.floor(Date.now() / 1000),
         }
     );
     if (!ok) console.warn("[rabbit] backpressure: publish returned false");
@@ -66,6 +88,5 @@ export async function startConsumer(
 
 /** Graceful shutdown */
 export async function shutdown(r: Rabbit) {
-    try { await r.ch.close(); } catch {}
     try { await r.ch.close(); } catch {}
 }
