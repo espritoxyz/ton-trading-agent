@@ -22,28 +22,28 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="rounded-2xl bg-white p-4 ring-1 ring-gray-200">
-    <div class="text-sm text-gray-500">Agent Wallet</div>
-    <div class="mt-1 text-xs text-gray-500">
-      <div v-if="profile">Email: <span class="font-medium text-gray-900">{{ profile.email }}</span></div>
+  <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <div class="text-sm text-gray-500 dark:text-gray-400">Agent Wallet</div>
+    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <div v-if="profile">Email: <span class="font-medium text-gray-900 dark:text-gray-100">{{ profile.email }}</span></div>
     </div>
 
-    <div v-if="loading" class="mt-3 text-sm text-gray-500">Loading…</div>
+    <div v-if="loading" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
 
     <template v-else>
-      <div class="mt-3 text-xs text-gray-500">Address</div>
-      <div class="truncate text-sm font-mono">{{ wallet?.address }}</div>
+      <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">Address</div>
+      <div class="truncate text-sm font-mono text-gray-900 dark:text-gray-100">{{ wallet?.address }}</div>
 
-      <div class="mt-3 text-xs text-gray-500">Balances</div>
+      <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">Balances</div>
       <ul class="mt-1 space-y-1">
-        <li v-for="b in wallet?.balances" :key="b.symbol" class="flex justify-between rounded-lg bg-gray-50 px-3 py-2">
-          <span class="font-medium text-gray-900">{{ b.symbol }}</span>
-          <span class="text-gray-700">{{ b.amount }}</span>
+        <li v-for="b in wallet?.balances" :key="b.symbol" class="flex justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
+          <span class="font-medium text-gray-900 dark:text-gray-100">{{ b.symbol }}</span>
+          <span class="font-mono text-gray-700 dark:text-gray-300">{{ b.amount }}</span>
         </li>
       </ul>
 
       <div class="mt-4 flex gap-2">
-        <button class="rounded-lg bg-gray-100 px-3 py-2 text-sm ring-1 ring-gray-200 hover:bg-gray-200"
+        <button class="rounded-lg bg-gray-100 px-3 py-2 text-sm ring-1 ring-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:ring-gray-700 dark:hover:bg-gray-700 dark:text-gray-100"
                 @click="load">
           Refresh Balances
         </button>
