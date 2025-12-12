@@ -5,11 +5,11 @@ import ChatPanel from '../components/ChatPanel.vue'
 </script>
 
 <template>
-  <div class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-    <div class="h-[70vh] lg:h-[calc(100vh-4rem)]">
+  <div class="grid h-full gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+    <div class="flex h-full">
       <ChatPanel />
     </div>
-    <div class="flex h-[70vh] flex-col gap-4 lg:h-[calc(100vh-4rem)]">
+    <div class="flex h-full flex-col gap-4">
       <AuthCard />
       <BalanceCard />
     </div>

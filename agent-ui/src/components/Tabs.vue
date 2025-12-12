@@ -16,8 +16,8 @@ provide('tabsIs', is)
 </script>
 
 <template>
-  <div class="rounded-2xl bg-white ring-1 ring-gray-200">
-    <div class="flex gap-2 border-b border-gray-200 p-2">
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="flex gap-2 border-b border-gray-200 p-2 dark:border-gray-700">
       <slot name="labels" />
     </div>
     <div class="p-3">
