@@ -21,7 +21,7 @@ onMounted(() => {
   <template #label>
     <button
         class="rounded-xl px-3 py-1 text-sm"
-        :class="tabsIs(props.id).value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+        :class="tabsIs(props.id).value ? 'bg-indigo-600 text-white dark:bg-indigo-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
         @click="$inject.tabsSet(props.id)">
       {{ props.label }}
     </button>

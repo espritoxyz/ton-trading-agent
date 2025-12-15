@@ -41,20 +41,20 @@ async function handleDecline() {
 </script>
 
 <template>
-  <div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-6"
-       :class="role==='USER' ? 'self-end bg-indigo-600 text-white'
-                             : 'self-start bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'">
+  <div class="w-fit max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-6"
+       :class="role==='USER' ? 'self-end bg-indigo-600 text-white dark:bg-indigo-500'
+                             : 'self-start border border-gray-200 bg-white text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'">
     <template v-if="utilityKind === 'CONFIRM_SEND_TON'">
       <div class="space-y-2">
         <div>{{ text }}</div>
         <div v-if="acted === null" class="flex gap-2">
-          <button @click="handleApprove" class="rounded-md bg-emerald-600 px-2 py-1 text-white hover:bg-emerald-700">✔
+          <button @click="handleApprove" class="rounded-md bg-emerald-600 px-2 py-1 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600">✔
           </button>
-          <button @click="handleDecline" class="rounded-md bg-rose-600 px-2 py-1 text-white hover:bg-rose-700">✖
+          <button @click="handleDecline" class="rounded-md bg-rose-600 px-2 py-1 text-white hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-600">✖
           </button>
         </div>
-        <div v-else-if="acted==='approved'" class="text-emerald-700">Approved</div>
-        <div v-else class="text-rose-700">Declined</div>
+        <div v-else-if="acted==='approved'" class="text-emerald-700 dark:text-emerald-400">Approved</div>
+        <div v-else class="text-rose-700 dark:text-rose-400">Declined</div>
       </div>
     </template>
     <template v-else>
