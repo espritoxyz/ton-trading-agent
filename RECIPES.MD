@@ -12,6 +12,7 @@
 - [ ] `swap_token_to_ton(userId: Long, jettonMaster: Address, swappedTokenAmount: Double): SuccessReport | ErrorReport`
 
 ## 2026
+
 - [ ] `smart_buy(...)`
 - [ ] `smart_sell(...)`
 

@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, provide, computed } from 'vue'
+import { ref, provide, computed, watch } from 'vue'
 
 const props = defineProps<{ modelValue?: string }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
-const active = ref(props.modelValue || '')
+const active = ref(props.modelValue ?? '')
 provide('tabsActive', active)
+
+// Синхронизация с modelValue извне
+watch(() => props.modelValue, (newValue) => {
+  if (newValue !== undefined) {
+    active.value = newValue
+  }
+}, { immediate: true })
+
 provide('tabsSet', (id: string) => {
   active.value = id
   emit('update:modelValue', id)
@@ -13,6 +21,16 @@ provide('tabsSet', (id: string) => {
 
 const is = (id: string) => computed(() => active.value === id)
 provide('tabsIs', is)
+
+// Предоставляем функцию для установки значения по умолчанию
+let defaultId: string | null = null
+provide('tabsSetDefault', (id: string) => {
+  if (!active.value && !defaultId) {
+    defaultId = id
+    active.value = id
+    emit('update:modelValue', id)
+  }
+})
 </script>
 
 <template>
