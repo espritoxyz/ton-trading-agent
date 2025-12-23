@@ -31,8 +31,8 @@ logging:
   level:
     root: INFO
     org.springframework.amqp: INFO
-    com.agent.backend: INFO
-    org.springframework.security: DEBUG
+    com.agent.backend: DEBUG
+    org.springframework.security: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
 

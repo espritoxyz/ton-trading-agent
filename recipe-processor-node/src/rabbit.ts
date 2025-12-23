@@ -25,7 +25,7 @@ async function connectWithRetry(url: string, attempts = 20, delayMs = 1500) {
 export async function setupRabbit(
     url: string,
     serviceName = "recipe-processor-node",
-    routingKeys: string[] = ["agent-llm.*"],
+    routingKeys: string[] = ["agent-llm.#"],
     exchangeName = "app.events",
     queueName = process.env.RABBIT_QUEUE || `${serviceName}.in`
 ): Promise<Rabbit> {

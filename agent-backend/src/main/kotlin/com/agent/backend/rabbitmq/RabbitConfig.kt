@@ -15,7 +15,8 @@ class RabbitConfig {
     companion object {
         const val EXCHANGE = "app.events"
         const val QUEUE = "agent-backend"
-        const val ROUTING_PATTERN = "agent-llm.*"
+        // Use # to match one or more words so both "agent-llm.send-ton" and "agent-llm.send-ton.result" are delivered
+        const val ROUTING_PATTERN = "agent-llm.#"
     }
 
     @Bean

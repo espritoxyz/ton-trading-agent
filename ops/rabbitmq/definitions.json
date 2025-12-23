@@ -10,7 +10,7 @@
     { "name": "recipe-processor-node.in",   "vhost": "/app", "durable": true, "auto_delete": false, "arguments": {} }
   ],
   "bindings": [
-    { "vhost": "/app", "source": "app.events", "destination": "agent-backend", "destination_type": "queue", "routing_key": "agent-llm.*", "arguments": {} },
-    { "vhost": "/app", "source": "app.events", "destination": "recipe-processor-node.in",   "destination_type": "queue", "routing_key": "agent-llm.*", "arguments": {} }
+    { "vhost": "/app", "source": "app.events", "destination": "agent-backend", "destination_type": "queue", "routing_key": "agent-llm.#", "arguments": {} },
+    { "vhost": "/app", "source": "app.events", "destination": "recipe-processor-node.in",   "destination_type": "queue", "routing_key": "agent-llm.#", "arguments": {} }
   ]
 }

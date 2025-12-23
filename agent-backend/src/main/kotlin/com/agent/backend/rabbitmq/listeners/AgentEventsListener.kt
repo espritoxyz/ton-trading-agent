@@ -13,7 +13,7 @@ private val logger = KotlinLogging.logger {}
 
 @Component
 class AgentEventsListener(
-    private val jobs: ChatJobService
+    private val jobService: ChatJobService
 ) {
     data class SendTonResult(
         val type: String,
@@ -34,6 +34,11 @@ class AgentEventsListener(
 
     @RabbitListener(queues = [RabbitConfig.QUEUE])
     fun onEvent(@Payload payload: Map<String, Any?>) {
+        logger.debug {
+            "Received rabbitmq event ${payload.entries.joinToString(prefix="{", postfix="}") { 
+                "${it.key}=${it.value.toString()}" 
+            }}"
+        }
         try {
             val type = payload["type"] as? String ?: return
             if (type != "agent-llm.send-ton.result") return
@@ -53,10 +58,10 @@ class AgentEventsListener(
             }
 
             runBlocking {
-                jobs.finalizeWithToolResult(
+                jobService.finalizeWithToolResult(
                     messageId = messageId,
                     userId = userId,
-                    toolName = "prepare_send_ton_to_address",
+                    toolName = "send_ton_to_address",
                     toolResult = report
                 )
             }

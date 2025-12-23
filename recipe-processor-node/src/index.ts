@@ -1,11 +1,11 @@
 import { setupRabbit, startConsumer, shutdown, publishJson } from "./rabbit.js";
-import { sendTon } from "./transactions.js";
+import {mockSendTon, sendTon} from "./transactions.js";
 
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
 
-// Subscribe to agent-llm.* events
-const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.*"]);
+// Subscribe to agent-llm.# events
+const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#"]);
 
 await startConsumer(ch, queue, async (_msg, body) => {
     try {
@@ -19,7 +19,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
             try {
-                const txId = await sendTon(amount, receiver);
+                const txId = await mockSendTon(amount, receiver);
                 console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
                     type: "agent-llm.send-ton.result",

@@ -127,7 +127,8 @@ class ChatJobService(
 
             if (planned.none { it.requiresConfirmation }) {
                 // No confirmations required: execute all planned now
-                val resp = chatter.executeApprovedToolsAndSummarize(job.plannedToolCalls)
+                val toolResponses = chatter.executeApprovedTools(job.plannedToolCalls)
+                val resp = chatter.saveToolResponsesAndSummarize(toolResponses)
                 job.reply = resp.response
                 job.completedAt = Instant.now()
                 job.status = ChatJobStatus.COMPLETED
@@ -150,10 +151,18 @@ class ChatJobService(
                     .map { Triple(it.toolCallId, it.toolName, it.argsJson) }
                 // Execute both: non-confirmation planned calls + approved confirmation-required ones
                 val toExecute = job.plannedNoConfirmCalls + approvedTriples
-                val resp = chatter.executeApprovedToolsAndSummarize(toExecute)
-                job.reply = resp.response
-                job.completedAt = Instant.now()
-                job.status = ChatJobStatus.COMPLETED
+                val toolResponses = chatter.executeApprovedTools(toExecute)
+                val hasAsyncTransfer = toolResponses.any { it.name == "send_ton_to_address" }
+                if (hasAsyncTransfer) {
+                    // Save tool response but DO NOT summarize or set reply; wait for finalizeWithToolResult
+                    chatter.saveToolResponsesOnly(toolResponses)
+                    job.status = ChatJobStatus.PROCESSING
+                } else {
+                    val resp = chatter.saveToolResponsesAndSummarize(toolResponses)
+                    job.reply = resp.response
+                    job.completedAt = Instant.now()
+                    job.status = ChatJobStatus.COMPLETED
+                }
             } catch (e: Exception) {
                 logger.error(e) {}
                 job.reply = "Error while processing your request."
@@ -166,6 +175,7 @@ class ChatJobService(
     suspend fun finalizeWithToolResult(messageId: UUID, userId: Long, toolName: String, toolResult: String) {
         val job = jobs[messageId] ?: return
         if (job.userId != userId) return
+        logger.debug { "Finalizing request { userId: $userId, reply: $toolResult }" }
         // Temporary working fix: set the final reply directly without invoking LLM summarization.
         job.reply = toolResult
         job.completedAt = Instant.now()
