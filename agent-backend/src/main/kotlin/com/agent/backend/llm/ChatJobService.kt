@@ -47,7 +47,6 @@ class ChatJobService(
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
-    private val sessionToChatter = ConcurrentHashMap<Long, OpenAIChatter>()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -86,18 +85,17 @@ class ChatJobService(
         )
     }
 
-    private fun ChatJob.getChatter(): OpenAIChatter = sessionToChatter.getOrPut(userId) {
+    private fun makeChatter(job: ChatJob): OpenAIChatter =
         OpenAIChatter(
-            chatHistory = request.history,
-            bcAdapter = AgentBlockchainAdapter(userId, rabbitTemplate, messageId)
+            chatHistory = job.request.history,
+            bcAdapter = AgentBlockchainAdapter(job.userId, rabbitTemplate, job.messageId)
         )
-    }
 
     private suspend fun processJob(job: ChatJob) {
         try {
             job.status = ChatJobStatus.PROCESSING
 
-            val chatter = job.getChatter()
+            val chatter = makeChatter(job)
 
             val (planned, finalResponse) = chatter.planFirstStep(job.request.content)
             if (finalResponse != null) {
@@ -146,7 +144,7 @@ class ChatJobService(
         if (!confirmations.allResolved(messageId)) return
         scope.launch {
             try {
-                val chatter = job.getChatter()
+                val chatter = makeChatter(job)
                 val approvedTriples = confirmations.approved(messageId)
                     .map { Triple(it.toolCallId, it.toolName, it.argsJson) }
                 // Execute both: non-confirmation planned calls + approved confirmation-required ones

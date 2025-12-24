@@ -62,8 +62,8 @@ class OpenAIChatter(
 
     suspend fun planFirstStep(userRequestContent: String): Pair<List<PlannedToolCall>, ChatResponse?> {
         logger.debug { "Received user request: ${userRequestContent.take(200)}" }
-        if (chatHistory.isEmpty()) {
-            logger.debug { "No prior history, injecting system message" }
+        if (chatEnv.chatHistory.isEmpty()) {
+            logger.debug { "No prior history in ChatEnvironment, injecting initial system message" }
             val systemMessage = AgentPrompt.makeAgentMessage(bcAdapter)
             chatEnv.saveMessage(systemMessage)
         }
@@ -109,6 +109,7 @@ class OpenAIChatter(
         logger.debug { "Saving tool responses only: count=${toolResponses.size}" }
         val toolMessage = Message.tool(toolResponses)
         chatEnv.saveMessage(toolMessage)
+        chatEnv.saveMessage(Message.assistant(""))
     }
 
     suspend fun saveToolResponsesAndSummarize(toolResponses: List<ToolResponse>): ChatResponse {
@@ -117,6 +118,7 @@ class OpenAIChatter(
         chatEnv.saveMessage(toolMessage)
         val prompt = Prompt(chatEnv.chatHistory)
         val summary = router.chat(ChatRequest(modelConfig, prompt))
+        chatEnv.saveMessage(Message.assistant(""))
         logger.debug { "Summary received: toolCalls=${summary.toolCalls.size}" }
         return summary
     }

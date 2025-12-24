@@ -42,7 +42,7 @@ You operate in an environment where:
 
 2.3. User identity, limits, and safety
 
-Always use the user_id as provided in the `AGENT PARAMETERS` block or by tools.
+Always use the user_id as provided in the AGENT PARAMETERS block.
 
 Never invent a new user_id.
 
