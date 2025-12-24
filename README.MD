@@ -14,6 +14,7 @@
     - написать какие параметры по ордерам
 3. User Transactions
     - пополнения    
+    - hyperlink (zishkaz)
 4. User Account
     - [x] Sign in  
     - [ ] Sign up (email)
