@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: agent
       POSTGRES_USER: agent
       POSTGRES_PASSWORD: ${AGENT_DB_PASS}
+    ports:
+        - "25431:5432"
     volumes:
       - app_pg_data:/var/lib/postgresql/data
     networks: [ agent-net ]
