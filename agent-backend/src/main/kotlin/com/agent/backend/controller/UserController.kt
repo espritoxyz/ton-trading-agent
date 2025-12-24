@@ -3,6 +3,7 @@ package com.agent.backend.controller
 import com.agent.backend.dto.BalanceResponse
 import com.agent.backend.dto.UserInfoResponse
 import com.agent.backend.dto.UserUpdateRequest
+import com.agent.backend.service.BalanceService
 import com.agent.backend.service.UserProvisioningService
 import com.agent.backend.service.UserService
 import org.springframework.http.ResponseEntity
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/user")
 class UserController(
     private val userService: UserService,
-    private val provisioning: UserProvisioningService
+    private val provisioning: UserProvisioningService,
+    private val balanceService: BalanceService
 ) {
     /** Resolve current local userId from JWT (creates row on first visit). */
     private fun currentUserId(auth: JwtAuthenticationToken): Long {
@@ -66,9 +68,7 @@ class UserController(
     }
 
     /**
-     * Balance endpoint moved here, as requested.
-     * Per your instruction, we return a USD placeholder (0.0), no computations.
-     * If later you want on-chain totals, you can swap the value before returning.
+     * Balance endpoint moved here; now returns aggregated USD balance via BalanceService.
      */
     @GetMapping("/{userId}/balance")
     fun getBalance(
@@ -78,6 +78,7 @@ class UserController(
         val current = currentUserId(auth)
         require(current == userId) { "forbidden" }
 
-        return ResponseEntity.ok(BalanceResponse(userId = userId, totalUsd = 0.0))
+        val bal = balanceService.getBalance(userId)
+        return ResponseEntity.ok(bal)
     }
 }

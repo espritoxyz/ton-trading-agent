@@ -1,7 +1,7 @@
 {
   "realm": "agent",
   "enabled": true,
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
@@ -19,16 +19,15 @@
         "post.logout.redirect.uris": "*"
       },
       "secret": "NH0ClpAy9z3A5i4AYeSMXTiCk0oh8ERw",
-      "serviceAccountsEnabled": false,
+      "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": true,
-      "standardFlowEnabled": true
+      "standardFlowEnabled": true,
+      "_notes": "Service account enabled: remember to assign realm-management -> manage-users (or appropriate admin role) to the service account in Keycloak admin console"
     }
   ],
   "users": [
     {
       "username": "zishkaz",
-      "firstName": "John",
-      "lastName": "Seana",
       "email": "example@mail.com",
       "enabled": true,
       "emailVerified": true,

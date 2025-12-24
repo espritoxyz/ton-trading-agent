@@ -3,10 +3,13 @@ package com.agent.backend.controller
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
 import com.agent.backend.dto.TokenResponse
+import com.agent.backend.dto.RegisterRequest
+import com.agent.backend.dto.RegisterResponse
 import com.agent.backend.service.AuthService
 import com.agent.backend.service.UserProvisioningService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.*
@@ -28,6 +31,28 @@ class AuthController(
         logger.info { body.toString() }
         val tokens = authService.directLogin(body)
         return ResponseEntity.ok(tokens)
+    }
+
+    @PostMapping("/register")
+    fun register(@Valid @RequestBody body: RegisterRequest): ResponseEntity<Any> {
+        logger.info { "register: ${body.email}" }
+        return try {
+            val resp = authService.register(body)
+            ResponseEntity.status(201).body(resp)
+        } catch (e: IllegalArgumentException) {
+            logger.warn(e) { "Registration conflict/validation" }
+            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to (e.message ?: "conflict")))
+        } catch (e: org.springframework.web.client.RestClientResponseException) {
+            logger.error(e) { "Keycloak admin API error" }
+            val status = try { e.statusCode } catch (_: Exception) { HttpStatus.BAD_GATEWAY }
+            ResponseEntity.status(status).body(mapOf("message" to (e.responseBodyAsString ?: "upstream error")))
+        } catch (e: jakarta.servlet.UnavailableException) {
+            logger.error(e) { "Auth provider unavailable" }
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(mapOf("message" to (e.message ?: "auth provider unavailable")))
+        } catch (e: Exception) {
+            logger.error(e) { "Registration failed" }
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("message" to (e.message ?: "internal error")))
+        }
     }
 
     /**
