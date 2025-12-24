@@ -26,6 +26,17 @@ export async function login(username: string, password: string) {
     }
 }
 
+export async function register(emailInput: string, passwordInput: string, displayName?: string) {
+    authError.value = null
+    try {
+        const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName }, { headers: { Authorization: undefined } })
+        return data
+    } catch (e: any) {
+        authError.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+        throw e
+    }
+}
+
 export function logout() {
     sessionStorage.removeItem('access_token')
     accessToken.value = null

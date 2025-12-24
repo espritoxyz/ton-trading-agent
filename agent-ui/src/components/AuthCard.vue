@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { login, logout, loggingIn, accessToken, email, subject, userId, refreshProfile, authError } from '../composables/useAuth.ts'
 import { refreshBalance } from '../composables/useBalance.ts'
+import RegisterModal from './RegisterModal.vue'
 
 const username = ref('')
 const password = ref('')
+const showRegister = ref(false)
 
 async function onLogin() {
   await login(username.value, password.value)
@@ -19,6 +21,12 @@ onMounted(async () => {
     await Promise.all([refreshProfile(), refreshBalance()])
   }
 })
+
+function openRegister() { showRegister.value = true }
+function closeRegister() { showRegister.value = false }
+function onRegistered(data: any) {
+  closeRegister()
+}
 </script>
 
 <template>
@@ -47,7 +55,12 @@ onMounted(async () => {
       >
         {{ loggingIn ? 'Logging in…' : 'Login' }}
       </button>
-      <p v-if="authError" class="text-xs text-red-600 dark:text-red-400">{{ authError }}</p>
+
+      <div class="flex items-center justify-between">
+        <p v-if="authError" class="text-xs text-red-600 dark:text-red-400">{{ authError }}</p>
+        <button class="text-xs text-indigo-600 hover:underline" @click="openRegister">Register</button>
+      </div>
+
       <p class="text-xs text-gray-500 dark:text-gray-400">Dev flow: direct grant → access token stored in sessionStorage.</p>
     </div>
 
@@ -70,5 +83,7 @@ onMounted(async () => {
         </button>
       </div>
     </div>
+
+    <RegisterModal v-if="showRegister" @registered="onRegistered" @close="closeRegister" />
   </div>
 </template>

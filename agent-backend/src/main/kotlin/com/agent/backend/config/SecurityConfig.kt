@@ -24,7 +24,7 @@ class SecurityConfig {
                     // Allow CORS preflight requests
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // Public endpoints
-                    .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/*").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
                     // Everything else requires a valid JWT
                     .anyRequest().authenticated()
