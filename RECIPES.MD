@@ -10,6 +10,7 @@
 - [ ] `send_token_to_address(userId: Long, jettonMaster: Address, amount: Double, receiver: Address): SuccessReport | ErrorReport`
 - [ ] `swap_ton_to_token(userId: Long, jettonMaster: Address, minimalTokenAmount: Double): SuccessReport | ErrorReport`
 - [ ] `swap_token_to_ton(userId: Long, jettonMaster: Address, swappedTokenAmount: Double): SuccessReport | ErrorReport`
+- [ ] `decide_jetton_master(ticker: String): Address`
 
 ## 2026
 - [ ] `smart_buy(...)`
