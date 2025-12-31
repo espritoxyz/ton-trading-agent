@@ -1,35 +1,14 @@
-import { TonClient, WalletContractV5R1, internal, toNano } from "@ton/ton";
-import { mnemonicToPrivateKey } from "@ton/crypto";
-import { Address, OpenedContract, SendMode } from "@ton/core";
-import { mnemonic_array } from "./mnemonics.js"; // Expected to be provided
-import { randomBytes } from "crypto";
+import {internal, toNano, TonClient, WalletContractV5R1} from "@ton/ton";
+import {mnemonicToPrivateKey} from "@ton/crypto";
+import {Address, SendMode} from "@ton/core";
+import {mnemonic_array} from "../mnemonics.js"; // Expected to be provided
+import {randomBytes} from "crypto";
+import {bufToHex, sleep, waitForSeqnoIncrement} from "../utils.js";
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
 const apiKey = process.env.TONCENTER_API_KEY || "";
 
-function sleep(ms: number) {
-    return new Promise((r) => setTimeout(r, ms));
-}
-
-export async function waitForSeqnoIncrement(
-    provider: OpenedContract<any>,
-    prev: number,
-    timeoutMs = 90_000,
-    pollMs = 1500
-) {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-        // @ts-ignore
-        const now = await provider.getSeqno();
-        if (now > prev) return now;
-        await sleep(pollMs);
-    }
-    throw new Error(`Timeout waiting for seqno to increment (stuck at ${prev})`);
-}
-
-function bufToHex(b: Uint8Array | Buffer) {
-    return Buffer.isBuffer(b) ? b.toString("hex") : Buffer.from(b).toString("hex");
-}
+// utils imported from ./utils.js
 
 /**
  * Sends specified TON amount to a given recipient address.

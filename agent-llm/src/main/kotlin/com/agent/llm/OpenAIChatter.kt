@@ -71,8 +71,15 @@ class OpenAIChatter(
         val userMessage = Message.user(userRequestContent)
         chatEnv.saveMessage(userMessage)
         val prompt = Prompt(messages = chatEnv.chatHistory)
-        logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
-        val response = router.chat(ChatRequest(modelConfig, prompt))
+        val response = runCatching {
+            logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
+            router.chat(ChatRequest(modelConfig, prompt))
+        }.getOrElse { e ->
+            logger.error(e) { "LLM chat failed with history error, wiping and continuing" }
+            chatEnv.clearHistory()
+            logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
+            router.chat(ChatRequest(modelConfig, Prompt(messages = chatEnv.chatHistory)))
+        }
         logger.debug { "LLM response received: toolCalls=${response.toolCalls.size}" }
         if (response.toolCalls.isEmpty()) {
             logger.debug { "No tool calls planned by the model" }
@@ -85,7 +92,6 @@ class OpenAIChatter(
             logger.debug { "Planned tool: name=${tc.name} requiresConfirmation=$needs args=${tc.arguments}" }
             PlannedToolCall(tc, needs, text)
         }
-        // Save assistant tool call message
         val assistantMessage = Message.assistant("", toolCalls = response.toolCalls)
         chatEnv.saveMessage(assistantMessage)
         return planned to null

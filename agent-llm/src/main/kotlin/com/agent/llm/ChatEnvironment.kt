@@ -16,4 +16,8 @@ class ChatEnvironment(
     fun saveMessage(msg: Message) {
        _chatHistory += msg
     }
+
+    fun clearHistory() {
+        _chatHistory.clear()
+    }
 }

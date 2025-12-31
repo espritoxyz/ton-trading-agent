@@ -1,4 +1,4 @@
-import client, { Connection, Channel, ConsumeMessage } from "amqplib";
+import client, {Channel, Connection, ConsumeMessage} from "amqplib";
 
 export type Rabbit = {
     conn: Connection;
@@ -86,7 +86,6 @@ export async function startConsumer(
     );
 }
 
-/** Graceful shutdown */
 export async function shutdown(r: Rabbit) {
     try { await r.ch.close(); } catch {}
 }
