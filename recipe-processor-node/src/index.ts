@@ -60,7 +60,9 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const jettonMaster = data?.jettonMaster;
             const minimalTokenAmount = data?.minimalTokenAmount;
             const swapTonAmount = data?.swapTonAmount;
-            console.log(`[${SERVICE}] swap-ton-to-token requested:`, { messageId, userId, jettonMaster, minimalTokenAmount, swapTonAmount });
+            const poolAddress = data?.poolAddress as string;
+            console.log(`[${SERVICE}] swap-ton-to-token requested:`, { messageId, userId, jettonMaster, minimalTokenAmount, swapTonAmount, poolAddress });
+
 
             const swapAmtNum = Number(swapTonAmount);
             if (!Number.isFinite(swapAmtNum) || swapAmtNum <= 0) {
@@ -86,7 +88,9 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     Address.parse(jettonMaster),
                     Number(minimalTokenAmount),
                     swapAmtNum,
+                    poolAddress,
                 );
+
                 if (res.ok) {
                     publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
                         type: "agent-llm.swap-ton-to-token.result",

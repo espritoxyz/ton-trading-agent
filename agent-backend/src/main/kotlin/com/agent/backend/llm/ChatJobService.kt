@@ -6,6 +6,7 @@ import com.agent.backend.dto.ChatMessageStatusResponse
 import com.agent.backend.dto.DeliveryHint
 import com.agent.backend.service.ConfirmationItem
 import com.agent.backend.service.ConfirmationService
+import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.llm.OpenAIChatter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PreDestroy
@@ -43,7 +44,8 @@ data class ChatJob(
 @Service
 class ChatJobService(
     private val rabbitTemplate: RabbitTemplate,
-    private val confirmations: ConfirmationService
+    private val confirmations: ConfirmationService,
+    private val poolsCacheService: StonfiPoolsCacheService
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -88,7 +90,7 @@ class ChatJobService(
     private fun makeChatter(job: ChatJob): OpenAIChatter =
         OpenAIChatter(
             chatHistory = job.request.history,
-            bcAdapter = AgentBlockchainAdapter(job.userId, rabbitTemplate, job.messageId)
+            bcAdapter = AgentBlockchainAdapter(job.userId, rabbitTemplate, job.messageId, poolsCacheService)
         )
 
     private suspend fun processJob(job: ChatJob) {
@@ -150,7 +152,9 @@ class ChatJobService(
                 // Execute both: non-confirmation planned calls + approved confirmation-required ones
                 val toExecute = job.plannedNoConfirmCalls + approvedTriples
                 val toolResponses = chatter.executeApprovedTools(toExecute)
-                val hasAsyncTransfer = toolResponses.any { it.name == "send_ton_to_address" }
+                val hasAsyncTransfer = toolResponses.any {
+                    it.name == "send_ton_to_address" || it.name == "swap_ton_to_token"
+                }
                 if (hasAsyncTransfer) {
                     // Save tool response but DO NOT summarize or set reply; wait for finalizeWithToolResult
                     chatter.saveToolResponsesOnly(toolResponses)

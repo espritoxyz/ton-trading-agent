@@ -47,10 +47,16 @@ export async function setupRabbit(
 }
 
 export function publishJson(ch: Channel, exchange: string, routingKey: string, payload: unknown) {
+    // Safely stringify payloads that may contain BigInt by converting them to strings
+    const json = JSON.stringify(payload, (_key, value) =>
+        typeof value === "bigint" ? value.toString() : value
+    );
+
     const ok = ch.publish(
         exchange,
         routingKey,
-        Buffer.from(JSON.stringify(payload)),
+        Buffer.from(json),
+
         {
             contentType: "application/json",
             contentEncoding: "utf-8",

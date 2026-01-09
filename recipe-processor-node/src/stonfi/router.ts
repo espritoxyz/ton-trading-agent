@@ -20,7 +20,11 @@ export type ChosenPool = {
     token1: Address;
     reserve0: bigint;
     reserve1: bigint;
+    routerVersionMajor: number;
+    routerVersionMinor: number;
+    routerType: string;
 };
+
 
 export async function fetchStonRouters(opts: FetchRoutersOptions = {}): Promise<StonRouter[]> {
     const {
@@ -77,13 +81,12 @@ export async function fetchStonRouters(opts: FetchRoutersOptions = {}): Promise<
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
-function pTonFromRouterAddress(routers: StonRouter[], router: string): Address {
+function findRouterByAddress(routers: StonRouter[], router: string): StonRouter | undefined {
+    const target = normalizeStringAddr(router);
     for (const r of routers) {
-        if (normalizeStringAddr(r.address) == normalizeStringAddr(router)) return Address.parse(r.pton_master_address);
+        if (normalizeStringAddr(r.address) === target) return r;
     }
-
-    console.error(`No pTon for router ${router} found in all routers`)
-    return DEX.v2_1.pTON.address
+    return undefined;
 }
 
 export function pickBestStonfiPoolForPair(
@@ -91,9 +94,12 @@ export function pickBestStonfiPoolForPair(
     routers: StonRouter[],
     tokenAMinter: Address,
     tokenBMinter?: Address,
-    offerAmountInA?: bigint
+    offerAmountInA?: bigint,
+    preferredPoolAddress?: string,
 ): ChosenPool | undefined {
-    tokenBMinter ??= Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")
+    const preferredNorm = preferredPoolAddress ? normalizeStringAddr(preferredPoolAddress) : null;
+
+    tokenBMinter ??= Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
     const aStr = normalizeAddr(tokenAMinter);
     const bStr = normalizeAddr(tokenBMinter);
 
@@ -103,6 +109,19 @@ export function pickBestStonfiPoolForPair(
     for (const p of pools) {
         if (p.deprecated) continue;
 
+        // If a preferred pool is provided, only consider that pool address
+        if (preferredNorm && normalizeStringAddr(p.address) !== preferredNorm) continue;
+
+        // Match router metadata; we now support both v1 and v2.x routers,
+        // exact SDK wrapper is chosen later based on version.
+        const routerMeta = findRouterByAddress(routers, p.router_address);
+        if (!routerMeta) {
+            console.warn(`[stonfi] No router metadata found for pool router ${p.router_address}, skipping pool ${p.address}`);
+            continue;
+        }
+
+
+
         const t0 = normalizeStringAddr(p.token0_address);
         const t1 = normalizeStringAddr(p.token1_address);
         let orientation: 0 | 1 | null = null;
@@ -111,14 +130,12 @@ export function pickBestStonfiPoolForPair(
             orientation = 0;
         } else if (t0 === bStr && t1 === aStr) {
             orientation = 1;
-        }
-        else continue;
+        } else continue;
 
         const r0 = parseBig(p.token0_balance ?? p.reserve0);
         const r1 = parseBig(p.token1_balance ?? p.reserve1);
         if (r0 === null || r1 === null) continue;
         if (r0 === 0n || r1 === 0n) continue;
-
 
         const reserveA = orientation === 0 ? r0 : r1;
         const reserveB = orientation === 0 ? r1 : r0;
@@ -137,18 +154,23 @@ export function pickBestStonfiPoolForPair(
             bestScore = score;
             best = {
                 pool: Address.parse(p.address),
-                router: Address.parse(p.router_address),
-                pTon: pTonFromRouterAddress(routers, p.router_address),
+                router: Address.parse(routerMeta.address),
+                pTon: Address.parse(routerMeta.pton_master_address),
                 token0: Address.parse(token0Addr),
                 token1: Address.parse(token1Addr),
                 reserve0: orientation === 0 ? r0 : r1,
                 reserve1: orientation === 0 ? r1 : r0,
+                routerVersionMajor: routerMeta.major_version,
+                routerVersionMinor: routerMeta.minor_version,
+                routerType: routerMeta.router_type,
             };
         }
+
     }
 
     return best;
 }
+
 
 function gmScore(a: bigint, b: bigint): bigint {
     const prod = a * b;

@@ -54,10 +54,16 @@ class AgentEventsListener(
                     val error = data["error"] as? String
 
                     val report = if (success) {
-                        "TON transfer succeeded. Sent $amount TON to $receiver. Transaction ID: $txId."
+                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        if (txLink != null) {
+                            "TON transfer succeeded. Sent $amount TON to $receiver. Transaction: $txLink"
+                        } else {
+                            "TON transfer succeeded. Sent $amount TON to $receiver. (Transaction id unavailable)"
+                        }
                     } else {
                         "TON transfer failed. Attempted to send $amount TON to $receiver. Error: $error."
                     }
+
 
                     runBlocking {
                         jobService.finalizeWithToolResult(
@@ -82,10 +88,16 @@ class AgentEventsListener(
                     val error = data["error"] as? String
 
                     val report = if (success) {
-                        "Swap TON->Token succeeded. txId=$txId, jettonMinter=$jettonMinter, offerNanotons=$offerNanotons, minAskNano=$minAskNano, router=$router, pool=$pool, pTon=$pTon."
+                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        if (txLink != null) {
+                            "Swap TON->Token succeeded. Transaction: $txLink"
+                        } else {
+                            "Swap TON->Token succeeded. (Transaction id unavailable)"
+                        }
                     } else {
                         "Swap TON->Token failed. Error: $error."
                     }
+
 
                     runBlocking {
                         jobService.finalizeWithToolResult(

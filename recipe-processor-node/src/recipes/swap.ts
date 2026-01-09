@@ -1,11 +1,12 @@
 import {TonClient, WalletContractV5R1} from "@ton/ton";
 import {Address, internal, SendMode, toNano} from "@ton/core";
 import {mnemonicToPrivateKey} from "@ton/crypto";
-import {DEX} from "@ston-fi/sdk";
+import {dexFactory} from "@ston-fi/sdk";
+import {StonApiClient} from "@ston-fi/api";
 import {mnemonic_array} from "../mnemonics.js";
-import {fetchStonRouters, pickBestStonfiPoolForPair} from "../stonfi/router.js";
-import {readPoolsFromFile} from "../stonfi/poolsCache.js";
 import {bufToHex, waitSeqno} from "../utils.js";
+
+
 
 export interface SuccessReport {
     ok: true;
@@ -28,58 +29,94 @@ export interface ErrorReport {
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
 const apiKey = process.env.TONCENTER_API_KEY || "";
+const tonJettonMaster = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c";
 
 export async function swapTonToToken(
     userId: number,
     jettonMaster: Address,
     minimalTokenAmount: number,
     swapTonAmount: number,
+    preferredPoolAddress: string,
 ): Promise<SuccessReport | ErrorReport> {
+
+    console.log("[swap] swapTonToToken called", {
+        userId,
+        jettonMaster: jettonMaster.toString({ bounceable: false }),
+        minimalTokenAmount,
+        swapTonAmount,
+        preferredPoolAddress,
+    });
+
     try {
         const client = new TonClient({ endpoint, apiKey });
+
         const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
         const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
         const offerTON = toNano(swapTonAmount);
-        const minAsk = String(Math.max(0, Math.floor(minimalTokenAmount)));
+        console.log("[swap] Computed offerTON (nanotons)", offerTON.toString());
 
-        const [routerList, pools] = await Promise.all([
-            fetchStonRouters(),
-            Promise.resolve(readPoolsFromFile()),
-        ]);
-        if (!pools || (Array.isArray(pools) && pools.length === 0)) {
+        // 1. Simulate the swap with STON.fi API (mainnet-first workflow)
+        const apiClient = new StonApiClient();
+        // STON.fi API expects standard bounceable (EQ...) jetton addresses
+        const jettonAddrStr = jettonMaster.toString({ bounceable: true });
+
+        console.log("[swap] Calling STON.fi simulateSwap", {
+            offerAddress: tonJettonMaster,
+            askAddress: jettonAddrStr,
+            offerUnits: offerTON.toString(),
+            slippageTolerance: "0.05",
+        });
+
+        const simulationResult: any = await apiClient.simulateSwap({
+            offerAddress: tonJettonMaster,
+            askAddress: jettonAddrStr,
+            offerUnits: offerTON.toString(),
+            slippageTolerance: "0.05",
+        });
+
+        console.log("[swap] simulationResult", simulationResult);
+
+        const { router: routerInfo, offerUnits, minAskUnits, askAddress } = simulationResult;
+
+        if (!routerInfo) {
             return {
                 ok: false,
                 userId,
-                error: "STON.fi pools cache unavailable",
-                details: { hint: "Ensure pools updater is running and stonfi-pools.json exists" },
+                error: "STON.fi simulateSwap did not return router info",
+                details: simulationResult,
             };
         }
 
-        const bestPool = pickBestStonfiPoolForPair(pools, routerList, jettonMaster, undefined, offerTON);
-        if (!bestPool) {
-            return {
-                ok: false,
-                userId,
-                error: "No suitable pool found for TON -> target jetton",
-                details: { jettonMaster: jettonMaster.toString({ bounceable: false }), offerTon: offerTON },
-            };
-        }
+        // Recommended by STON.fi: reuse offerUnits and minAskUnits from simulation
+        const minAsk = String(minAskUnits ?? "0");
+        console.log("[swap] Using simulation-based offerUnits/minAskUnits", { offerUnits, minAsk });
 
-        const routerWrapper = DEX.v2_1.Router.CPI.create(bestPool.router);
+        // 2. Build DEX contracts from router metadata
+        const dexContracts = dexFactory(routerInfo);
+        const routerWrapper = dexContracts.Router.create(routerInfo.address);
         const routerOC = client.open(routerWrapper);
-        const pTon = DEX.v2_1.pTON.create(bestPool.pTon);
 
+        // Optional pTON helper when TON is in the route
+        const pTon = dexContracts.pTON.create(routerInfo.ptonMasterAddress);
+
+        // 3. Build tx params using the simulated route
         const txParams = await routerOC.getSwapTonToJettonTxParams({
             userWalletAddress: wallet.address,
             proxyTon: pTon,
-            offerAmount: offerTON,
-            askJettonAddress: jettonMaster, // jetton minter
-            minAskAmount: minAsk,
+            offerAmount: BigInt(offerUnits ?? offerTON.toString()),
+            // Use the same askAddress that was simulated (fallback to our jetton master if absent)
+            askJettonAddress: Address.parse(askAddress ?? jettonAddrStr),
+            minAskAmount: BigInt(minAsk),
+
         });
 
+
+        console.log("[swap] Built txParams", txParams);
+
         const before = await provider.getSeqno();
+
         await provider.sendTransfer({
             seqno: before,
             secretKey,
@@ -90,22 +127,28 @@ export async function swapTonToToken(
         await waitSeqno(provider, before);
 
         const txs = await client.getTransactions(wallet.address, { limit: 5 });
+        console.log("[swap] Got transactions", txs?.length);
+
         const raw = typeof (txs[0] as any).hash === "function" ? (txs[0] as any).hash() : (txs[0] as any).hash;
         const txId = bufToHex(raw);
+        console.log("[swap] Swap succeeded with txId", txId);
 
         return {
             ok: true,
             userId,
             txId,
-            router: bestPool.router.toString({ bounceable: false }),
-            pool: bestPool.pool.toString({ bounceable: false }),
-            pTon: bestPool.pTon.toString({ bounceable: false }),
-            jettonMinter: jettonMaster.toString({ bounceable: false }),
-            offerNanotons: offerTON.toString(),
+            router: routerInfo.address,
+            pool: routerInfo.address, // no single pool in v2 route; expose router
+            pTon: routerInfo.ptonMasterAddress,
+            jettonMinter: jettonAddrStr,
+            offerNanotons: String(offerUnits ?? offerTON.toString()),
             minAskNano: minAsk,
         };
+
     } catch (e: any) {
+        console.error("[swap] swapTonToToken failed", e);
         return {
+
             ok: false,
             userId,
             error: e?.message || "Swap failed",
