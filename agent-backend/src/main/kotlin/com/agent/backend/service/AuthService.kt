@@ -103,7 +103,7 @@ class AuthService(
                 .retrieve()
                 .body(String::class.java)
         } catch (rcre: RestClientResponseException) {
-            val rcreStatus = rcre.statusCode?.value() ?: rcre.rawStatusCode
+            val rcreStatus = rcre.statusCode.value()
             if (rcreStatus == HttpStatus.CONFLICT.value()) {
                 throw IllegalArgumentException("User with this email already exists")
             }
@@ -160,7 +160,7 @@ class AuthService(
 
             // 5) create local user
             val issuer = "$baseUrl/realms/$realm"
-            val local = provisioning.createLocalForKeycloak(issuer, keycloakId, req.email)
+            val local = provisioning.createLocalForKeycloak(keycloakId, req.email)
 
             return RegisterResponse(userId = local.id!!, keycloakId = keycloakId, initialBalanceUsd = 0.0)
         } catch (inner: Exception) {

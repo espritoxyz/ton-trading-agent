@@ -67,7 +67,7 @@ class AuthController(
         val sub = auth.token.subject
         val email = auth.token.claims["email"] as? String
 
-        val user = provisioning.resolveOrCreate(iss, sub, email)
+        val user = provisioning.resolveOrCreate(sub, email)
 
         return ResponseEntity.ok(
             ProfileResponse(

@@ -11,8 +11,8 @@ open class UserProvisioningService(
     private val users: AgentUserRepository
 ) {
     @Transactional
-    open fun resolveOrCreate(issuer: String, subject: String, email: String?): AgentUser {
-        val existing = users.findByIssuerAndSubject(issuer, subject).orElse(null)
+    open fun resolveOrCreate(subject: String, email: String?): AgentUser {
+        val existing = users.findBySubject(subject).orElse(null)
 
         if (existing != null) {
             existing.lastLoginAt = Instant.now()
@@ -22,7 +22,6 @@ open class UserProvisioningService(
 
         return users.save(
             AgentUser(
-                issuer = issuer,
                 subject = subject,
                 email = email,
                 createdAt = Instant.now(),
@@ -32,13 +31,12 @@ open class UserProvisioningService(
     }
 
     @Transactional
-    open fun createLocalForKeycloak(issuer: String, subject: String, email: String?): AgentUser {
+    open fun createLocalForKeycloak(subject: String, email: String?): AgentUser {
         // throw if exists
-        val existing = users.findByIssuerAndSubject(issuer, subject).orElse(null)
-        if (existing != null) throw IllegalStateException("user already exists locally for issuer/subject")
+        val existing = users.findBySubject(subject).orElse(null)
+        if (existing != null) throw IllegalStateException("user already exists locally for subject")
 
         val u = AgentUser(
-            issuer = issuer,
             subject = subject,
             email = email,
             createdAt = Instant.now(),
