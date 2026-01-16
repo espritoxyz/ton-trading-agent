@@ -8,21 +8,24 @@
 
 # Roadmap MVP 
 
-1. User Assets Widget
+1. User Assets Widget [STONFI]
     - [ ] Дизайн и моки @formazon
 2. User Orders Widget (👀 2026) 
     - написать какие параметры по ордерам
-3. User Transactions
-    - пополнения    
+    - Дизайн [STONFI]
+    - Реализация
+3. User Transactions [STONFI]
+    - история транзакций 
+    - пополнения
     - hyperlink (zishkaz)
-4. User Account
+4. User Account [STONFI]
     - [x] Sign in  
     - [ ] Sign up (email)
         - [ ] Добавить email verification no-reply@esprito.app
-5. Deposit Assets
+5. Deposit Assets [STONFI+]
     - добавить рецепт пополнить баланс
     - отправить в чат сообщение пополнен баланс
-6. Withdraw Assets (👀 2026) 
+6. Withdraw Assets [STONFI] 
     - send_ton_to_address
     - send_token_to_address
 7. Chat Notifications (👀 2026) 
