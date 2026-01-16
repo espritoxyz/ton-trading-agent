@@ -90,15 +90,12 @@ Set up automation rules in your GitHub Project:
    - Filter: has label `kanban:todo` OR `kanban:backlog`
    - Then: Add to project
 
-### Option 3: GitHub CLI Bulk Add
-```bash
-# Get your project number from the project URL
-PROJECT_NUMBER=<your-project-number>
-
-# Add all issues with kanban labels
-gh project item-add $PROJECT_NUMBER --owner espritoxyz --repo ton-trading-agent \
-  --issue-filter "label:kanban:todo,kanban:backlog"
-```
+### Option 3: GitHub Project Automation via Settings
+Alternatively, use the GitHub web interface:
+1. Navigate to your GitHub Project
+2. Click on "..." (menu) → Settings → Workflows
+3. Enable "Auto-add to project" workflow
+4. Configure filters to auto-add issues with specific labels
 
 ## Issue Structure
 

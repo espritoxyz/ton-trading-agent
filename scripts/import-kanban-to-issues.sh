@@ -42,17 +42,21 @@ create_issue() {
         echo "    Labels: $labels"
     else
         echo "  Creating: $title"
-        gh issue create \
+        if gh issue create \
             --repo "$REPO" \
             --title "$title" \
             --body "$body" \
-            --label "$labels" 2>&1 | grep -E "(Creating issue|#[0-9]+)" || echo "    ✓ Created"
+            --label "$labels" > /dev/null 2>&1; then
+            echo "    ✓ Created"
+        else
+            echo "    ⚠️  Failed to create issue (may already exist or insufficient permissions)"
+        fi
     fi
 }
 
 # Create labels if they don't exist
 echo "🏷️  Ensuring labels exist..."
-for label in "kanban:todo" "kanban:backlog" "mvp" "recipe" "2026"; do
+for label in "kanban:todo" "kanban:backlog" "mvp" "recipe" "2026" "enhancement" "infrastructure"; do
     if [ "$DRY_RUN" = false ]; then
         gh label create "$label" --repo "$REPO" --force 2>/dev/null || true
     fi
