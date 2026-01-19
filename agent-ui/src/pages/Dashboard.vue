@@ -6,7 +6,7 @@ import ChatPanel from '../components/ChatPanel.vue'
 
 <template>
   <div class="grid h-full gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-    <div class="flex h-full">
+    <div class="flex h-full min-h-0">
       <ChatPanel />
     </div>
     <div class="flex h-full flex-col gap-4">
