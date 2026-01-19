@@ -13,10 +13,11 @@ import org.springframework.http.MediaType
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 
-val logger = KotlinLogging.logger {  }
+val logger = KotlinLogging.logger { }
 
 @Service
 class AuthService(
@@ -26,7 +27,7 @@ class AuthService(
     @Value("\${keycloak.client-secret}") private val clientSecret: String,
     private val provisioning: UserProvisioningService
 ) {
-    private val client: RestClient = RestClient.builder()
+    private val client: WebClient = WebClient.builder()
         .baseUrl(baseUrl)
         .build()
 
@@ -42,9 +43,10 @@ class AuthService(
         client.post()
             .uri("/realms/$realm/protocol/openid-connect/token")
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .body(form)
+            .bodyValue(form)
             .retrieve()
-            .body(TokenResponse::class.java)!!
+            .bodyToMono(TokenResponse::class.java)
+            .block()!!
     }.getOrElse { ex ->
         when (ex) {
             is RestClientResponseException -> {
@@ -55,6 +57,39 @@ class AuthService(
                 if (status in 400..499) throw AuthException("Invalid credentials")
                 throw UnavailableException("Auth provider unavailable")
             }
+
+            else -> {
+                logger.error(ex) {}
+                throw UnavailableException("Auth provider unavailable")
+            }
+        }
+
+    }
+
+    fun refreshWithToken(refreshToken: String): TokenResponse = runCatching {
+        val form = LinkedMultiValueMap<String, String>().apply {
+            add("grant_type", "refresh_token")
+            add("client_id", clientId)
+            add("client_secret", clientSecret)
+            add("refresh_token", refreshToken)
+        }
+
+        return client.post()
+            .uri("/realms/$realm/protocol/openid-connect/token")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .bodyValue(form)
+            .retrieve()
+            .bodyToMono(TokenResponse::class.java)
+            .block()!!
+    }.getOrElse { ex ->
+        when (ex) {
+            is org.springframework.web.reactive.function.client.WebClientResponseException -> {
+                val status = ex.statusCode
+                val body = ex.responseBodyAsString
+                logger.warn { "Keycloak error on refresh: status={$status}, body={$body}" }
+                throw UnavailableException("Auth provider unavailable")
+            }
+
             else -> {
                 logger.error(ex) { "Auth directLogin error" }
                 throw UnavailableException("Auth provider unavailable")

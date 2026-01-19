@@ -25,7 +25,8 @@ val logger = KotlinLogging.logger { }
 @RequestMapping("/auth")
 class AuthController(
     private val authService: AuthService,
-    private val provisioning: UserProvisioningService
+    private val provisioning: UserProvisioningService,
+    private val offlineTokenService: com.agent.backend.service.OfflineTokenService
 ) {
     /**
      * Direct Access Grant against Keycloak.
@@ -35,6 +36,24 @@ class AuthController(
     fun login(@Valid @RequestBody body: LoginRequest): ResponseEntity<TokenResponse> {
         logger.info { body.toString() }
         val tokens = authService.directLogin(body)
+
+        // attempt to parse user info from access token to provision and store refresh token
+        try {
+            val claims = com.agent.backend.JwtUtils.parseClaims(tokens.accessToken)
+            val iss = claims.issuer
+            val sub = claims.subject
+            val email = claims.email
+            if (iss != null && sub != null) {
+                val user = provisioning.resolveOrCreate(iss, sub, email)
+                // store refresh token if present
+                tokens.refreshToken?.let { rt ->
+                    offlineTokenService.saveForUser(user.id!!, rt)
+                }
+            }
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Failed to parse token or provision user after login" }
+        }
+
         return ResponseEntity.ok(tokens)
     }
 
@@ -86,5 +105,53 @@ class AuthController(
                 userId = user.id!!
             )
         )
+    }
+
+    @PostMapping("/refresh")
+    fun refresh(@RequestHeader("Authorization", required = false) authHeader: String?): ResponseEntity<Any> {
+        // extract access token if present to identify user; JwtUtils.parseClaims does not verify signature
+        if (authHeader.isNullOrBlank()) return ResponseEntity.status(401).build()
+        val token = authHeader.removePrefix("Bearer ").trim()
+        try {
+            val claims = com.agent.backend.JwtUtils.parseClaims(token)
+            val iss = claims.issuer ?: return ResponseEntity.status(401).build()
+            val sub = claims.subject ?: return ResponseEntity.status(401).build()
+
+            val user = provisioning.resolveOrCreate(iss, sub, claims.email)
+            val stored = offlineTokenService.getLatestDecryptedForUser(user.id!!)
+            if (stored == null) return ResponseEntity.status(401).build()
+
+            val (tokenRow, decrypted) = stored
+            val newTokens = authService.refreshWithToken(decrypted)
+
+            // if new refresh token returned, store it (rotate)
+            newTokens.refreshToken?.let { rt ->
+                offlineTokenService.saveForUser(user.id!!, rt)
+            }
+
+            return ResponseEntity.ok(newTokens)
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Refresh failed" }
+            return ResponseEntity.status(401).build()
+        }
+    }
+
+    @PostMapping("/logout")
+    fun logout(@RequestHeader("Authorization", required = false) authHeader: String?): ResponseEntity<Any> {
+        if (authHeader.isNullOrBlank()) return ResponseEntity.noContent().build()
+        val token = authHeader.removePrefix("Bearer ").trim()
+        try {
+            val claims = com.agent.backend.JwtUtils.parseClaims(token)
+            val iss = claims.issuer ?: return ResponseEntity.noContent().build()
+            val sub = claims.subject ?: return ResponseEntity.noContent().build()
+
+            val user = provisioning.resolveOrCreate(iss, sub, claims.email)
+            offlineTokenService.revokeAllForUser(user.id!!)
+
+            return ResponseEntity.noContent().build()
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Logout cleanup failed" }
+            return ResponseEntity.noContent().build()
+        }
     }
 }

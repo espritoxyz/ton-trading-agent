@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
@@ -11,6 +9,13 @@ plugins {
 group = "com.agent"
 version = "0.0.1"
 
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}
+
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.springframework.boot:spring-boot-starter")
@@ -19,10 +24,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.boot:spring-boot-starter-logging")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("com.h2database:h2")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.7")

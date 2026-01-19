@@ -38,6 +38,13 @@ export async function register(emailInput: string, passwordInput: string, displa
 }
 
 export function logout() {
+    // call backend to cleanup offline tokens, then clear local state
+    try {
+        api.post('/auth/logout')
+    } catch (e) {
+        // ignore
+    }
+
     sessionStorage.removeItem('access_token')
     accessToken.value = null
     email.value = null
@@ -80,6 +87,31 @@ export async function refreshProfile() {
             // ignore; leave fields null
         }
     }
+}
+
+// Attempt to refresh access token using backend stored refresh/offline token
+export async function refreshAccessToken(): Promise<boolean> {
+    try {
+        const { data } = await api.post('/auth/refresh')
+        const token = data?.access_token ?? data?.accessToken
+        if (!token) throw new Error('No access token from refresh')
+        sessionStorage.setItem('access_token', token)
+        accessToken.value = token
+        await refreshProfile()
+        return true
+    } catch (e) {
+        logout()
+        return false
+    }
+}
+
+// Initialize auth on app start - try to restore session if possible
+export async function initAuth() {
+    const token = sessionStorage.getItem('access_token')
+    if (!token) return
+    accessToken.value = token
+    // attempt a refresh to ensure token is valid or refresh if expired
+    await refreshAccessToken()
 }
 
 // small helper to decode JWT safely (base64url -> UTF-8 -> JSON)
