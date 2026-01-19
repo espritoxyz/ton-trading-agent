@@ -22,5 +22,5 @@ abstract class AgentTool<ToolArgs> {
 interface ConfirmationRequired {
     fun confirmationText(args: String): String
 
-    fun additionalDescriptionText() = "WITHOUT USER CONFIRMATION IF ALL ARGS ARE GIVEN"
+    fun additionalDescriptionText() = "WITHOUT USER CONFIRMATION IF ALL ARGS ARE DEDUCIBLE"
 }

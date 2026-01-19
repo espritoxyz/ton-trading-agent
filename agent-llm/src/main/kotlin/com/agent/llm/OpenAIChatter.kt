@@ -60,6 +60,20 @@ class OpenAIChatter(
         val confirmationText: String? = null
     )
 
+    /**
+     * Convert tool calls from a ChatResponse into PlannedToolCall descriptors,
+     * including whether they require confirmation and optional confirmation text.
+     */
+    fun planFromToolCalls(toolCalls: List<ToolCall>): List<PlannedToolCall> =
+        toolCalls.map { tc ->
+            val tool = AgentTool.fromToolCall(allTools, tc)
+            val needs = tool is ConfirmationRequired
+            val text = if (needs) (tool as ConfirmationRequired).confirmationText(tc.arguments) else null
+            logger.debug { "Planned tool (from continuation): name=${tc.name} requiresConfirmation=$needs args=${tc.arguments}" }
+            PlannedToolCall(tc, needs, text)
+        }
+
+
     suspend fun planFirstStep(userRequestContent: String): Pair<List<PlannedToolCall>, ChatResponse?> {
         logger.debug { "Received user request: ${userRequestContent.take(200)}" }
         if (chatEnv.chatHistory.isEmpty()) {
@@ -85,13 +99,8 @@ class OpenAIChatter(
             logger.debug { "No tool calls planned by the model" }
             return Pair(emptyList(), response)
         }
-        val planned = response.toolCalls.map { tc ->
-            val tool = AgentTool.fromToolCall(allTools, tc)
-            val needs = tool is ConfirmationRequired
-            val text = if (needs) (tool as ConfirmationRequired).confirmationText(tc.arguments) else null
-            logger.debug { "Planned tool: name=${tc.name} requiresConfirmation=$needs args=${tc.arguments}" }
-            PlannedToolCall(tc, needs, text)
-        }
+        val planned = planFromToolCalls(response.toolCalls)
+
         val assistantMessage = Message.assistant("", toolCalls = response.toolCalls)
         chatEnv.saveMessage(assistantMessage)
         return planned to null
@@ -118,16 +127,70 @@ class OpenAIChatter(
         chatEnv.saveMessage(Message.assistant(""))
     }
 
-    suspend fun saveToolResponsesAndSummarize(toolResponses: List<ToolResponse>): ChatResponse {
-        logger.debug { "Saving tool responses and summarizing: count=${toolResponses.size}" }
-        val toolMessage = Message.tool(toolResponses)
-        chatEnv.saveMessage(toolMessage)
-        val prompt = Prompt(chatEnv.chatHistory)
-        val summary = router.chat(ChatRequest(modelConfig, prompt))
-        chatEnv.saveMessage(Message.assistant(""))
-        logger.debug { "Summary received: toolCalls=${summary.toolCalls.size}" }
-        return summary
+    /**
+     * Save tool responses and let the model continue planning/executing tools recursively.
+     * Up to [remainingDepth] additional tool-calling rounds are allowed.
+     */
+    suspend fun saveToolResponsesAndSummarize(
+        toolResponses: List<ToolResponse>,
+        remainingDepth: Int = 20,
+    ): ChatResponse {
+        logger.debug {
+            "Saving tool responses and summarizing: count=${toolResponses.size}, remainingDepth=$remainingDepth"
+        }
+
+        var currentToolResponses = toolResponses
+        var depthLeft = remainingDepth
+
+        while (true) {
+            // 1) Save the tool results into the conversation
+            val toolMessage = Message.tool(currentToolResponses)
+            chatEnv.saveMessage(toolMessage)
+
+            // 2) Ask the model what to do next (summarize and/or call more tools)
+            val prompt = Prompt(chatEnv.chatHistory)
+            val summary = router.chat(ChatRequest(modelConfig, prompt))
+            logger.debug { "Summary/continuation received: toolCalls=${summary.toolCalls.size}" }
+
+            // Save assistant message including its text and any planned tool calls
+            val assistantMessage = Message.assistant(summary.response, toolCalls = summary.toolCalls)
+            chatEnv.saveMessage(assistantMessage)
+
+            // If no further tools or depth exhausted, stop here and return the latest summary
+            if (summary.toolCalls.isEmpty() || depthLeft <= 0) {
+                if (depthLeft <= 0) {
+                    logger.warn { "Max tool recursion depth reached; returning last summary" }
+                }
+                return summary
+            }
+
+            // Do NOT auto-execute potentially dangerous tools (send/swap);
+            // these must go through the regular confirmation flow in the backend.
+            val hasRiskyTools = summary.toolCalls.any { tc ->
+                tc.name.contains("send", ignoreCase = true) ||
+                    tc.name.contains("swap", ignoreCase = true)
+            }
+            if (hasRiskyTools) {
+                logger.debug {
+                    "Summary returned risky tool calls (send/swap); not auto-executing them from chatter."
+                }
+                return summary
+            }
+
+            depthLeft--
+
+            // 3) Auto-execute all further non-risky tool calls without additional confirmation
+            logger.debug {
+                "Auto-executing chained tool calls: count=${summary.toolCalls.size}, depthLeft=$depthLeft"
+            }
+            val nextApproved = summary.toolCalls.map { tc ->
+                Triple(tc.id, tc.name, tc.arguments)
+            }
+            currentToolResponses = executeApprovedTools(nextApproved)
+        }
     }
+
+
 
     @Suppress("UNCHECKED_CAST")
     suspend fun executeApprovedToolsAndSummarize(approved: List<Triple<String, String, String>>): ChatResponse {

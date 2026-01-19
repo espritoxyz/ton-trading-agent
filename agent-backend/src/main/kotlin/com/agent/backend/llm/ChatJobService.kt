@@ -6,6 +6,7 @@ import com.agent.backend.dto.ChatMessageStatusResponse
 import com.agent.backend.dto.DeliveryHint
 import com.agent.backend.service.ConfirmationItem
 import com.agent.backend.service.ConfirmationService
+import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.llm.OpenAIChatter
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -45,7 +46,8 @@ data class ChatJob(
 class ChatJobService(
     private val rabbitTemplate: RabbitTemplate,
     private val confirmations: ConfirmationService,
-    private val poolsCacheService: StonfiPoolsCacheService
+    private val poolsCacheService: StonfiPoolsCacheService,
+    private val assetsCache: StonfiAssetsCacheService,
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -90,7 +92,7 @@ class ChatJobService(
     private fun makeChatter(job: ChatJob): OpenAIChatter =
         OpenAIChatter(
             chatHistory = job.request.history,
-            bcAdapter = AgentBlockchainAdapter(job.userId, rabbitTemplate, job.messageId, poolsCacheService)
+            bcAdapter = AgentBlockchainAdapter(job.userId, rabbitTemplate, job.messageId, poolsCacheService, assetsCache)
         )
 
     private suspend fun processJob(job: ChatJob) {
@@ -129,10 +131,56 @@ class ChatJobService(
                 // No confirmations required: execute all planned now
                 val toolResponses = chatter.executeApprovedTools(job.plannedToolCalls)
                 val resp = chatter.saveToolResponsesAndSummarize(toolResponses)
+
+                // If the model returned follow-up tool calls (e.g. swap/send), treat them like a new planning step
+                if (resp.toolCalls.isNotEmpty()) {
+                    val followUpPlanned = chatter.planFromToolCalls(resp.toolCalls)
+
+                    job.plannedToolCalls = followUpPlanned.map { Triple(it.call.id, it.call.name, it.call.arguments) }
+                    job.plannedNoConfirmCalls = followUpPlanned.filter { !it.requiresConfirmation }
+                        .map { Triple(it.call.id, it.call.name, it.call.arguments) }
+
+                    followUpPlanned.filter { it.requiresConfirmation }.forEach { p ->
+                        val item = ConfirmationItem(
+                            messageId = job.messageId,
+                            userId = job.userId,
+                            toolCallId = p.call.id,
+                            toolName = p.call.name,
+                            argsJson = p.call.arguments,
+                            text = p.confirmationText ?: "Please confirm executing ${p.call.name}"
+                        )
+                        confirmations.add(job.messageId, item)
+                    }
+
+                    // If any follow-up tools require confirmation, wait for user; otherwise, execute immediately
+                    if (followUpPlanned.any { it.requiresConfirmation }) {
+                        job.status = ChatJobStatus.PROCESSING
+                        return
+                    } else {
+                        val followUpResponses = chatter.executeApprovedTools(job.plannedToolCalls)
+                        val hasAsyncTransfer = followUpResponses.any {
+                            it.name.contains("send") || it.name.contains("swap")
+                        }
+                        if (hasAsyncTransfer) {
+                            chatter.saveToolResponsesOnly(followUpResponses)
+                            job.status = ChatJobStatus.PROCESSING
+                            return
+                        } else {
+                            val finalResp = chatter.saveToolResponsesAndSummarize(followUpResponses)
+                            job.reply = finalResp.response
+                            job.completedAt = Instant.now()
+                            job.status = ChatJobStatus.COMPLETED
+                            return
+                        }
+                    }
+                }
+
+                // No follow-up tool calls: use the summary as the final answer
                 job.reply = resp.response
                 job.completedAt = Instant.now()
                 job.status = ChatJobStatus.COMPLETED
             }
+
         } catch (e: Exception) {
             logger.error(e) {}
             job.reply = "Error while processing your request."
@@ -153,7 +201,7 @@ class ChatJobService(
                 val toExecute = job.plannedNoConfirmCalls + approvedTriples
                 val toolResponses = chatter.executeApprovedTools(toExecute)
                 val hasAsyncTransfer = toolResponses.any {
-                    it.name == "send_ton_to_address" || it.name == "swap_ton_to_token"
+                    it.name.contains("send") || it.name.contains("swap")
                 }
                 if (hasAsyncTransfer) {
                     // Save tool response but DO NOT summarize or set reply; wait for finalizeWithToolResult
@@ -177,7 +225,7 @@ class ChatJobService(
     suspend fun finalizeWithToolResult(messageId: UUID, userId: Long, toolName: String, toolResult: String) {
         val job = jobs[messageId] ?: return
         if (job.userId != userId) return
-        logger.debug { "Finalizing request { userId: $userId, reply: $toolResult }" }
+        logger.debug { "Finalizing request for $toolName { userId: $userId, reply: $toolResult }" }
         // Temporary working fix: set the final reply directly without invoking LLM summarization.
         job.reply = toolResult
         job.completedAt = Instant.now()

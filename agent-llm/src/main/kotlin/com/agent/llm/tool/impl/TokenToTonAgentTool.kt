@@ -2,7 +2,6 @@ package com.agent.llm.tool.impl
 
 import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.api.BlockchainAdapter
-import com.agent.llm.tool.dto.GetTonToUSDTArgs
 import com.agent.llm.tool.dto.TokenToTonArgs
 import com.explyt.ai.dto.ExplytJsonSchema
 import com.explyt.ai.dto.ToolDefinition
@@ -16,7 +15,7 @@ class TokenToTonAgentTool(
 ) : AgentTool<TokenToTonArgs>() {
     override val definition = ToolDefinition(
         name = "get_token_to_ton_exchange_rate",
-        description = "Get token, specified by jetton master, to TON exchange rate",
+        description = "Get token, specified by jetton master, to TON exchange rate (price)",
         argumentsSchema = ExplytJsonSchema(TokenToTonArgs::class)
     )
 

@@ -62,8 +62,6 @@ class StonfiPoolsCacheService(
 
     @Synchronized
     private fun refreshPoolsInternal() {
-        logger.debug { "[stonfi] Refreshing pools from STON.fi" }
-
         val response = client
             .get()
             .uri { builder ->
@@ -78,8 +76,6 @@ class StonfiPoolsCacheService(
         val pools = response?.pool_list ?: emptyList()
         poolsRef.set(pools)
         lastUpdatedAt = System.currentTimeMillis()
-
-        logger.info { "[stonfi] Pools updated: count=${pools.size}, network=${stonfiProperties.network}" }
     }
 
     fun getLastUpdatedAt(): Long = lastUpdatedAt
@@ -139,8 +135,7 @@ class StonfiPoolsCacheService(
      * tokenJettonMaster should already be normalized; comparison is done in lowercase.
      */
     fun getBestPoolByTokenAndTon(tokenJettonMaster: String): StonfiPool? {
-        val tonJettonMaster = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
-        return getBestPoolByTokens(tokenJettonMaster, tonJettonMaster)
+        return getBestPoolByTokens(tokenJettonMaster, tonAddress)
     }
 
     private fun parseBig(v: String?): java.math.BigInteger? {

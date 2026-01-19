@@ -15,22 +15,6 @@ private val logger = KotlinLogging.logger {}
 class AgentEventsListener(
     private val jobService: ChatJobService
 ) {
-    data class SendTonResult(
-        val type: String,
-        val occurredAt: String,
-        val correlation: Map<String, Any?>? = null,
-        val data: Data
-    ) {
-        data class Data(
-            val messageId: String?,
-            val userId: Long?,
-            val tonAmount: Any?,
-            val receiverAddress: String?,
-            val success: Boolean,
-            val txId: String? = null,
-            val error: String? = null
-        )
-    }
 
     @RabbitListener(queues = [RabbitConfig.QUEUE])
     fun onEvent(@Payload payload: Map<String, Any?>) {
@@ -79,12 +63,12 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-                    val jettonMinter = data["jettonMinter"] as? String
-                    val offerNanotons = data["offerNanotons"] as? String
-                    val minAskNano = data["minAskNano"] as? String
-                    val router = data["router"] as? String
-                    val pool = data["pool"] as? String
-                    val pTon = data["pTon"] as? String
+//                    val jettonMinter = data["jettonMinter"] as? String
+//                    val offerNanotons = data["offerNanotons"] as? String
+//                    val minAskNano = data["minAskNano"] as? String
+//                    val router = data["router"] as? String
+//                    val pool = data["pool"] as? String
+//                    val pTon = data["pTon"] as? String
                     val error = data["error"] as? String
 
                     val report = if (success) {
@@ -108,7 +92,41 @@ class AgentEventsListener(
                         )
                     }
                 }
+                "agent-llm.swap-token-to-ton.result" -> {
+                    val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
+                    val userId = (data["userId"] as? Number)?.toLong() ?: return
+                    val success = data["success"] as? Boolean ?: false
+                    val txId = data["txId"] as? String
+//                    val jettonMinter = data["jettonMinter"] as? String
+//                    val offerNanotons = data["offerNanotons"] as? String
+//                    val minAskNano = data["minAskNano"] as? String
+//                    val router = data["router"] as? String
+//                    val pool = data["pool"] as? String
+//                    val pTon = data["pTon"] as? String
+                    val error = data["error"] as? String
+
+                    val report = if (success) {
+                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        if (txLink != null) {
+                            "Swap Token->TON succeeded. Transaction: $txLink"
+                        } else {
+                            "Swap Token->TON succeeded. (Transaction id unavailable)"
+                        }
+                    } else {
+                        "Swap Token->TON failed. Error: $error."
+                    }
+
+                    runBlocking {
+                        jobService.finalizeWithToolResult(
+                            messageId = messageId,
+                            userId = userId,
+                            toolName = "swap_token_to_ton",
+                            toolResult = report
+                        )
+                    }
+                }
                 else -> return
+
             }
         } catch (e: Exception) {
             logger.error(e) { "Failed to handle agent event: $payload" }

@@ -2,7 +2,8 @@ import {publishJson, setupRabbit, shutdown, startConsumer} from "./rabbit.js";
 import {mockSendTon} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
-import { swapTonToToken as doSwapTonToToken } from "./recipes/swap.js";
+import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
+
 
 startPoolsUpdater();
 
@@ -143,7 +144,96 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     },
                 });
             }
+        } else if (type === "agent-llm.swap-token-to-ton") {
+            const messageId = data?.messageId;
+            const userId = data?.userId;
+            const jettonMaster = data?.jettonMaster;
+            const minimalTonAmount = data?.minimalTonAmount;
+            const swapTokenAmount = data?.swapTokenAmount;
+            const poolAddress = data?.poolAddress as string;
+            console.log(`[${SERVICE}] swap-token-to-ton requested:`, { messageId, userId, jettonMaster, minimalTonAmount, swapTokenAmount, poolAddress });
+
+            const swapTokenAmtNum = Number(swapTokenAmount);
+            if (!Number.isFinite(swapTokenAmtNum) || swapTokenAmtNum <= 0) {
+                publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                    type: "agent-llm.swap-token-to-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: `Invalid swapTokenAmount: ${swapTokenAmount}`,
+                    },
+                });
+                return;
+            } else {
+                console.error("Swap token amount failed checks, value is " + swapTokenAmtNum)
+            }
+
+            try {
+                const res = await doSwapTokenToTon(
+                    Number(userId),
+                    Address.parse(jettonMaster),
+                    Number(minimalTonAmount),
+                    swapTokenAmtNum,
+                    poolAddress,
+                );
+
+                if (res.ok) {
+                    publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                        type: "agent-llm.swap-token-to-ton.result",
+                        occurredAt: new Date().toISOString(),
+                        correlation: { occurredAt },
+                        data: {
+                            messageId,
+                            userId,
+                            success: true,
+                            txId: res.txId,
+                            router: res.router,
+                            pool: res.pool,
+                            pTon: res.pTon,
+                            jettonMinter: res.jettonMinter,
+                            offerNanotons: res.offerNanotons,
+                            minAskNano: res.minAskNano,
+                            requestedJettonMaster: jettonMaster,
+                            requestedMinimalTonAmount: minimalTonAmount,
+                            requestedSwapTokenAmount: swapTokenAmtNum,
+                        },
+                    });
+                } else {
+                    publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                        type: "agent-llm.swap-token-to-ton.result",
+                        occurredAt: new Date().toISOString(),
+                        correlation: { occurredAt },
+                        data: {
+                            messageId,
+                            userId,
+                            success: false,
+                            error: res.error,
+                            details: res.details,
+                            requestedJettonMaster: jettonMaster,
+                            requestedMinimalTonAmount: minimalTonAmount,
+                            requestedSwapTokenAmount: swapTokenAmtNum,
+                        },
+                    });
+                }
+            } catch (err: any) {
+                console.error(`[${SERVICE}] swap-token-to-ton error:`, err);
+                publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                    type: "agent-llm.swap-token-to-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: String(err?.message || err),
+                    },
+                });
+            }
         }
+
     } catch (e) {
         console.error(`[${SERVICE}] error handling message:`, e);
         throw e;
