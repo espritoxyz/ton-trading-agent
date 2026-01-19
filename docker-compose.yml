@@ -42,7 +42,7 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 15
+      retries: 20
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - rabbitmq_log:/var/log/rabbitmq
@@ -73,9 +73,12 @@ services:
       GITHUB_PAT: ${GITHUB_PAT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
-      - app-db
-      - keycloak
-      - rabbitmq
+      app-db:
+        condition: service_started
+      keycloak:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "8080:8080"
     networks: [agent-net]
