@@ -2,19 +2,24 @@ package com.agent.backend.controller
 
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
-import com.agent.backend.dto.TokenResponse
 import com.agent.backend.dto.RegisterRequest
-import com.agent.backend.dto.RegisterResponse
+import com.agent.backend.dto.TokenResponse
 import com.agent.backend.service.AuthService
 import com.agent.backend.service.UserProvisioningService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.servlet.UnavailableException
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.client.RestClientResponseException
 
-val logger = KotlinLogging.logger {  }
+val logger = KotlinLogging.logger { }
 
 @RestController
 @RequestMapping("/auth")
@@ -42,16 +47,22 @@ class AuthController(
         } catch (e: IllegalArgumentException) {
             logger.warn(e) { "Registration conflict/validation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to (e.message ?: "conflict")))
-        } catch (e: org.springframework.web.client.RestClientResponseException) {
+        } catch (e: RestClientResponseException) {
             logger.error(e) { "Keycloak admin API error" }
-            val status = try { e.statusCode } catch (_: Exception) { HttpStatus.BAD_GATEWAY }
+            val status = try {
+                e.statusCode
+            } catch (_: Exception) {
+                HttpStatus.BAD_GATEWAY
+            }
             ResponseEntity.status(status).body(mapOf("message" to (e.responseBodyAsString ?: "upstream error")))
-        } catch (e: jakarta.servlet.UnavailableException) {
+        } catch (e: UnavailableException) {
             logger.error(e) { "Auth provider unavailable" }
-            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(mapOf("message" to (e.message ?: "auth provider unavailable")))
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(mapOf("message" to (e.message ?: "auth provider unavailable")))
         } catch (e: Exception) {
             logger.error(e) { "Registration failed" }
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("message" to (e.message ?: "internal error")))
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(mapOf("message" to (e.message ?: "internal error")))
         }
     }
 
@@ -63,7 +74,6 @@ class AuthController(
     fun profile(auth: JwtAuthenticationToken?): ResponseEntity<ProfileResponse> {
         if (auth == null) return ResponseEntity.status(401).build()
 
-        val iss = auth.token.claims["iss"] as String
         val sub = auth.token.subject
         val email = auth.token.claims["email"] as? String
 
