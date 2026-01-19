@@ -14,7 +14,6 @@ class AgentUser(
     @SequenceGenerator(name = "user_id_seq_gen", sequenceName = "user_id_seq", allocationSize = 1)
     var id: Long? = null,
 
-    @Column(nullable = false) var issuer: String,
     @Column(nullable = false) var subject: String,
 
     var email: String? = null,

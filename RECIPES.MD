@@ -12,7 +12,7 @@
 - [x] `swap_token_to_ton(userId: Long, jettonMaster: Address, swappedTokenAmount: Double): SuccessReport | ErrorReport`
 - [x] `decide_jetton_master(ticker: String): Address`
 
-## 2026
+## 2026 [STONFI+]
 - [ ] `smart_buy(...)`
 - [ ] `smart_sell(...)`
 

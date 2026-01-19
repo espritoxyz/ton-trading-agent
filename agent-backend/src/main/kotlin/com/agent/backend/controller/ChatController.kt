@@ -27,7 +27,7 @@ class ChatController(
         val iss = auth.token.claims["iss"] as String
         val sub = auth.token.subject
         val email = auth.token.claims["email"] as? String
-        return provisioning.resolveOrCreate(iss, sub, email).id!!
+        return provisioning.resolveOrCreate(sub, email).id!!
     }
 
     @PostMapping("/message")

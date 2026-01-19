@@ -7,12 +7,12 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
 @Service
-class UserProvisioningService(
+open class UserProvisioningService(
     private val users: AgentUserRepository
 ) {
     @Transactional
-    fun resolveOrCreate(issuer: String, subject: String, email: String?): AgentUser {
-        val existing = users.findByIssuerAndSubject(issuer, subject).orElse(null)
+    open fun resolveOrCreate(subject: String, email: String?): AgentUser {
+        val existing = users.findBySubject(subject).orElse(null)
 
         if (existing != null) {
             existing.lastLoginAt = Instant.now()
@@ -22,12 +22,26 @@ class UserProvisioningService(
 
         return users.save(
             AgentUser(
-                issuer = issuer,
                 subject = subject,
                 email = email,
                 createdAt = Instant.now(),
                 lastLoginAt = Instant.now()
             )
         )
+    }
+
+    @Transactional
+    open fun createLocalForKeycloak(subject: String, email: String?): AgentUser {
+        // throw if exists
+        val existing = users.findBySubject(subject).orElse(null)
+        if (existing != null) throw IllegalStateException("user already exists locally for subject")
+
+        val u = AgentUser(
+            subject = subject,
+            email = email,
+            createdAt = Instant.now(),
+            lastLoginAt = Instant.now()
+        )
+        return users.save(u)
     }
 }
