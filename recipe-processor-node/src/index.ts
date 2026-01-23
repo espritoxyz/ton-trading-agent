@@ -1,5 +1,5 @@
 import {publishJson, setupRabbit, shutdown, startConsumer} from "./rabbit.js";
-import {mockSendTon} from "./recipes/transactions.js";
+import {mockSendTon, sendTon} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
@@ -24,7 +24,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
             try {
-                const txId = await mockSendTon(amount, receiver);
+                const txId = await sendTon(amount, receiver);
                 console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
                     type: "agent-llm.send-ton.result",

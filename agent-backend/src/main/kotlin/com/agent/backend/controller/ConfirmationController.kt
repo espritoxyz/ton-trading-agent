@@ -2,10 +2,14 @@ package com.agent.backend.controller
 
 import com.agent.backend.service.ConfirmationService
 import com.agent.backend.service.ConfirmationStatus
+import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.oshai.kotlinlogging.KLogger
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.*
 import java.util.*
+
+private val confLogger: KLogger = KotlinLogging.logger {}
 
 @RestController
 @RequestMapping("/chat/messages/{messageId}/confirmations")
@@ -35,6 +39,7 @@ class ConfirmationController(
         @PathVariable confirmationId: UUID
     ): ResponseEntity<Void> {
         confirmations.resolve(messageId, confirmationId, true)
+        confLogger.debug { "Approved confirmationId=$confirmationId for messageId=$messageId" }
         jobs.resumeIfReady(messageId)
         return ResponseEntity.ok().build()
     }
@@ -46,6 +51,7 @@ class ConfirmationController(
         @PathVariable confirmationId: UUID
     ): ResponseEntity<Void> {
         confirmations.resolve(messageId, confirmationId, false)
+        confLogger.debug { "Declined confirmationId=$confirmationId for messageId=$messageId" }
         jobs.resumeIfReady(messageId)
         return ResponseEntity.ok().build()
     }

@@ -38,7 +38,7 @@ class AgentEventsListener(
                     val error = data["error"] as? String
 
                     val report = if (success) {
-                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">https://tonviewer.com/transaction/$it</a>" }
                         if (txLink != null) {
                             "TON transfer succeeded. Sent $amount TON to $receiver. Transaction: $txLink"
                         } else {
@@ -72,7 +72,7 @@ class AgentEventsListener(
                     val error = data["error"] as? String
 
                     val report = if (success) {
-                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">https://tonviewer.com/transaction/$it</a>" }
                         if (txLink != null) {
                             "Swap TON->Token succeeded. Transaction: $txLink"
                         } else {
@@ -106,7 +106,7 @@ class AgentEventsListener(
                     val error = data["error"] as? String
 
                     val report = if (success) {
-                        val txLink = txId?.let { "https://tonviewer.com/transaction/$it" }
+                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">https://tonviewer.com/transaction/$it</a>" }
                         if (txLink != null) {
                             "Swap Token->TON succeeded. Transaction: $txLink"
                         } else {

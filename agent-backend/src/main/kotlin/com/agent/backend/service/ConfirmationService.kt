@@ -9,8 +9,6 @@ enum class ConfirmationStatus { PENDING, APPROVED, DECLINED }
 data class ConfirmationItem(
     val id: UUID = UUID.randomUUID(),
     val messageId: UUID,
-    val userId: Long,
-    val toolCallId: String,
     val toolName: String,
     val argsJson: String,
     val text: String,

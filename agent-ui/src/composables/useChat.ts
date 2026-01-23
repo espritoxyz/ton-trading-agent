@@ -5,7 +5,7 @@ import type {ChatItem, ChatRole} from '../types.ts'
 type PostResp = {
     messageId: string
     userId: number
-    status: 'queued' | 'processing' | 'completed' | 'error'
+    status: 'queued' | 'processing' | 'completed' | 'error' | 'toolcalling'
     echo: string
     reply: string | null
     queuedAt: string
@@ -16,7 +16,7 @@ type PostResp = {
 type StatusResp = {
     messageId: string
     userId: number
-    status: 'queued' | 'processing' | 'completed' | 'error'
+    status: 'queued' | 'processing' | 'completed' | 'error' | 'toolcalling'
     reply: string | null
     queuedAt: string
     completedAt?: string | null
@@ -135,8 +135,18 @@ export function useChat(userId?: number) {
                     updateSystemMessage(messageId, status.reply || 'Error processing request.')
                     return
                 }
+                if (status.status === 'toolcalling') {
+                    updateSystemMessage(messageId, 'Calling AI tools...')
+                    // Do NOT return; continue to fetch confirmations below
+                }
                 // fetch pending confirmations and render them as utility bubbles
                 const confs = await listConfirmations(messageId)
+                console.debug('[useChat] confirmations for', messageId, confs)
+
+                if (confs.length > 0) {
+                    updateSystemMessage(messageId, 'Waiting for confirmations...')
+                }
+
                 for (const c of confs) {
                     const exists = messages.value.some(m => m.backendMessageId === c.id)
                     if (!exists && c.status === 'PENDING') {

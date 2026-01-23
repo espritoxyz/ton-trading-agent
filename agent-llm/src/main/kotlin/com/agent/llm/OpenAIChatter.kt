@@ -2,22 +2,21 @@ package com.agent.llm
 
 import com.agent.llm.message.LlmChatMessage
 import com.agent.llm.message.LlmChatMessageType
-import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.ToolDefinitions
+import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.api.BlockchainAdapter
 import com.agent.llm.tool.api.ConfirmationRequired
 import com.explyt.ai.backend.http.ApiKeyParam
-import com.explyt.ai.dto.ChatRequest
-import com.explyt.ai.dto.ChatResponse
-import com.explyt.ai.dto.Message
-import com.explyt.ai.dto.ModelConfig
-import com.explyt.ai.dto.Prompt
-import com.explyt.ai.dto.ToolCall
-import com.explyt.ai.dto.ToolResponse
+import com.explyt.ai.dto.*
 import com.explyt.ai.router.dto.RemoteProvider
 import com.explyt.ai.router.router.AiRouterLocal
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
+import java.util.*
+import java.util.concurrent.atomic.AtomicReference
 
 private val logger = KotlinLogging.logger {}
 
@@ -29,6 +28,10 @@ class OpenAIChatter(
     private val router = AiRouterLocal()
     private val modelConfig: ModelConfig
     private val allTools = ToolDefinitions(bcAdapter).allTools
+    private val maxDepth = 20
+    private val confirmationReqNames = allTools.filter { it is ConfirmationRequired }.map { it.definition.name }.toSet()
+
+    val atomicStatus = AtomicReference(ChatterStatus.PROCESSING)
 
     init {
         logger.debug { "Initializing OpenAIChatter. historySize=${chatHistory.size} tools=${allTools.map { it.definition.name }}" }
@@ -60,142 +63,166 @@ class OpenAIChatter(
         val confirmationText: String? = null
     )
 
-    /**
-     * Convert tool calls from a ChatResponse into PlannedToolCall descriptors,
-     * including whether they require confirmation and optional confirmation text.
-     */
-    fun planFromToolCalls(toolCalls: List<ToolCall>): List<PlannedToolCall> =
-        toolCalls.map { tc ->
-            val tool = AgentTool.fromToolCall(allTools, tc)
-            val needs = tool is ConfirmationRequired
-            val text = if (needs) (tool as ConfirmationRequired).confirmationText(tc.arguments) else null
-            logger.debug { "Planned tool (from continuation): name=${tc.name} requiresConfirmation=$needs args=${tc.arguments}" }
-            PlannedToolCall(tc, needs, text)
+    data class RequestAnswer(
+        val responseString: String?,
+        val containedToolsWithGeneratedSummaries: Boolean,
+    )
+
+    suspend fun processRequest(
+        messageId: UUID,
+        userRequestContent: String,
+        // Returns true or false based on UI confirmation boxes
+        requestConfirmation: suspend (UUID, PlannedToolCall) -> Boolean
+    ): RequestAnswer {
+        logger.debug { "Received user request: ${userRequestContent.take(200)}" }
+        var currentMessage = Message.user(userRequestContent)
+        var chatResponse: ChatResponse? = null
+        var inc = 0
+        var hadSendOrSwap = false
+
+        @Suppress("UNCHECKED_CAST")
+        suspend fun callTools(plannedToolCalls: List<PlannedToolCall>): List<ToolResponse> {
+            atomicStatus.set(ChatterStatus.TOOLCALLING)
+            val approvedPlanned = coroutineScope {
+                plannedToolCalls.map { plannedTc ->
+                    async {
+                        val needs = plannedTc.call.name in confirmationReqNames
+                        val approved = if (needs) {
+                            requestConfirmation(messageId, plannedTc)
+                        } else {
+                            true
+                        }
+
+                        plannedTc to approved
+                    }
+                }.awaitAll()
+            }.filter { it.second }.map { it.first }
+
+            logger.debug {
+                "Approved tool calls: ${approvedPlanned.size}/${plannedToolCalls.size} -> ${approvedPlanned.map { it.call.name }}"
+            }
+
+            return approvedPlanned.map { plannedToolCall ->
+                val tc = plannedToolCall.call
+                if (tc.name.contains(Regex("send|swap"))) {
+                    logger.error { "Setting hadSendOrSwap=true" }
+                    hadSendOrSwap = true
+                }
+
+                val agentTool = allTools.firstOrNull { it.definition.name == tc.name }
+                    ?: error("No agent tool named ${tc.name} found")
+
+                val anyTool = agentTool as AgentTool<Any?>
+                val args = Json.decodeFromString(anyTool.argsSerializer, tc.arguments)
+                val stringRes = anyTool.payload(args)
+                logger.debug { "Tool executed: name=${tc.name} resultPreview='${stringRes.take(200)}'" }
+                ToolResponse(tc.id, tc.name, stringRes)
+            }
         }
 
+        do {
+            logger.debug { "Current message: ${currentMessage.type}(${currentMessage.content})" }
+            if (currentMessage.type == MessageType.USER || currentMessage.type == MessageType.TOOL) {
+                val loopResponse = callLoop(currentMessage)
+                chatResponse = loopResponse.chatResponse
+                val plannedTcs = loopResponse.plannedToolCalls
+                if (plannedTcs.isNotEmpty()) {
+                    val toolResponses = callTools(plannedTcs)
+                    currentMessage = Message.tool(toolResponses)
+                } else {
+                    currentMessage = Message.assistant("")
+                }
+            } else if (currentMessage.type == MessageType.ASSISTANT) {
+                if (currentMessage.toolCalls.isEmpty()) {
+                    logger.debug { "Finished request processing for messageId=$messageId " }
+                    return RequestAnswer(
+                        chatResponse?.response,
+                        hadSendOrSwap
+                    )
+                }
+                error("Unreachable state with ${currentMessage.toolCalls.size} tools in assistant message")
+            }
+            inc++
+        } while (chatResponse != null && inc < maxDepth)
 
-    suspend fun planFirstStep(userRequestContent: String): Pair<List<PlannedToolCall>, ChatResponse?> {
-        logger.debug { "Received user request: ${userRequestContent.take(200)}" }
+        if (inc == maxDepth) {
+            logger.error { "Max depth of $maxDepth was achieved on messageId=$messageId" }
+        }
+
+        return RequestAnswer(
+            chatResponse?.response,
+            hadSendOrSwap
+        )
+
+    }
+
+    private suspend fun callLoop(message: Message): LlmResponse {
         if (chatEnv.chatHistory.isEmpty()) {
             logger.debug { "No prior history in ChatEnvironment, injecting initial system message" }
             val systemMessage = AgentPrompt.makeAgentMessage(bcAdapter)
             chatEnv.saveMessage(systemMessage)
         }
+        chatEnv.saveMessage(message)
 
-        val userMessage = Message.user(userRequestContent)
-        chatEnv.saveMessage(userMessage)
-        val prompt = Prompt(messages = chatEnv.chatHistory)
-        val response = runCatching {
-            logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
-            router.chat(ChatRequest(modelConfig, prompt))
-        }.getOrElse { e ->
-            logger.error(e) { "LLM chat failed with history error, wiping and continuing" }
-            chatEnv.clearHistory()
-            logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
-            router.chat(ChatRequest(modelConfig, Prompt(messages = chatEnv.chatHistory)))
+        when (message.type) {
+            MessageType.USER -> {
+                logger.debug { "Received user message: ${message.content}" }
+                val prompt = Prompt(messages = chatEnv.chatHistory)
+                val response = runCatching {
+                    logger.debug { "Calling router.chat with prompt messages=${prompt.messages.size}" }
+                    atomicStatus.set(ChatterStatus.PROCESSING)
+                    router.chat(ChatRequest(modelConfig, prompt))
+                }.getOrElse { e ->
+                    logger.error(e) { "LLM chat failed with history error, wiping and continuing" }
+                    chatEnv.clearHistory()
+                    return callLoop(message)
+                }
+                return llmResponse(response, response.toolCalls)
+            }
+
+            MessageType.TOOL -> {
+                val toolResponses = message.toolResponses
+                logger.debug { "LLM tool messages received: count=${toolResponses.size} -> ${toolResponses.map { it.name }}" }
+
+                val prompt = Prompt(chatEnv.chatHistory)
+                atomicStatus.set(ChatterStatus.PROCESSING)
+                val response = router.chat(ChatRequest(modelConfig, prompt))
+                return llmResponse(response, response.toolCalls)
+            }
+
+            else -> {
+                error("Unknown message type ${message.type}")
+            }
         }
-        logger.debug { "LLM response received: toolCalls=${response.toolCalls.size}" }
-        if (response.toolCalls.isEmpty()) {
+    }
+
+    private fun llmResponse(
+        response: ChatResponse?,
+        toolCalls: List<ToolCall>
+    ): LlmResponse {
+        logger.debug { "LLM response received: toolCalls=${toolCalls.size}" }
+        if (toolCalls.isEmpty()) {
             logger.debug { "No tool calls planned by the model" }
-            return Pair(emptyList(), response)
+            return LlmResponse(response, emptyList())
         }
-        val planned = planFromToolCalls(response.toolCalls)
 
-        val assistantMessage = Message.assistant("", toolCalls = response.toolCalls)
+        val assistantMessage = Message.assistant("", toolCalls = toolCalls)
         chatEnv.saveMessage(assistantMessage)
-        return planned to null
+
+        return LlmResponse(response, planFromToolCalls(toolCalls))
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun executeApprovedTools(approved: List<Triple<String, String, String>>): List<ToolResponse> {
-        logger.debug { "Executing approved tools: count=${approved.size} -> ${approved.map { it.second }}" }
-        return approved.map { (toolCallId, name, argsJson) ->
-            val agentTool = allTools.firstOrNull { it.definition.name == name }
-                ?: error("No agent tool named $name found")
-            val anyTool = agentTool as AgentTool<Any?>
-            val args = Json.decodeFromString(anyTool.argsSerializer, argsJson)
-            val stringRes = anyTool.payload(args)
-            logger.debug { "Tool executed: name=$name resultPreview='${stringRes.take(200)}'" }
-            ToolResponse(toolCallId, name, stringRes)
-        }
-    }
-
-    fun saveToolResponsesOnly(toolResponses: List<ToolResponse>) {
-        logger.debug { "Saving tool responses only: count=${toolResponses.size}" }
-        val toolMessage = Message.tool(toolResponses)
-        chatEnv.saveMessage(toolMessage)
-        chatEnv.saveMessage(Message.assistant(""))
-    }
-
-    /**
-     * Save tool responses and let the model continue planning/executing tools recursively.
-     * Up to [remainingDepth] additional tool-calling rounds are allowed.
-     */
-    suspend fun saveToolResponsesAndSummarize(
-        toolResponses: List<ToolResponse>,
-        remainingDepth: Int = 20,
-    ): ChatResponse {
-        logger.debug {
-            "Saving tool responses and summarizing: count=${toolResponses.size}, remainingDepth=$remainingDepth"
+    private fun planFromToolCalls(toolCalls: List<ToolCall>): List<PlannedToolCall> =
+        toolCalls.map { tc ->
+            val tool = AgentTool.fromToolCall(allTools, tc)
+            val needs = tool is ConfirmationRequired
+            val text = if (needs) (tool as ConfirmationRequired).confirmationText(tc.arguments) else null
+            logger.debug { "Planned tool: name=${tc.name} requiresConfirmation=$needs args=${tc.arguments}" }
+            PlannedToolCall(tc, needs, text)
         }
 
-        var currentToolResponses = toolResponses
-        var depthLeft = remainingDepth
-
-        while (true) {
-            // 1) Save the tool results into the conversation
-            val toolMessage = Message.tool(currentToolResponses)
-            chatEnv.saveMessage(toolMessage)
-
-            // 2) Ask the model what to do next (summarize and/or call more tools)
-            val prompt = Prompt(chatEnv.chatHistory)
-            val summary = router.chat(ChatRequest(modelConfig, prompt))
-            logger.debug { "Summary/continuation received: toolCalls=${summary.toolCalls.size}" }
-
-            // Save assistant message including its text and any planned tool calls
-            val assistantMessage = Message.assistant(summary.response, toolCalls = summary.toolCalls)
-            chatEnv.saveMessage(assistantMessage)
-
-            // If no further tools or depth exhausted, stop here and return the latest summary
-            if (summary.toolCalls.isEmpty() || depthLeft <= 0) {
-                if (depthLeft <= 0) {
-                    logger.warn { "Max tool recursion depth reached; returning last summary" }
-                }
-                return summary
-            }
-
-            // Do NOT auto-execute potentially dangerous tools (send/swap);
-            // these must go through the regular confirmation flow in the backend.
-            val hasRiskyTools = summary.toolCalls.any { tc ->
-                tc.name.contains("send", ignoreCase = true) ||
-                    tc.name.contains("swap", ignoreCase = true)
-            }
-            if (hasRiskyTools) {
-                logger.debug {
-                    "Summary returned risky tool calls (send/swap); not auto-executing them from chatter."
-                }
-                return summary
-            }
-
-            depthLeft--
-
-            // 3) Auto-execute all further non-risky tool calls without additional confirmation
-            logger.debug {
-                "Auto-executing chained tool calls: count=${summary.toolCalls.size}, depthLeft=$depthLeft"
-            }
-            val nextApproved = summary.toolCalls.map { tc ->
-                Triple(tc.id, tc.name, tc.arguments)
-            }
-            currentToolResponses = executeApprovedTools(nextApproved)
-        }
-    }
-
-
-
-    @Suppress("UNCHECKED_CAST")
-    suspend fun executeApprovedToolsAndSummarize(approved: List<Triple<String, String, String>>): ChatResponse {
-        logger.debug { "executeApprovedToolsAndSummarize invoked with ${approved.size} approvals" }
-        val toolResponses = executeApprovedTools(approved)
-        return saveToolResponsesAndSummarize(toolResponses)
-    }
+    data class LlmResponse(
+        val chatResponse: ChatResponse? = null,
+        val plannedToolCalls: List<PlannedToolCall>,
+    )
 }

@@ -7,7 +7,7 @@ import InputBar from './InputBar.vue'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
-const sending  = chat.sending
+const sending = chat.sending
 
 const scroller = ref<HTMLDivElement | null>(null)
 const ready = computed(() => !!accessToken.value)
@@ -146,7 +146,6 @@ async function handleSend(text: string) {
           :utility-meta="m.utilityMeta"
           @dismiss="(id) => { if (!id) return; const idx = messages.findIndex(x => x.id === id); if (idx !== -1) messages.splice(idx, 1) }"
         />
-        <div v-if="sending" class="text-xs text-gray-500 dark:text-gray-400">Sending…</div>
       </div>
 
       <transition name="fade-scale">

@@ -58,7 +58,8 @@ async function handleDecline() {
       </div>
     </template>
     <template v-else>
-      <pre class="whitespace-pre-wrap font-sans">{{ text }}</pre>
+      <pre v-if="role==='USER'" class="whitespace-pre-wrap font-sans">{{ text }}</pre>
+      <div v-else class="prose prose-sm max-w-none" v-html="text"></div>
     </template>
   </div>
 </template>
