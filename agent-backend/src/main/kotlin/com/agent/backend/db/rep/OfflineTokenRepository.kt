@@ -9,6 +9,7 @@ import java.time.Instant
 interface OfflineTokenRepository : JpaRepository<OfflineToken, Long> {
     fun findByUserId(userId: Long): List<OfflineToken>
     fun findFirstByUserIdOrderByCreatedAtDesc(userId: Long): OfflineToken?
+    fun findFirstByUserIdAndClientIdOrderByCreatedAtDesc(userId: Long, clientId: String): OfflineToken?
     fun findByTokenHash(tokenHash: String): List<OfflineToken>
     fun deleteByExpiresAtBefore(instant: Instant): Int
 }

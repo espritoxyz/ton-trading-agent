@@ -1,13 +1,4 @@
-import axios from 'axios';
-const apiBase = '/api';
-export const api = axios.create({
-    baseURL: apiBase,
-    withCredentials: true
-});
-// Example auth injection (adapt to your Keycloak flow)
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('access_token');
-    if (token)
-        config.headers.Authorization = `Bearer ${token}`;
-    return config;
-});
+// Explicitly import and re-export the named exports from the TypeScript module to avoid circular resolution issues in the dev server
+import {api, rawApi, refreshToken} from './useApi.ts'
+
+export {api, rawApi, refreshToken}

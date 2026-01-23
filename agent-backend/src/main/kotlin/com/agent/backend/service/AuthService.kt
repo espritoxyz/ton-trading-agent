@@ -10,9 +10,16 @@ import jakarta.servlet.UnavailableException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.security.oauth2.core.OAuth2Error
+import org.springframework.security.oauth2.core.OAuth2TokenValidator
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientResponseException
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
@@ -27,7 +34,8 @@ class AuthService(
     @Value("\${keycloak.client-secret}") private val clientSecret: String,
     private val provisioning: UserProvisioningService
 ) {
-    private val client: WebClient = WebClient.builder()
+
+    private val client: RestClient = RestClient.builder()
         .baseUrl(baseUrl)
         .build()
 
@@ -38,15 +46,18 @@ class AuthService(
             add("client_secret", clientSecret)
             add("username", req.username)
             add("password", req.password)
+            add("scope", "openid")
         }
 
-        client.post()
+        val resp = client.post()
             .uri("/realms/$realm/protocol/openid-connect/token")
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .bodyValue(form)
+            .body(form)
             .retrieve()
-            .bodyToMono(TokenResponse::class.java)
-            .block()!!
+
+        val tokens = resp.body(TokenResponse::class.java)!!
+        logger.info { "directLogin: got access token (len=${tokens.accessToken.length}) refresh present=${tokens.refreshToken != null}" }
+        tokens
     }.getOrElse { ex ->
         when (ex) {
             is RestClientResponseException -> {
@@ -55,18 +66,17 @@ class AuthService(
                 val wwwAuth = ex.responseHeaders?.getFirst("WWW-Authenticate")
                 logger.warn { "Keycloak error: status={$status}, www-auth={$wwwAuth}, body={$body}" }
                 if (status in 400..499) throw AuthException("Invalid credentials")
-                throw UnavailableException("Auth provider unavailable")
+                throw AuthException("Keycloak auth failed: $status")
             }
 
             else -> {
-                logger.error(ex) {}
+                logger.error(ex) { "Auth directLogin error" }
                 throw UnavailableException("Auth provider unavailable")
             }
         }
-
     }
 
-    fun refreshWithToken(refreshToken: String): TokenResponse = runCatching {
+    fun refreshWithRefreshToken(refreshToken: String): TokenResponse = runCatching {
         val form = LinkedMultiValueMap<String, String>().apply {
             add("grant_type", "refresh_token")
             add("client_id", clientId)
@@ -74,20 +84,19 @@ class AuthService(
             add("refresh_token", refreshToken)
         }
 
-        return client.post()
+        client.post()
             .uri("/realms/$realm/protocol/openid-connect/token")
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .bodyValue(form)
+            .body(form)
             .retrieve()
-            .bodyToMono(TokenResponse::class.java)
-            .block()!!
+            .body(TokenResponse::class.java)!!
     }.getOrElse { ex ->
         when (ex) {
-            is org.springframework.web.reactive.function.client.WebClientResponseException -> {
-                val status = ex.statusCode
+            is RestClientResponseException -> {
+                val status = ex.statusCode.value()
                 val body = ex.responseBodyAsString
-                logger.warn { "Keycloak error on refresh: status={$status}, body={$body}" }
-                throw UnavailableException("Auth provider unavailable")
+                logger.warn { "Keycloak refresh error: status={$status}, body={$body}" }
+                throw ex
             }
 
             else -> {
@@ -224,4 +233,44 @@ class AuthService(
             else -> throw RuntimeException(ex)
         }
     }
+
+    fun getUserInfoFromAccessToken(accessToken: String): Triple<String, String, String?>? {
+        return try {
+            val resp = client.get()
+                .uri("/realms/$realm/protocol/openid-connect/userinfo")
+                .header(org.springframework.http.HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+                .retrieve()
+                .body(Map::class.java) as Map<*, *>
+
+            val sub = resp["sub"] as? String ?: resp["subject"] as? String
+            val email = resp["email"] as? String
+            val issuer = "$baseUrl/realms/$realm"
+            if (sub != null) Triple(issuer, sub, email) else null
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to fetch userinfo from Keycloak" }
+            null
+        }
+    }
+
+    fun decodeAccessTokenAllowExpired(token: String): Jwt? {
+        return try {
+            val jwkUrl = "$baseUrl/realms/$realm/protocol/openid-connect/certs"
+            val decoder = NimbusJwtDecoder.withJwkSetUri(jwkUrl).build()
+            val validator = OAuth2TokenValidator<Jwt> { jwt ->
+                val sub = jwt.subject ?: jwt.claims["sub"] as? String ?: jwt.claims["subject"] as? String
+                if (sub.isNullOrBlank()) {
+                    val err = OAuth2Error("invalid_token", "Invalid subject", null)
+                    OAuth2TokenValidatorResult.failure(err)
+                } else {
+                    OAuth2TokenValidatorResult.success()
+                }
+            }
+            decoder.setJwtValidator(validator)
+            decoder.decode(token)
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to decode/validate access token (allow expired)" }
+            null
+        }
+    }
+
 }

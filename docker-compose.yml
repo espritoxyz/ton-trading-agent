@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: agent
       POSTGRES_PASSWORD: ${AGENT_DB_PASS}
     ports:
-        - "25431:5432"
+      - "25431:5432"
     volumes:
       - app_pg_data:/var/lib/postgresql/data
     networks: [ agent-net ]
@@ -39,7 +39,7 @@ services:
       - "5672:5672"    # AMQP
       - "15672:15672"  # Management UI
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -67,6 +67,8 @@ services:
       KC_CLIENT_ID: agent-backend
       KC_CLIENT_SECRET: ${KC_CLIENT_SECRET}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+      TOKEN_HASH_SECRET: ${TOKEN_HASH_SECRET}
+      TOKEN_ENCRYPTION_KEY_ID: ${TOKEN_ENCRYPTION_KEY_ID}
       KEYCLOAK_BASE_URL: "http://keycloak:8080/auth"  # <— service DNS name + relative path
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://keycloak:8080/auth/realms/agent/protocol/openid-connect/certs"
       RABBIT_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fapp
@@ -82,13 +84,13 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-    networks: [agent-net]
+    networks: [ agent-net ]
 
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     restart: unless-stopped
-    command: ["start", "--import-realm"]
+    command: [ "start", "--import-realm" ]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://kc-db:5432/keycloak
