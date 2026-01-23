@@ -9,6 +9,13 @@ const chat = chatModule.useChat()
 const messages = chat.messages
 const sending = chat.sending
 
+async function clearConversation() {
+  try {
+    await (await import('../composables/useApi.ts')).api.post('/chat/history/clear')
+  } catch {}
+  chat.clearChat()
+}
+
 const scroller = ref<HTMLDivElement | null>(null)
 const ready = computed(() => !!accessToken.value)
 
@@ -132,8 +139,18 @@ async function handleSend(text: string) {
     <div v-if="!ready" class="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
       Login to start chatting.
     </div>
-
     <div class="flex-1 min-h-0 p-2 pr-3 w-full rounded-2xl overflow-hidden relative">
+      <div class="absolute right-2 top-2 z-10">
+        <button @click="clearConversation" class="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-gray-200 bg-white shadow hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-650" title="Clear chat">
+          <svg class="w-4 h-4 text-gray-700 dark:text-gray-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            <path d="M10 11v6"></path>
+            <path d="M14 11v6"></path>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+          </svg>
+        </button>
+      </div>
       <div ref="scroller" class="h-full min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4 pr-12 w-full chat-scroller">
         <MessageBubble
           v-for="(m, i) in messages"

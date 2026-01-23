@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val chatLogger = KotlinLogging.logger {}
 
 @RestController
 @RequestMapping("/chat")
@@ -24,7 +27,6 @@ class ChatController(
 ) {
     /** Resolve (or create) local user and return its id. */
     private fun currentUserId(auth: JwtAuthenticationToken): Long {
-        val iss = auth.token.claims["iss"] as String
         val sub = auth.token.subject
         val email = auth.token.claims["email"] as? String
         return provisioning.resolveOrCreate(sub, email).id!!
@@ -48,5 +50,15 @@ class ChatController(
         val userId = currentUserId(auth)
         val resp = chatJobService.status(messageId, userId)
         return ResponseEntity.ok(resp)
+    }
+
+    @PostMapping("/history/clear")
+    fun clearHistory(
+        auth: JwtAuthenticationToken
+    ): ResponseEntity<Void> {
+        val userId = currentUserId(auth)
+        // Server has no persistent chat history; this endpoint exists to let UI reset its history.
+        chatLogger.debug { "Clear chat history requested by userId=$userId" }
+        return ResponseEntity.ok().build()
     }
 }
