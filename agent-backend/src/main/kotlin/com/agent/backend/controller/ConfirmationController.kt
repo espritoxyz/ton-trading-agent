@@ -1,17 +1,22 @@
 package com.agent.backend.controller
 
+import com.agent.backend.llm.ChatJobService
 import com.agent.backend.service.ConfirmationService
 import com.agent.backend.service.ConfirmationStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.util.*
 
 @RestController
 @RequestMapping("/chat/messages/{messageId}/confirmations")
 class ConfirmationController(
     private val confirmations: ConfirmationService,
-    private val jobs: com.agent.backend.llm.ChatJobService,
+    private val jobs: ChatJobService,
 ) {
     data class ConfirmationDto(
         val id: UUID,

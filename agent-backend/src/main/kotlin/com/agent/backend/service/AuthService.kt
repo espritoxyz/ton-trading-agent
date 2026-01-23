@@ -9,18 +9,15 @@ import jakarta.security.auth.message.AuthException
 import jakarta.servlet.UnavailableException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.OAuth2TokenValidator
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientResponseException
-import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 
@@ -229,6 +226,7 @@ class AuthService(
                 if (status in 400..499) throw IllegalArgumentException("Registration failed: ${ex.responseBodyAsString}")
                 throw UnavailableException("Auth provider unavailable")
             }
+
             is IllegalStateException -> throw ex
             else -> throw RuntimeException(ex)
         }

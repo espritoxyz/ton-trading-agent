@@ -1,5 +1,6 @@
 package com.agent.backend.controller
 
+import com.agent.backend.JwtUtils.parseClaims
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
 import com.agent.backend.dto.RegisterRequest
@@ -17,6 +18,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestClientResponseException
@@ -48,12 +50,12 @@ class AuthController(
         var savedErr: String? = null
 
         try {
-            val claims = com.agent.backend.JwtUtils.parseClaims(tokens.accessToken)
+            val claims = parseClaims(tokens.accessToken)
             val iss = claims.issuer
             val sub = claims.subject
             val email = claims.email
             if (iss != null && sub != null) {
-                val user = provisioning.resolveOrCreate(iss, sub, email)
+                val user = provisioning.resolveOrCreate(sub, email)
                 if (tokens.refreshToken == null) {
                     logger.warn { "No refresh_token returned from identity provider for userId=${user.id} subject=${sub}" }
                 } else {
@@ -73,7 +75,7 @@ class AuthController(
                 val userInfo = authService.getUserInfoFromAccessToken(tokens.accessToken)
                 if (userInfo != null) {
                     val (iss, sub, email) = userInfo
-                    val user = provisioning.resolveOrCreate(iss, sub, email)
+                    val user = provisioning.resolveOrCreate(sub, email)
                     tokens.refreshToken?.let { rt ->
                         try {
                             val saved = offlineTokenService.saveForUser(user.id!!, rt)
@@ -157,7 +159,7 @@ class AuthController(
             val iss = jwt.claims["iss"] as? String ?: return ResponseEntity.status(401).build()
             val sub = jwt.subject ?: return ResponseEntity.status(401).build()
 
-            val user = provisioning.resolveOrCreate(iss, sub, jwt.claims["email"] as? String)
+            val user = provisioning.resolveOrCreate(sub, jwt.claims["email"] as? String)
 
             val stored = offlineTokenService.getLatestForUser(user.id!!)
             if (stored == null || stored.refreshToken.isNullOrBlank()) return ResponseEntity.status(401).build()
@@ -196,7 +198,7 @@ class AuthController(
             val iss = claims.issuer ?: return ResponseEntity.noContent().build()
             val sub = claims.subject ?: return ResponseEntity.noContent().build()
 
-            val user = provisioning.resolveOrCreate(iss, sub, claims.email)
+            val user = provisioning.resolveOrCreate(sub, claims.email)
             offlineTokenService.revokeAllForUser(user.id!!)
 
             return ResponseEntity.noContent().build()
