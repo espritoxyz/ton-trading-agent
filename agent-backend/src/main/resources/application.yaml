@@ -23,6 +23,7 @@ spring:
     host: rabbitmq
 
 keycloak:
+  base-url: ${KC_BASE_URL:http://keycloak:8080}
   realm: ${KC_REALM:agent}
   client-id: ${KC_CLIENT_ID:agent-backend}
   client-secret: ${KC_CLIENT_SECRET}
@@ -39,3 +40,10 @@ logging:
 
 server:
   port: 8080
+
+security:
+  tokens:
+    encryption:
+      key: ${TOKEN_ENCRYPTION_KEY}
+      key-id: ${TOKEN_ENCRYPTION_KEY_ID:default}
+    token-hash-secret: ${TOKEN_HASH_SECRET}

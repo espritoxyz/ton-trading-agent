@@ -6,7 +6,6 @@ import java.time.Instant
 @Entity
 @Table(
     name = "agent_user",
-    uniqueConstraints = [UniqueConstraint(name = "uq_agent_user_identity", columnNames = ["issuer", "subject"])]
 )
 class AgentUser(
     @Id

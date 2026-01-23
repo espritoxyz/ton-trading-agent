@@ -1,10 +1,13 @@
 package com.agent.backend.controller
 
+import com.agent.backend.JwtUtils.parseClaims
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
 import com.agent.backend.dto.RegisterRequest
 import com.agent.backend.dto.TokenResponse
+import com.agent.backend.security.EncryptionService
 import com.agent.backend.service.AuthService
+import com.agent.backend.service.OfflineTokenService
 import com.agent.backend.service.UserProvisioningService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.UnavailableException
@@ -15,6 +18,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestClientResponseException
@@ -25,7 +29,9 @@ val logger = KotlinLogging.logger { }
 @RequestMapping("/auth")
 class AuthController(
     private val authService: AuthService,
-    private val provisioning: UserProvisioningService
+    private val provisioning: UserProvisioningService,
+    private val offlineTokenService: OfflineTokenService,
+    private val encryptionService: EncryptionService
 ) {
     /**
      * Direct Access Grant against Keycloak.
@@ -33,9 +39,62 @@ class AuthController(
      */
     @PostMapping("/login")
     fun login(@Valid @RequestBody body: LoginRequest): ResponseEntity<TokenResponse> {
-        logger.info { body.toString() }
-        val tokens = authService.directLogin(body)
-        return ResponseEntity.ok(tokens)
+        logger.info { "login request: ${body.username}" }
+        val tokens = try {
+            authService.directLogin(body)
+        } catch (e: jakarta.security.auth.message.AuthException) {
+            logger.warn(e) { "Login failed: auth service returned error" }
+            return ResponseEntity.status(401).body(TokenResponse("", null, null, null, null))
+        }
+
+        var savedErr: String? = null
+
+        try {
+            val claims = parseClaims(tokens.accessToken)
+            val iss = claims.issuer
+            val sub = claims.subject
+            val email = claims.email
+            if (iss != null && sub != null) {
+                val user = provisioning.resolveOrCreate(sub, email)
+                if (tokens.refreshToken == null) {
+                    logger.warn { "No refresh_token returned from identity provider for userId=${user.id} subject=${sub}" }
+                } else {
+                    try {
+                        logger.debug { "Saving offline token for user=${user.id} client=null" }
+                        val saved = offlineTokenService.saveForUser(user.id!!, tokens.refreshToken!!)
+                        logger.info { "Stored offline token id=${saved.id} user=${saved.userId} key=${saved.encryptionKeyId}" }
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to save offline token for user=${user.id}" }
+                        savedErr = (e.message ?: "save_failed").take(200)
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Failed to parse token or provision user after login; attempting userinfo fallback" }
+            try {
+                val userInfo = authService.getUserInfoFromAccessToken(tokens.accessToken)
+                if (userInfo != null) {
+                    val (iss, sub, email) = userInfo
+                    val user = provisioning.resolveOrCreate(sub, email)
+                    tokens.refreshToken?.let { rt ->
+                        try {
+                            val saved = offlineTokenService.saveForUser(user.id!!, rt)
+                            logger.info { "Stored offline token (userinfo fallback) id=${saved.id} user=${saved.userId}" }
+                        } catch (e: Exception) {
+                            logger.error(e) { "Failed to save offline token (userinfo fallback) for user=${user.id}" }
+                            savedErr = (e.message ?: "save_failed").take(200)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                logger.warn(e) { "userinfo fallback failed" }
+                savedErr = (e.message ?: "userinfo_failed").take(200)
+            }
+        }
+
+        val resp = ResponseEntity.ok()
+        val finalResp = if (savedErr != null) resp.body(tokens) else resp.body(tokens)
+        return finalResp
     }
 
     @PostMapping("/register")
@@ -86,5 +145,66 @@ class AuthController(
                 userId = user.id!!
             )
         )
+    }
+
+    @PostMapping("/refresh")
+    fun refresh(
+        @RequestHeader("Authorization", required = false) authHeader: String?,
+        @RequestHeader("X-Access-Token", required = false) altHeader: String?
+    ): ResponseEntity<Any> {
+        val token = (authHeader?.removePrefix("Bearer ")?.trim() ?: altHeader?.trim())
+        if (token.isNullOrBlank()) return ResponseEntity.status(401).build()
+        try {
+            val jwt = authService.decodeAccessTokenAllowExpired(token) ?: return ResponseEntity.status(401).build()
+            val iss = jwt.claims["iss"] as? String ?: return ResponseEntity.status(401).build()
+            val sub = jwt.subject ?: return ResponseEntity.status(401).build()
+
+            val user = provisioning.resolveOrCreate(sub, jwt.claims["email"] as? String)
+
+            val stored = offlineTokenService.getLatestForUser(user.id!!)
+            if (stored == null || stored.refreshToken.isNullOrBlank()) return ResponseEntity.status(401).build()
+
+            val refreshPlain = try {
+                encryptionService.decrypt(stored.refreshToken!!)
+            } catch (e: Exception) {
+                offlineTokenService.revokeById(stored.id!!)
+                return ResponseEntity.status(401).build()
+            }
+
+            val newTokens = try {
+                authService.refreshWithRefreshToken(refreshPlain)
+            } catch (e: Exception) {
+                offlineTokenService.revokeById(stored.id!!)
+                return ResponseEntity.status(401).build()
+            }
+
+            newTokens.refreshToken?.let { rt ->
+                offlineTokenService.saveForUser(user.id!!, rt)
+            }
+
+            return ResponseEntity.ok(newTokens)
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Refresh failed" }
+            return ResponseEntity.status(401).build()
+        }
+    }
+
+    @PostMapping("/logout")
+    fun logout(@RequestHeader("Authorization", required = false) authHeader: String?): ResponseEntity<Any> {
+        if (authHeader.isNullOrBlank()) return ResponseEntity.noContent().build()
+        val token = authHeader.removePrefix("Bearer ").trim()
+        try {
+            val claims = com.agent.backend.JwtUtils.parseClaims(token)
+            val iss = claims.issuer ?: return ResponseEntity.noContent().build()
+            val sub = claims.subject ?: return ResponseEntity.noContent().build()
+
+            val user = provisioning.resolveOrCreate(sub, claims.email)
+            offlineTokenService.revokeAllForUser(user.id!!)
+
+            return ResponseEntity.noContent().build()
+        } catch (ex: Exception) {
+            logger.warn(ex) { "Logout cleanup failed" }
+            return ResponseEntity.noContent().build()
+        }
     }
 }
