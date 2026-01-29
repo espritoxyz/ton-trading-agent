@@ -33,6 +33,9 @@ class OpenAIChatter(
 
     val atomicStatus = AtomicReference(ChatterStatus.PROCESSING)
 
+    val messageHistory: List<Message>
+        get() = chatEnv.chatHistory
+
     init {
         logger.debug { "Initializing OpenAIChatter. historySize=${chatHistory.size} tools=${allTools.map { it.definition.name }}" }
         val allModels = router.availableModels().providerToModelConfigs
@@ -75,6 +78,7 @@ class OpenAIChatter(
         requestConfirmation: suspend (UUID, PlannedToolCall) -> Boolean
     ): RequestAnswer {
         logger.debug { "Received user request: ${userRequestContent.take(200)}" }
+        bcAdapter.updateCurrentMessageId(messageId)
         var currentMessage = Message.user(userRequestContent)
         var chatResponse: ChatResponse? = null
         var inc = 0
@@ -130,7 +134,10 @@ class OpenAIChatter(
                     val toolResponses = callTools(plannedTcs)
                     currentMessage = Message.tool(toolResponses)
                 } else {
-                    currentMessage = Message.assistant("")
+                    val assistantMessage = Message.assistant("")
+                    currentMessage = assistantMessage
+                    // Explicit save here for "stitching" llm histories between user requests
+                    chatEnv.saveMessage(assistantMessage)
                 }
             } else if (currentMessage.type == MessageType.ASSISTANT) {
                 if (currentMessage.toolCalls.isEmpty()) {

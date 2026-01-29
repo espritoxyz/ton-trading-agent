@@ -85,11 +85,15 @@ export function useChat(userId?: number) {
     }
 
     function updateSystemMessage(messageId: string, newContent: string) {
+        console.debug(`Updating message ${messageId} with ${newContent}`)
         const idx = messages.value
             .slice()
             .reverse()
-            .find((m) => m.role === 'SYSTEM' && m.backendMessageId === messageId)
-        if (!idx) return
+            .find((m) => m.backendMessageId === messageId)
+        if (!idx) {
+            console.warn(`Could not locate message ${messageId}`)
+            return
+        }
         idx.content = newContent
     }
 
@@ -127,6 +131,7 @@ export function useChat(userId?: number) {
             for (let i = 0; i < 20; i++) {
                 await new Promise((r) => setTimeout(r, delay))
                 const status = await poll(messageId)
+                console.debug(`Current message status: ${status.status}=${status.reply}`)
                 if (status.status === 'completed' && status.reply) {
                     updateSystemMessage(messageId, status.reply)
                     return
@@ -143,7 +148,7 @@ export function useChat(userId?: number) {
                 const confs = await listConfirmations(messageId)
                 console.debug('[useChat] confirmations for', messageId, confs)
 
-                if (confs.length > 0) {
+                if (confs.length > 0 && confs.some(conf => conf.status !== 'APPROVED')) {
                     updateSystemMessage(messageId, 'Waiting for confirmations...')
                 }
 

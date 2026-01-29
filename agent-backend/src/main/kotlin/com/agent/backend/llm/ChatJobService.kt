@@ -49,11 +49,14 @@ class ChatJobService(
 
     // Map of confirmationId -> deferred result (true=approved, false=declined)
     private val pendingConfirmations = ConcurrentHashMap<UUID, CompletableDeferred<Boolean>>()
+    // Cache of chatters to preserve history between user requests
+    private val userIdToChatter = ConcurrentHashMap<Long, OpenAIChatter>()
 
     @PreDestroy
     fun shutdown() {
         scope.cancel()
     }
+
 
     fun submit(userId: Long, body: ChatMessageRequest): ChatMessageResponse {
         val messageId = UUID.randomUUID()
@@ -85,6 +88,17 @@ class ChatJobService(
         )
     }
 
+    private fun makeChatter(job: ChatJob, previousChatter: OpenAIChatter?): OpenAIChatter =
+        if (previousChatter != null && job.request.history.isNotEmpty()) {
+            logger.debug { "Returning existing chatter for userId ${job.userId} with ${previousChatter.messageHistory.size} messages" }
+            previousChatter
+        } else {
+            logger.debug { "Returning new chatter for userId ${job.userId}" }
+            val chatter = makeChatter(job)
+            userIdToChatter[job.userId] = chatter
+            chatter
+        }
+
     private fun makeChatter(job: ChatJob): OpenAIChatter =
         OpenAIChatter(
             chatHistory = job.request.history,
@@ -98,8 +112,14 @@ class ChatJobService(
         )
 
     private suspend fun processJob(job: ChatJob) {
+        if (jobs.values.count { it.userId == job.userId && !it.status.get().isFinished } > 1) {
+            logger.warn { "User ${job.userId} has in-progress job" }
+            job.completedAt = Instant.now()
+            job.status = AtomicReference(ChatterStatus.ERROR)
+            job.reply = "You currently have another processing request."
+        }
         try {
-            val chatter = makeChatter(job)
+            val chatter = makeChatter(job, userIdToChatter[job.userId])
             job.status = chatter.atomicStatus
             val (stringResponse, isPreGenAnswer) = chatter.processRequest(
                 messageId = job.messageId,
@@ -160,6 +180,10 @@ class ChatJobService(
     fun status(messageId: UUID, userId: Long): ChatMessageStatusResponse {
         val job = jobs[messageId] ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
         if (job.userId != userId) throw ResponseStatusException(HttpStatus.FORBIDDEN)
+
+        if (job.status.get().isFinished) {
+            jobs.remove(messageId)
+        }
 
         return ChatMessageStatusResponse(
             messageId = job.messageId,

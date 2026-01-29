@@ -13,7 +13,6 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 import java.math.BigDecimal
 import java.math.RoundingMode
-
 import java.time.Instant
 import java.util.*
 
@@ -25,7 +24,7 @@ private val logger = KotlinLogging.logger {}
 class AgentBlockchainAdapter(
     userId: Long,
     private val rabbitTemplate: RabbitTemplate,
-    private val messageId: UUID,
+    private var messageId: UUID,
     private val poolsCache: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
 ) : BlockchainAdapter(userId) {
@@ -38,10 +37,9 @@ class AgentBlockchainAdapter(
         .baseUrl("https://api.binance.com/api/v3")
         .build()
 
-    private val cmcClient: RestClient = RestClient.builder()
-        .baseUrl("https://pro-api.coinmarketcap.com")
-        .defaultHeader("X-CMC_PRO_API_KEY", COINMARKETCAP_API_TOKEN)
-        .build()
+    override fun updateCurrentMessageId(messageId: UUID) {
+        this.messageId = messageId
+    }
 
     private data class TonToUsdtDto(
         val symbol: String,

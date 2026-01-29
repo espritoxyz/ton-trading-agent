@@ -1,6 +1,10 @@
 package com.agent.llm.tool.api
 
+import java.util.UUID
+
 abstract class BlockchainAdapter(val userId: Long) {
+    abstract fun updateCurrentMessageId(messageId: UUID)
+
     abstract fun getTonToUSDT(): Double?
 
     abstract fun getTokenToTon(jettonMaster: String): Double?
