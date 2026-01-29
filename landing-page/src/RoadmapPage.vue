@@ -294,7 +294,7 @@ onUnmounted(() => {
                 <path d="M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z" fill="white"/>
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z" fill="white"/>
               </svg>
-              <span class="text-2xl font-bold gradient-text">Esprito AI</span>
+              <span class="text-2xl font-bold gradient-text">Esprito App</span>
             </a>
             <div class="flex items-center gap-6">
               <button
@@ -323,7 +323,7 @@ onUnmounted(() => {
           </div>
 
           <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Esprito AI trading
+            Esprito App trading
             <span class="gradient-text"> Roadmap</span>
           </h1>
 
@@ -522,7 +522,7 @@ onUnmounted(() => {
               Join Us on This <span class="gradient-text">Journey</span>
             </h2>
             <p class="text-xl text-gray-300 mb-8">
-              Be part of the revolution in decentralized trading. Start using Esprito AI today.
+              Be part of the revolution in decentralized trading. Start using Esprito App today.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
               <a href="http://localhost:5173" target="_blank" class="px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold text-lg">
@@ -538,13 +538,61 @@ onUnmounted(() => {
 
       <!-- Footer -->
       <footer class="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/10">
-        <div class="max-w-7xl mx-auto text-center">
-          <p class="text-gray-400 text-sm mb-4">
-            © 2026 Esprito AI. All rights reserved.
-          </p>
-          <p class="text-gray-500 text-xs">
-            Built with ❤️ for the future of decentralized finance
-          </p>
+        <div class="max-w-7xl mx-auto">
+          <div class="grid md:grid-cols-4 gap-8 mb-12">
+            <div>
+              <div class="flex items-center gap-3 mb-4">
+                <svg width="32" height="32" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0 38.4C0 24.9587 0 18.2381 2.61584 13.1042C4.9168 8.58834 8.58834 4.9168 13.1042 2.61584C18.2381 0 24.9587 0 38.4 0H57.6C71.0413 0 77.7619 0 82.8958 2.61584C87.4117 4.9168 91.0832 8.58834 93.3842 13.1042C96 18.2381 96 24.9587 96 38.4V57.6C96 71.0413 96 77.7619 93.3842 82.8958C91.0832 87.4117 87.4117 91.0832 82.8958 93.3842C77.7619 96 71.0413 96 57.6 96H38.4C24.9587 96 18.2381 96 13.1042 93.3842C8.58834 91.0832 4.9168 87.4117 2.61584 82.8958C0 77.7619 0 71.0413 0 57.6V38.4Z" fill="#6366f1"/>
+                  <path d="M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z" fill="white"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z" fill="white"/>
+                </svg>
+                <span class="text-xl font-bold">Esprito App</span>
+              </div>
+              <p class="text-gray-400 text-sm">
+                The future of decentralized trading powered by AI.
+              </p>
+            </div>
+
+            <div>
+              <h4 class="font-semibold mb-4">Product</h4>
+              <ul class="space-y-2 text-gray-400 text-sm">
+                <li><a href="/#features" class="hover:text-white transition">Features</a></li>
+                <li><a href="/roadmap.html" class="hover:text-white transition">Roadmap</a></li>
+                <li><a href="http://localhost:5173" class="hover:text-white transition">Launch App</a></li>
+                <li><a href="#" class="hover:text-white transition">Documentation</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 class="font-semibold mb-4">Company</h4>
+              <ul class="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                <li><a href="/blog.html" class="hover:text-white transition">Blog</a></li>
+                <li><a href="#" class="hover:text-white transition">Careers</a></li>
+                <li><a href="#" class="hover:text-white transition">Contact</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 class="font-semibold mb-4">Legal</h4>
+              <ul class="space-y-2 text-gray-400 text-sm">
+                <li><a href="/terms.html" class="hover:text-white transition">Terms of Service</a></li>
+                <li><a href="/privacy.html" class="hover:text-white transition">Privacy Policy</a></li>
+                <li><a href="/privacy.html" class="hover:text-white transition">Cookie Policy</a></li>
+                <li><a href="/terms.html" class="hover:text-white transition">Disclaimer</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-gray-400 text-sm">
+              © 2026 Esprito Tech QFZ LLC. All rights reserved.
+            </p>
+            <div class="flex items-center gap-6 text-gray-400 text-sm">
+              <span>Built with ❤️ for the TON ecosystem</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

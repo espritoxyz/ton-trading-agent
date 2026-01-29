@@ -87,7 +87,7 @@ onMounted(() => {
                 <path d="M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z" fill="white"/>
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z" fill="white"/>
               </svg>
-              <span class="text-2xl font-bold gradient-text">Esprito AI</span>
+              <span class="text-2xl font-bold gradient-text">Esprito App</span>
             </div>
             <div class="hidden md:flex items-center gap-8">
               <a href="#features" class="text-gray-300 hover:text-white transition">Features</a>
@@ -142,7 +142,7 @@ onMounted(() => {
               <div class="relative glass-card p-4 cosmic-glow animate-float">
                 <img
                   src="/images/chat-demo.png"
-                  alt="Esprito AI Chat Interface - Natural conversation for crypto trading"
+                  alt="Esprito App Chat Interface - Natural conversation for crypto trading"
                   class="rounded-xl w-full shadow-2xl"
                   @error="handleImageError"
                 />
@@ -159,7 +159,7 @@ onMounted(() => {
       <section id="features" class="py-20 px-4 sm:px-6 lg:px-8">
         <div class="max-w-7xl mx-auto">
           <div class="text-center mb-16">
-            <h2 class="text-4xl md:text-5xl font-bold mb-4 gradient-text">Why Choose Esprito AI?</h2>
+            <h2 class="text-4xl md:text-5xl font-bold mb-4 gradient-text">Why Choose Esprito App?</h2>
             <p class="text-xl text-gray-300">Trading crypto has never been this simple</p>
           </div>
 
@@ -316,7 +316,7 @@ onMounted(() => {
             </h2>
 
             <p class="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Esprito AI is currently optimized for The Open Network (TON), providing seamless
+              Esprito App is currently optimized for The Open Network (TON), providing seamless
               access to all TON-based DEXes including DeDust, STON.fi, and more.
             </p>
 
@@ -462,7 +462,7 @@ onMounted(() => {
                   <path d="M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z" fill="white"/>
                   <path fill-rule="evenodd" clip-rule="evenodd" d="M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z" fill="white"/>
                 </svg>
-                <span class="text-xl font-bold">Esprito AI</span>
+                <span class="text-xl font-bold">Esprito App</span>
               </div>
               <p class="text-gray-400 text-sm">
                 The future of decentralized trading powered by AI.
@@ -502,7 +502,7 @@ onMounted(() => {
 
           <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
             <p class="text-gray-400 text-sm">
-              © 2026 Esprito AI. All rights reserved.
+              © 2026 Esprito Tech QFZ LLC. All rights reserved.
             </p>
             <div class="flex items-center gap-6 text-gray-400 text-sm">
               <span>Built with ❤️ for the TON ecosystem</span>
