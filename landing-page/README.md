@@ -107,13 +107,7 @@ netlify deploy
 
 Build the project and serve the `dist` directory with any static file server.
 
-## Design Inspiration
-
-The design is inspired by:
-- [STON.fi](https://ston.fi) - Cosmic/space theme
-- Modern DeFi platforms
-- Web3 aesthetics
 
 ## License
 
-Copyright © 2026 Esprito AI. All rights reserved.
+Copyright © 2026 Esprito Tech QFZ LLC. All rights reserved.
