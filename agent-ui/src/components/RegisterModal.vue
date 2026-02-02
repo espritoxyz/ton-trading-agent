@@ -60,28 +60,71 @@ function onClose() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="onClose"></div>
-    <div class="relative w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
-      <div class="flex items-center justify-between">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Register</h3>
-        <button class="text-gray-500 hover:text-gray-700" @click="onClose">✕</button>
-      </div>
+  <Teleport to="body">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="absolute inset-0 bg-black/70" @click="onClose"></div>
+      <div class="relative w-full max-w-md glass-card p-8 shadow-2xl cosmic-glow animate-float">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-2">
+            <div class="text-2xl">✨</div>
+            <h3 class="text-xl font-semibold gradient-text">Create Account</h3>
+          </div>
+          <button class="text-gray-400 hover:text-white transition text-2xl" @click="onClose">×</button>
+        </div>
 
-      <div class="mt-4 space-y-3">
-        <input v-model="email" type="email" placeholder="Email" class="w-full rounded-lg border px-3 py-2" />
-        <input v-model="password" type="password" placeholder="Password" class="w-full rounded-lg border px-3 py-2" />
-        <input v-model="displayName" type="text" placeholder="Display name (optional)" class="w-full rounded-lg border px-3 py-2" />
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Email</label>
+            <input
+              v-model="email"
+              type="email"
+              placeholder="your@email.com"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
 
-        <div v-if="error" class="text-sm text-red-600">{{ error }}</div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Password</label>
+            <input
+              v-model="password"
+              type="password"
+              placeholder="••••••••"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
 
-        <div class="flex justify-end">
-          <button class="mr-2 rounded-md px-3 py-2 text-sm bg-gray-100" @click="onClose">Cancel</button>
-          <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm text-white" :disabled="submitting || !email || !password" @click="onSubmit">
-            {{ submitting ? 'Registering...' : 'Register' }}
-          </button>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Display Name (Optional)</label>
+            <input
+              v-model="displayName"
+              type="text"
+              placeholder="Your Name"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
+
+          <div v-if="error" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+            <div class="text-lg">⚠️</div>
+            <div class="text-sm text-red-300">{{ error }}</div>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button
+              class="flex-1 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white hover:bg-white/20 transition border border-white/20"
+              @click="onClose"
+            >
+              Cancel
+            </button>
+            <button
+              class="cosmic-button flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="submitting || !email || !password"
+              @click="onSubmit"
+            >
+              {{ submitting ? 'Creating...' : 'Create Account' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

@@ -23,12 +23,12 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // Public endpoints: login, logout and refresh
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
                     // Everything else requires a valid JWT
-                    .anyRequest().authenticated()
-            }
+                    .anyRequest().authenticated()           }
             .oauth2ResourceServer { it.jwt(Customizer.withDefaults()) }
         return http.build()
     }
