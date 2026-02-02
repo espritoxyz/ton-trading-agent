@@ -1,6 +1,5 @@
 import { ref, onMounted, watch } from 'vue'
 
-const theme = ref<'light' | 'dark'>('light')
 const THEME_STORAGE_KEY = 'app-theme'
 
 function getSystemTheme(): 'light' | 'dark' {
@@ -30,10 +29,29 @@ export function loadTheme(): 'light' | 'dark' {
   return getSystemTheme()
 }
 
+// New: synchronous loader used at import/runtime before mount
+function loadThemeSync(): 'light' | 'dark' {
+  try {
+    const saved = (typeof window !== 'undefined') ? localStorage.getItem(THEME_STORAGE_KEY) : null
+    if (saved === 'light' || saved === 'dark') return saved
+  } catch (e) {
+    // ignore
+  }
+  // Default to dark to match product requirement
+  return 'dark'
+}
+
 function saveTheme(newTheme: 'light' | 'dark') {
   if (typeof window !== 'undefined') {
     localStorage.setItem(THEME_STORAGE_KEY, newTheme)
   }
+}
+
+// Initialize theme synchronously so the class is available ASAP
+const theme = ref<'light' | 'dark'>(loadThemeSync())
+// Ensure applied immediately (idempotent)
+if (typeof document !== 'undefined') {
+  applyTheme(theme.value)
 }
 
 function toggleTheme() {

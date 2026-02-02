@@ -19,12 +19,7 @@ const config = {
   build: {
     rollupOptions: {
       input: {
-        landing: resolve(__dirname, 'landing/index.html'),
-        app: resolve(__dirname, 'app/index.html'),
-        roadmap: resolve(__dirname, 'landing/roadmap.html'),
-        blog: resolve(__dirname, 'landing/blog.html'),
-        privacy: resolve(__dirname, 'landing/privacy.html'),
-        terms: resolve(__dirname, 'landing/terms.html'),
+        main: resolve(__dirname, 'index.html'),
       }
     }
   }

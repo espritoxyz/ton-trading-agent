@@ -143,8 +143,8 @@ const getCategoryName = (categoryId) => {
             </a>
             <div class="hidden md:flex items-center gap-8">
               <a href="/" class="text-gray-300 hover:text-white transition">Home</a>
-              <a href="/roadmap.html" class="text-gray-300 hover:text-white transition">Roadmap</a>
-              <a href="/blog.html" class="text-white font-semibold">Blog</a>
+              <a href="/roadmap" class="text-gray-300 hover:text-white transition">Roadmap</a>
+              <a href="/blog" class="text-white font-semibold">Blog</a>
               <a href="/app" class="cta-button px-6 py-2 rounded-full font-semibold">
                 Launch App
               </a>
@@ -305,7 +305,7 @@ const getCategoryName = (categoryId) => {
               <span>&#9888;</span> Disclaimer
             </h4>
             <p class="text-gray-400 text-sm leading-relaxed">
-              Nothing on this site is investment advice. All information is for informational purposes only. You should not construe any such information or other material as legal, tax, investment, financial, or other advice. Nothing contained on our site constitutes a solicitation, recommendation, endorsement, or offer by esprito.app or any third party service provider to buy or sell any assets, digital coins and tokens, securities or other financial instruments in this or in any other jurisdiction in which such solicitation or offer would be unlawful under the securities laws of such jurisdiction. Please view <a href="/terms.html" class="text-cosmic-400 hover:underline">Terms of Use</a> for more information.
+              Nothing on this site is investment advice. All information is for informational purposes only. You should not construe any such information or other material as legal, tax, investment, financial, or other advice. Nothing contained on our site constitutes a solicitation, recommendation, endorsement, or offer by esprito.app or any third party service provider to buy or sell any assets, digital coins and tokens, securities or other financial instruments in this or in any other jurisdiction in which such solicitation or offer would be unlawful under the securities laws of such jurisdiction. Please view <a href="/terms" class="text-cosmic-400 hover:underline">Terms of Use</a> for more information.
             </p>
           </div>
         </div>
@@ -333,7 +333,7 @@ const getCategoryName = (categoryId) => {
               <h4 class="font-semibold mb-4">Product</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
                 <li><a href="/#features" class="hover:text-white transition">Features</a></li>
-                <li><a href="/roadmap.html" class="hover:text-white transition">Roadmap</a></li>
+                <li><a href="/roadmap" class="hover:text-white transition">Roadmap</a></li>
                 <li><a href="/app" class="hover:text-white transition">Launch App</a></li>
                 <li><a href="#" class="hover:text-white transition">Documentation</a></li>
               </ul>
@@ -343,7 +343,7 @@ const getCategoryName = (categoryId) => {
               <h4 class="font-semibold mb-4">Company</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
                 <li><a href="#" class="hover:text-white transition">About Us</a></li>
-                <li><a href="/blog.html" class="hover:text-white transition">Blog</a></li>
+                <li><a href="/blog" class="hover:text-white transition">Blog</a></li>
                 <li><a href="#" class="hover:text-white transition">Careers</a></li>
                 <li><a href="#" class="hover:text-white transition">Contact</a></li>
               </ul>
@@ -352,10 +352,10 @@ const getCategoryName = (categoryId) => {
             <div>
               <h4 class="font-semibold mb-4">Legal</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
-                <li><a href="/terms.html" class="hover:text-white transition">Terms of Service</a></li>
-                <li><a href="/privacy.html" class="hover:text-white transition">Privacy Policy</a></li>
-                <li><a href="/privacy.html" class="hover:text-white transition">Cookie Policy</a></li>
-                <li><a href="/terms.html" class="hover:text-white transition">Disclaimer</a></li>
+                <li><a href="/terms" class="hover:text-white transition">Terms of Service</a></li>
+                <li><a href="/privacy" class="hover:text-white transition">Privacy Policy</a></li>
+                <li><a href="/privacy" class="hover:text-white transition">Cookie Policy</a></li>
+                <li><a href="/terms" class="hover:text-white transition">Disclaimer</a></li>
               </ul>
             </div>
           </div>

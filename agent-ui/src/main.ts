@@ -12,10 +12,16 @@ if (typeof window !== 'undefined') {
 }
 
 async function bootstrap() {
-  await initAuth()
   const app = createApp(App)
   // We use a lightweight internal routing in src/App.vue (history API), no vue-router required
   app.mount('#app')
+
+  // Run auth initialization in background so mount is not delayed
+  try {
+    initAuth().catch(() => {})
+  } catch (e) {
+    // ignore
+  }
 }
 
 bootstrap()

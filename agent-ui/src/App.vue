@@ -3,6 +3,10 @@ import { ref, onMounted } from 'vue'
 import LandingApp from '../landing/src/App.vue'
 import AppLayout from './layouts/AppLayout.vue'
 import Dashboard from './pages/Dashboard.vue'
+import RoadmapPage from '../landing/src/RoadmapPage.vue'
+import PrivacyPage from '../landing/src/PrivacyPage.vue'
+import BlogPage from '../landing/src/BlogPage.vue'
+import TermsPage from '../landing/src/TermsPage.vue'
 
 const route = ref(window.location.pathname || '/')
 
@@ -36,11 +40,16 @@ onMounted(() => {
 
 <template>
   <div>
-    <component v-if="route === '/' || route.startsWith('/') && !route.startsWith('/app')" :is="LandingApp" />
-    <component v-else :is="AppLayout">
+    <component v-if="route === '/'" :is="LandingApp" />
+    <component v-else-if="route === '/roadmap'" :is="RoadmapPage" />
+    <component v-else-if="route === '/privacy'" :is="PrivacyPage" />
+    <component v-else-if="route === '/blog'" :is="BlogPage" />
+    <component v-else-if="route === '/terms'" :is="TermsPage" />
+    <component v-else-if="route.startsWith('/app')" :is="AppLayout">
       <template v-slot>
         <Dashboard />
       </template>
     </component>
+    <component v-else :is="LandingApp" />
   </div>
 </template>
