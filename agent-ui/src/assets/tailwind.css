@@ -2,7 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optional small tweaks */
-:root {
-    --card: #ffffff;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-space-darker text-white;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-cosmic-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+  }
+
+  .cosmic-glow {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
+  }
+
+  .cosmic-button {
+    background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #6366f1 100%);
+    background-size: 200% 100%;
+    animation: gradientFlow 3s ease infinite;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .cosmic-button:hover {
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }

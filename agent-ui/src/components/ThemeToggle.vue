@@ -7,10 +7,10 @@ const { theme, toggleTheme } = useTheme()
 <template>
   <button
     @click="toggleTheme"
-    class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+    class="rounded-xl p-2 bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20 hover:text-white transition group"
     aria-label="Toggle theme"
   >
-    <SunIcon v-if="theme === 'dark'" class="h-5 w-5" />
-    <MoonIcon v-else class="h-5 w-5" />
+    <SunIcon v-if="theme === 'dark'" class="h-5 w-5 group-hover:rotate-180 transition-transform duration-500" />
+    <MoonIcon v-else class="h-5 w-5 group-hover:-rotate-12 transition-transform duration-300" />
   </button>
 </template>
