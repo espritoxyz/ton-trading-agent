@@ -28,8 +28,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
                     // Everything else requires a valid JWT
-                    .anyRequest().authenticated()
-            }
+                    .anyRequest().authenticated()           }
             .oauth2ResourceServer { it.jwt(Customizer.withDefaults()) }
         return http.build()
     }

@@ -13,16 +13,19 @@ import ThemeToggle from '../components/ThemeToggle.vue'
 
 <template>
   <div class="relative min-h-screen overflow-hidden">
-    <!-- Cosmic Background -->
-    <div class="fixed inset-0 bg-space-darker" style="
+    <!-- Light Theme Background -->
+    <div class="light-bg fixed inset-0 bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50"></div>
+
+    <!-- Dark Theme Cosmic Background -->
+    <div class="dark-bg fixed inset-0 bg-space-darker hidden dark:block" style="
       background-image:
         radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
         radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
         radial-gradient(circle at 40% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
     "></div>
 
-    <!-- Animated Stars -->
-    <div class="stars fixed inset-0 pointer-events-none">
+    <!-- Animated Stars (Dark Theme Only) -->
+    <div class="stars fixed inset-0 pointer-events-none hidden dark:block">
       <div v-for="i in 100" :key="i" class="star absolute w-0.5 h-0.5 bg-white rounded-full"
         :style="{
           left: `${Math.random() * 100}%`,
@@ -44,7 +47,7 @@ import ThemeToggle from '../components/ThemeToggle.vue'
           <h1 class="text-xl font-semibold gradient-text">Esprito AI</h1>
         </div>
         <div class="flex items-center gap-4">
-          <div class="text-xs text-gray-300">
+          <div class="text-xs text-gray-500 dark:text-gray-300">
             <div>Caution: Alpha Software</div>
             <div>Version {{ APP_VERSION }}</div>
           </div>

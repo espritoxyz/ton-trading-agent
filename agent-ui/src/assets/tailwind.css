@@ -8,20 +8,36 @@
   }
 
   body {
+    @apply bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900;
+  }
+
+  body.dark {
     @apply bg-space-darker text-white;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl;
+    @apply bg-white/90 backdrop-blur-lg border border-gray-200 rounded-2xl shadow-lg;
+  }
+
+  .dark .glass-card {
+    @apply bg-white/5 border-white/10;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-cosmic-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-cosmic-600 via-purple-600 to-pink-600 bg-clip-text text-transparent;
+  }
+
+  .dark .gradient-text {
+    @apply from-cosmic-400 via-purple-400 to-pink-400;
   }
 
   .cosmic-glow {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.15);
+  }
+
+  .dark .cosmic-glow {
     box-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
   }
 
@@ -29,13 +45,21 @@
     background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #6366f1 100%);
     background-size: 200% 100%;
     animation: gradientFlow 3s ease infinite;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
     transition: all 0.3s ease;
   }
 
+  .dark .cosmic-button {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+  }
+
   .cosmic-button:hover {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
     transform: translateY(-1px);
+  }
+
+  .dark .cosmic-button:hover {
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
   }
 }
 

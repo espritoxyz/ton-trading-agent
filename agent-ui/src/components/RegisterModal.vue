@@ -60,69 +60,71 @@ function onClose() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="absolute inset-0 bg-black/70" @click="onClose"></div>
-    <div class="relative w-full max-w-md glass-card p-8 shadow-2xl cosmic-glow animate-float">
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-2">
-          <div class="text-2xl">✨</div>
-          <h3 class="text-xl font-semibold gradient-text">Create Account</h3>
-        </div>
-        <button class="text-gray-400 hover:text-white transition text-2xl" @click="onClose">×</button>
-      </div>
-
-      <div class="space-y-4">
-        <div>
-          <label class="text-xs text-gray-400 mb-1 block">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            placeholder="your@email.com"
-            class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
-          />
+  <Teleport to="body">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="absolute inset-0 bg-black/70" @click="onClose"></div>
+      <div class="relative w-full max-w-md glass-card p-8 shadow-2xl cosmic-glow animate-float">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-2">
+            <div class="text-2xl">✨</div>
+            <h3 class="text-xl font-semibold gradient-text">Create Account</h3>
+          </div>
+          <button class="text-gray-400 hover:text-white transition text-2xl" @click="onClose">×</button>
         </div>
 
-        <div>
-          <label class="text-xs text-gray-400 mb-1 block">Password</label>
-          <input
-            v-model="password"
-            type="password"
-            placeholder="••••••••"
-            class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
-          />
-        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Email</label>
+            <input
+              v-model="email"
+              type="email"
+              placeholder="your@email.com"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
 
-        <div>
-          <label class="text-xs text-gray-400 mb-1 block">Display Name (Optional)</label>
-          <input
-            v-model="displayName"
-            type="text"
-            placeholder="Your Name"
-            class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
-          />
-        </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Password</label>
+            <input
+              v-model="password"
+              type="password"
+              placeholder="••••••••"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
 
-        <div v-if="error" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-          <div class="text-lg">⚠️</div>
-          <div class="text-sm text-red-300">{{ error }}</div>
-        </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Display Name (Optional)</label>
+            <input
+              v-model="displayName"
+              type="text"
+              placeholder="Your Name"
+              class="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 transition"
+            />
+          </div>
 
-        <div class="flex gap-3 pt-2">
-          <button
-            class="flex-1 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white hover:bg-white/20 transition border border-white/20"
-            @click="onClose"
-          >
-            Cancel
-          </button>
-          <button
-            class="cosmic-button flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="submitting || !email || !password"
-            @click="onSubmit"
-          >
-            {{ submitting ? 'Creating...' : 'Create Account' }}
-          </button>
+          <div v-if="error" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+            <div class="text-lg">⚠️</div>
+            <div class="text-sm text-red-300">{{ error }}</div>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button
+              class="flex-1 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white hover:bg-white/20 transition border border-white/20"
+              @click="onClose"
+            >
+              Cancel
+            </button>
+            <button
+              class="cosmic-button flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="submitting || !email || !password"
+              @click="onSubmit"
+            >
+              {{ submitting ? 'Creating...' : 'Create Account' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
