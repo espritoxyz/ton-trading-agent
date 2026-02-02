@@ -23,6 +23,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // Public endpoints: login, logout and refresh
                     .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
