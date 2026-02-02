@@ -13,13 +13,13 @@ function onSend() {
 </script>
 
 <template>
-  <div class="flex items-center gap-3 border-t border-white/10 p-4 bg-white/5">
+  <div class="flex items-center gap-3 border-t border-gray-200 dark:border-white/10 p-4 bg-gray-50 dark:bg-white/5">
     <input
         v-model="text"
         :disabled="disabled"
         type="text"
         placeholder="Type your message..."
-        class="flex-1 rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed"
+        class="flex-1 rounded-xl bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         @keydown.enter="onSend"
     />
     <button

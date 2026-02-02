@@ -136,26 +136,26 @@ async function handleSend(text: string) {
 
 <template>
   <div class="flex w-full h-full flex-col min-h-0 glass-card overflow-hidden cosmic-glow">
-    <div class="flex items-center justify-between p-4 border-b border-white/10">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
       <div class="flex items-center gap-2">
         <div class="text-2xl">💬</div>
         <div class="text-lg font-semibold gradient-text">AI Trading Assistant</div>
       </div>
-      <button @click="clearConversation" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 transition group" title="Clear chat">
-        <svg class="w-4 h-4 text-gray-300 group-hover:text-white transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button @click="clearConversation" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 transition group" title="Clear chat">
+        <svg class="w-4 h-4 text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
           <path d="M10 11v6"></path>
           <path d="M14 11v6"></path>
           <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
         </svg>
-        <span class="text-xs font-medium text-gray-300 group-hover:text-white transition hidden sm:inline">Clear</span>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition hidden sm:inline">Clear</span>
       </button>
     </div>
 
-    <div v-if="!ready" class="border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-center gap-3">
+    <div v-if="!ready" class="border-b border-amber-300 dark:border-amber-500/30 bg-amber-100 dark:bg-amber-500/10 px-4 py-3 flex items-center gap-3">
       <div class="text-xl">🔒</div>
-      <div class="text-sm text-amber-200">Login to start chatting with AI</div>
+      <div class="text-sm text-amber-800 dark:text-amber-200">Login to start chatting with AI</div>
     </div>
 
     <div class="flex-1 min-h-0 w-full overflow-hidden relative">
