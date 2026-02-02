@@ -10,7 +10,7 @@ function getSystemTheme(): 'light' | 'dark' {
   return 'light'
 }
 
-function applyTheme(newTheme: 'light' | 'dark') {
+export function applyTheme(newTheme: 'light' | 'dark') {
   const html = document.documentElement
   if (newTheme === 'dark') {
     html.classList.add('dark')
@@ -19,7 +19,7 @@ function applyTheme(newTheme: 'light' | 'dark') {
   }
 }
 
-function loadTheme(): 'light' | 'dark' {
+export function loadTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
   
   const saved = localStorage.getItem(THEME_STORAGE_KEY)
@@ -45,17 +45,17 @@ watch(theme, (newTheme) => {
   saveTheme(newTheme)
 })
 
+// (functions are exported above)
+
 export function useTheme() {
   onMounted(() => {
     const loadedTheme = loadTheme()
     theme.value = loadedTheme
     applyTheme(loadedTheme)
     
-    // Listen for system theme changes if no manual preference
     if (typeof window !== 'undefined' && window.matchMedia) {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
       const handler = (e: MediaQueryListEvent) => {
-        // Only auto-update if user hasn't set a preference
         if (!localStorage.getItem(THEME_STORAGE_KEY)) {
           theme.value = e.matches ? 'dark' : 'light'
         }
