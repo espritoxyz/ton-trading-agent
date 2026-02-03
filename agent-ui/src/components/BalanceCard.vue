@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { accessToken, userId } from '../composables/useAuth.ts'
 import { balanceUsd, loadingBalance, refreshBalance, balanceError } from '../composables/useBalance.ts'
-import { Wallet, Lock, Loader, AlertTriangle, RefreshCw } from 'lucide-vue-next'
+import { Wallet, Lock, Loader, AlertTriangle, RefreshCw, Plus } from 'lucide-vue-next'
+import TopUpModal from './TopUpModal.vue'
 
 const loggedIn = computed(() => !!accessToken.value)
+const showTopUpModal = ref(false)
+
 onMounted(async () => {
   if (loggedIn.value) await refreshBalance()
 })
+
+function handleDepositCompleted() {
+  showTopUpModal.value = false
+  refreshBalance()
+}
 </script>
 
 <template>
@@ -67,14 +75,29 @@ onMounted(async () => {
         </div>
       </div>
 
-      <button
-        class="w-full rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2 group"
-        @click="refreshBalance"
-        :disabled="loadingBalance"
-      >
-        <component :is="loadingBalance ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingBalance }" />
-        <span>{{ loadingBalance ? 'Updating...' : 'Refresh Balance' }}</span>
-      </button>
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          class="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:shadow-lg hover:shadow-emerald-500/30 transition flex items-center justify-center gap-2 group"
+          @click="showTopUpModal = true"
+        >
+          <Plus :size="16" />
+          <span>Top Up</span>
+        </button>
+        <button
+          class="rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2 group"
+          @click="refreshBalance"
+          :disabled="loadingBalance"
+        >
+          <component :is="loadingBalance ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingBalance }" />
+          <span>{{ loadingBalance ? 'Updating...' : 'Refresh' }}</span>
+        </button>
+      </div>
     </div>
+
+    <TopUpModal
+      v-if="showTopUpModal"
+      @close="showTopUpModal = false"
+      @completed="handleDepositCompleted"
+    />
   </div>
 </template>
