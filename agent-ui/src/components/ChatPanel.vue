@@ -4,6 +4,7 @@ import * as chatModule from '../composables/useChat.ts'
 import { accessToken } from '../composables/useAuth.ts'
 import MessageBubble from './MessageBubble.vue'
 import InputBar from './InputBar.vue'
+import { MessageCircle, Lock } from 'lucide-vue-next'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
@@ -138,7 +139,7 @@ async function handleSend(text: string) {
   <div class="flex w-full h-full flex-col min-h-0 glass-card overflow-hidden cosmic-glow">
     <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
       <div class="flex items-center gap-2">
-        <div class="text-2xl">💬</div>
+        <MessageCircle :size="24" class="text-cosmic-500" />
         <div class="text-lg font-semibold gradient-text">AI Trading Assistant</div>
       </div>
       <button @click="clearConversation" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 transition group" title="Clear chat">
@@ -154,7 +155,7 @@ async function handleSend(text: string) {
     </div>
 
     <div v-if="!ready" class="border-b border-amber-300 dark:border-amber-500/30 bg-amber-100 dark:bg-amber-500/10 px-4 py-3 flex items-center gap-3">
-      <div class="text-xl">🔒</div>
+      <Lock :size="20" class="text-amber-600 dark:text-amber-400" />
       <div class="text-sm text-amber-800 dark:text-amber-200">Login to start chatting with AI</div>
     </div>
 

@@ -2,6 +2,7 @@
 import { onMounted, computed } from 'vue'
 import { accessToken, userId } from '../composables/useAuth.ts'
 import { balanceUsd, loadingBalance, refreshBalance, balanceError } from '../composables/useBalance.ts'
+import { Wallet, Lock, Loader, AlertTriangle, RefreshCw } from 'lucide-vue-next'
 
 const loggedIn = computed(() => !!accessToken.value)
 onMounted(async () => {
@@ -12,8 +13,8 @@ onMounted(async () => {
 <template>
   <div class="glass-card p-6 transition-all duration-300 hover:shadow-lg hover:shadow-cosmic-500/20">
     <div class="flex items-center gap-3 mb-5">
-      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-xl shadow-lg">
-        💰
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shadow-lg">
+        <Wallet :size="24" class="text-white" />
       </div>
       <div>
         <div class="text-lg font-semibold gradient-text">Wallet</div>
@@ -22,7 +23,7 @@ onMounted(async () => {
     </div>
 
     <div v-if="!loggedIn" class="flex items-center gap-3 p-4 rounded-xl bg-amber-100 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30">
-      <div class="text-2xl">🔒</div>
+      <Lock :size="24" class="text-amber-600 dark:text-amber-400" />
       <div>
         <div class="text-sm text-amber-800 dark:text-amber-200 font-medium">Locked</div>
         <div class="text-xs text-amber-700 dark:text-amber-300/70">Login to view balance</div>
@@ -35,7 +36,7 @@ onMounted(async () => {
         <div class="flex items-baseline gap-3">
           <template v-if="loadingBalance">
             <div class="flex items-center gap-2">
-              <span class="animate-spin text-2xl">⟳</span>
+              <Loader :size="24" class="animate-spin text-cosmic-500" />
               <span class="text-2xl text-gray-500 dark:text-gray-400">Loading...</span>
             </div>
           </template>
@@ -59,7 +60,7 @@ onMounted(async () => {
       </div>
 
       <div v-if="balanceError" class="flex items-center gap-3 p-3 rounded-xl bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30">
-        <div class="text-xl">⚠️</div>
+        <AlertTriangle :size="20" class="text-red-600 dark:text-red-400" />
         <div>
           <div class="text-xs font-medium text-red-700 dark:text-red-300">Error</div>
           <p class="text-xs text-red-600 dark:text-red-400/80">{{ balanceError }}</p>
@@ -71,9 +72,7 @@ onMounted(async () => {
         @click="refreshBalance"
         :disabled="loadingBalance"
       >
-        <span class="text-base" :class="{ 'animate-spin': loadingBalance }">
-          {{ loadingBalance ? '⟳' : '🔄' }}
-        </span>
+        <component :is="loadingBalance ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingBalance }" />
         <span>{{ loadingBalance ? 'Updating...' : 'Refresh Balance' }}</span>
       </button>
     </div>

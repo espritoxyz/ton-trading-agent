@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { login, logout, loggingIn, accessToken, email, subject, userId, refreshProfile, authError } from '../composables/useAuth.ts'
 import { refreshBalance } from '../composables/useBalance.ts'
 import RegisterModal from './RegisterModal.vue'
+import { User, AlertTriangle, Loader, Rocket, Check, RefreshCw, LogOut } from 'lucide-vue-next'
 
 const username = ref('')
 const password = ref('')
@@ -32,8 +33,8 @@ function onRegistered(data: any) {
 <template>
   <div class="glass-card p-6 transition-all duration-300 hover:shadow-lg hover:shadow-cosmic-500/20">
     <div class="flex items-center gap-3 mb-5">
-      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cosmic-500 to-purple-600 flex items-center justify-center text-xl shadow-lg">
-        👤
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cosmic-500 to-purple-600 flex items-center justify-center shadow-lg">
+        <User :size="24" class="text-white" />
       </div>
       <div>
         <div class="text-lg font-semibold gradient-text">Account</div>
@@ -65,7 +66,7 @@ function onRegistered(data: any) {
       </div>
 
       <div v-if="authError" class="flex items-center gap-2 p-3 rounded-xl bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30">
-        <div class="text-lg">⚠️</div>
+        <AlertTriangle :size="18" class="text-red-600 dark:text-red-400" />
         <div class="text-xs text-red-700 dark:text-red-300">{{ authError }}</div>
       </div>
 
@@ -75,11 +76,11 @@ function onRegistered(data: any) {
         @click="onLogin"
       >
         <span v-if="loggingIn" class="flex items-center justify-center gap-2">
-          <span class="animate-spin">⟳</span>
+          <Loader :size="16" class="animate-spin" />
           <span>Logging in...</span>
         </span>
         <span v-else class="flex items-center justify-center gap-2">
-          <span>🚀</span>
+          <Rocket :size="16" />
           <span>Sign In</span>
         </span>
       </button>
@@ -96,7 +97,7 @@ function onRegistered(data: any) {
       <div class="p-4 rounded-xl bg-gradient-to-br from-cosmic-100 to-purple-100 dark:from-cosmic-500/20 dark:to-purple-600/20 border border-cosmic-300 dark:border-cosmic-500/30">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cosmic-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <span class="text-lg">✓</span>
+            <Check :size="18" class="text-white" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Logged in as</div>
@@ -110,14 +111,14 @@ function onRegistered(data: any) {
           class="flex-1 rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2"
           @click="refreshProfile"
         >
-          <span class="text-base">🔄</span>
+          <RefreshCw :size="16" />
           <span>Refresh</span>
         </button>
         <button
           class="rounded-xl bg-gradient-to-r from-red-500 to-pink-600 px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition flex items-center gap-2 shadow-md"
           @click="onLogout"
         >
-          <span class="text-base">🚪</span>
+          <LogOut :size="16" />
           <span>Logout</span>
         </button>
       </div>

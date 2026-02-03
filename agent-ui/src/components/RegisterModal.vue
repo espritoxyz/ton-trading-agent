@@ -3,6 +3,7 @@ import { ref, defineEmits } from 'vue'
 import { register, login } from '../composables/useAuth'
 import { refreshBalance } from '../composables/useBalance'
 import { refreshProfile } from '../composables/useAuth'
+import { Sparkles, Mail, Lock, User, AlertTriangle, Loader } from 'lucide-vue-next'
 
 const emits = defineEmits(['registered','close'])
 
@@ -67,7 +68,7 @@ function onClose() {
         <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200 dark:border-white/10">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cosmic-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span class="text-xl">✨</span>
+              <Sparkles :size="20" class="text-white" />
             </div>
             <div>
               <h3 class="text-xl font-bold text-gray-900 dark:text-white">
@@ -88,7 +89,7 @@ function onClose() {
         <div class="space-y-4">
           <div>
             <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
-              <span>📧</span>
+              <Mail :size="14" />
               <span>Email</span>
             </label>
             <input
@@ -101,7 +102,7 @@ function onClose() {
 
           <div>
             <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
-              <span>🔒</span>
+              <Lock :size="14" />
               <span>Password</span>
             </label>
             <input
@@ -114,7 +115,7 @@ function onClose() {
 
           <div>
             <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
-              <span>👤</span>
+              <User :size="14" />
               <span>Display Name (Optional)</span>
             </label>
             <input
@@ -126,7 +127,7 @@ function onClose() {
           </div>
 
           <div v-if="error" class="flex items-start gap-3 p-4 rounded-xl bg-red-100 dark:bg-red-500/10 border-2 border-red-400 dark:border-red-500/30 shadow-sm">
-            <div class="text-xl flex-shrink-0">⚠️</div>
+            <div class="flex-shrink-0"><AlertTriangle :size="20" class="text-red-600 dark:text-red-400" /></div>
             <div>
               <div class="text-xs font-bold text-red-900 dark:text-red-300 mb-1">Registration Error</div>
               <div class="text-xs font-medium text-red-800 dark:text-red-400">{{ error }}</div>
@@ -146,11 +147,11 @@ function onClose() {
               @click="onSubmit"
             >
               <span v-if="submitting" class="flex items-center justify-center gap-2">
-                <span class="animate-spin">⟳</span>
+                <Loader :size="16" class="animate-spin" />
                 <span>Creating...</span>
               </span>
               <span v-else class="flex items-center justify-center gap-2">
-                <span>✨</span>
+                <Sparkles :size="16" />
                 <span>Create Account</span>
               </span>
             </button>

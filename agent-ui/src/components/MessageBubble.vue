@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref} from 'vue'
 import type {ChatRole, ChatUtilityKind} from "../types.ts";
+import { Zap, Check, X, CheckCircle, XCircle } from 'lucide-vue-next'
 
 const props = defineProps<{
   role: ChatRole;
@@ -48,25 +49,25 @@ async function handleDecline() {
     <template v-if="utilityKind === 'CONFIRM_SEND_TON'">
       <div class="space-y-3">
         <div class="flex items-start gap-2">
-          <div class="text-lg">⚡</div>
+          <Zap :size="18" class="text-amber-500 flex-shrink-0 mt-0.5" />
           <div>{{ text }}</div>
         </div>
         <div v-if="acted === null" class="flex gap-2 pt-2">
           <button @click="handleApprove" class="flex-1 rounded-xl bg-emerald-500 px-4 py-2 text-white hover:bg-emerald-600 transition font-medium flex items-center justify-center gap-1 shadow-md">
-            <span>✓</span>
+            <Check :size="16" />
             <span>Approve</span>
           </button>
           <button @click="handleDecline" class="flex-1 rounded-xl bg-rose-500 px-4 py-2 text-white hover:bg-rose-600 transition font-medium flex items-center justify-center gap-1 shadow-md">
-            <span>✕</span>
+            <X :size="16" />
             <span>Decline</span>
           </button>
         </div>
         <div v-else-if="acted==='approved'" class="flex items-center gap-2 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30">
-          <span>✅</span>
+          <CheckCircle :size="18" class="text-emerald-600 dark:text-emerald-400" />
           <span class="text-emerald-700 dark:text-emerald-300 font-medium">Approved</span>
         </div>
         <div v-else class="flex items-center gap-2 p-3 rounded-xl bg-rose-100 dark:bg-rose-500/20 border border-rose-300 dark:border-rose-500/30">
-          <span>❌</span>
+          <XCircle :size="18" class="text-rose-600 dark:text-rose-400" />
           <span class="text-rose-700 dark:text-rose-300 font-medium">Declined</span>
         </div>
       </div>
