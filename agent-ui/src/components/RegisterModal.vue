@@ -86,7 +86,7 @@ function onClose() {
           </button>
         </div>
 
-        <div class="space-y-4">
+        <form class="space-y-4" @submit.prevent="onSubmit">
           <div>
             <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
               <Mail :size="14" />
@@ -96,6 +96,7 @@ function onClose() {
               v-model="email"
               type="email"
               placeholder="your@email.com"
+              required
               class="w-full rounded-xl bg-gray-50 dark:bg-white/10 border-2 border-gray-300 dark:border-white/20 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-cosmic-500 focus:bg-white dark:focus:bg-white/15 transition shadow-sm"
             />
           </div>
@@ -109,6 +110,7 @@ function onClose() {
               v-model="password"
               type="password"
               placeholder="••••••••"
+              required
               class="w-full rounded-xl bg-gray-50 dark:bg-white/10 border-2 border-gray-300 dark:border-white/20 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-cosmic-500 focus:bg-white dark:focus:bg-white/15 transition shadow-sm"
             />
           </div>
@@ -136,15 +138,16 @@ function onClose() {
 
           <div class="flex gap-3 pt-3">
             <button
+              type="button"
               class="flex-1 rounded-xl bg-gray-200 dark:bg-white/10 px-4 py-3 text-sm font-bold text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-white/20 transition border-2 border-gray-400 dark:border-white/20 shadow-sm"
               @click="onClose"
             >
               Cancel
             </button>
             <button
+              type="submit"
               class="cosmic-button flex-1 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               :disabled="submitting || !email || !password"
-              @click="onSubmit"
             >
               <span v-if="submitting" class="flex items-center justify-center gap-2">
                 <Loader :size="16" class="animate-spin" />
@@ -156,7 +159,7 @@ function onClose() {
               </span>
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   </Teleport>

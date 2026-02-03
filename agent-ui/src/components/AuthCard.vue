@@ -42,12 +42,12 @@ function onRegistered(data: any) {
       </div>
     </div>
 
-    <div v-if="!accessToken" class="space-y-3">
+    <form v-if="!accessToken" class="space-y-3" @submit.prevent="onLogin">
       <div>
-        <label class="text-xs text-gray-600 dark:text-gray-400 mb-1.5 block">Email Address</label>
+        <label class="text-xs text-gray-600 dark:text-gray-400 mb-1.5 block">Username or Email</label>
         <input
           v-model="username"
-          type="email"
+          type="text"
           placeholder="your@email.com"
           autocomplete="username"
           class="w-full rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-transparent transition"
@@ -71,9 +71,9 @@ function onRegistered(data: any) {
       </div>
 
       <button
+        type="submit"
         class="cosmic-button w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         :disabled="loggingIn || !username || !password"
-        @click="onLogin"
       >
         <span v-if="loggingIn" class="flex items-center justify-center gap-2">
           <Loader :size="16" class="animate-spin" />
@@ -87,11 +87,11 @@ function onRegistered(data: any) {
 
       <div class="text-center mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
         <span class="text-xs text-gray-600 dark:text-gray-400">Don't have an account? </span>
-        <button class="text-xs text-cosmic-600 dark:text-cosmic-400 hover:text-cosmic-700 dark:hover:text-cosmic-300 transition font-semibold" @click="openRegister">
+        <button type="button" class="text-xs text-cosmic-600 dark:text-cosmic-400 hover:text-cosmic-700 dark:hover:text-cosmic-300 transition font-semibold" @click="openRegister">
           Create one
         </button>
       </div>
-    </div>
+    </form>
 
     <div v-else class="space-y-4">
       <div class="p-4 rounded-xl bg-gradient-to-br from-cosmic-100 to-purple-100 dark:from-cosmic-500/20 dark:to-purple-600/20 border border-cosmic-300 dark:border-cosmic-500/30">
