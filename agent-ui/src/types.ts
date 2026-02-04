@@ -1,6 +1,6 @@
 export type ChatRole = 'USER' | 'SYSTEM'
 
-export type ChatUtilityKind = 'CONFIRM_SEND_TON'
+export type ChatUtilityKind = 'CONFIRM_SEND_TON' | 'SHOW_TOP_UP'
 
 export interface ChatItem {
     id: string

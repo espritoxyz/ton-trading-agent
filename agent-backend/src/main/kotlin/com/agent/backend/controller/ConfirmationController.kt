@@ -24,6 +24,7 @@ class ConfirmationController(
 ) {
     data class ConfirmationDto(
         val id: UUID,
+        val toolName: String,
         val text: String,
         val status: ConfirmationStatus
     )
@@ -33,7 +34,7 @@ class ConfirmationController(
         auth: JwtAuthenticationToken,
         @PathVariable messageId: UUID
     ): ResponseEntity<List<ConfirmationDto>> {
-        val items = confirmations.list(messageId).map { ConfirmationDto(it.id, it.text, it.status) }
+        val items = confirmations.list(messageId).map { ConfirmationDto(it.id, it.toolName, it.text, it.status) }
         return ResponseEntity.ok(items)
     }
 
