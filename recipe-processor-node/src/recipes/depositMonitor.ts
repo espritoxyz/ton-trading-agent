@@ -13,7 +13,7 @@ const POLL_INTERVAL_MS = parseInt(process.env.DEPOSIT_POLL_INTERVAL_MS || "8000"
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 1000;
 
-let lastEventId: string | null = null;
+let lastProcessedLt: bigint = BigInt(0); // Track last processed logical time
 let isMonitoring = false;
 let consecutiveErrors = 0;
 
@@ -107,32 +107,39 @@ async function pollEvents(
 ) {
     const startTime = Date.now();
     try {
-        // Fetch account events (includes both TON and Jetton transfers)
+        // Fetch recent account events (includes both TON and Jetton transfers)
         const params: any = { limit: 20 };
-        if (lastEventId) {
-            params.beforeLt = lastEventId;
-        }
 
         const eventsResponse = await client.accounts.getAccountEvents(Address.parse(walletAddress), params);
         const duration = Date.now() - startTime;
 
         if (!eventsResponse.events || eventsResponse.events.length === 0) {
-            console.log(`[deposit-monitor] No new events found (${duration}ms)`);
+            console.log(`[deposit-monitor] No new events found (${duration}ms), lastProcessedLt=${lastProcessedLt.toString()}`);
             return;
         }
 
-        console.log(`[deposit-monitor] Fetched ${eventsResponse.events.length} events (${duration}ms)`);
+        console.debug(`[deposit-monitor] Fetched ${eventsResponse.events.length} events (${duration}ms), lastProcessedLt=${lastProcessedLt.toString()}`);
 
         // Process events in chronological order (oldest first)
         const sortedEvents = [...eventsResponse.events].reverse();
 
         let newEventCount = 0;
+        let maxLtSeen = lastProcessedLt;
 
         for (const event of sortedEvents) {
-            // Skip if we've already processed this event
-            if (lastEventId && event.eventId === lastEventId) {
+            const eventLt = event.lt || BigInt(0);
+
+            // Skip if we've already processed this event (by logical time)
+            if (eventLt <= lastProcessedLt) {
                 continue;
             }
+
+            // Track the highest lt we've seen
+            if (eventLt > maxLtSeen) {
+                maxLtSeen = eventLt;
+            }
+
+            console.log(`[deposit-monitor] Processing new event: lt=${eventLt.toString()}, eventId=${event.eventId}`);
 
             // Process actions in the event
             for (const action of event.actions) {
@@ -271,11 +278,15 @@ async function pollEvents(
             }
 
             newEventCount++;
-            lastEventId = event.eventId;
+        }
+
+        // Update lastProcessedLt after processing all events
+        if (maxLtSeen > lastProcessedLt) {
+            lastProcessedLt = maxLtSeen;
         }
 
         if (newEventCount > 0) {
-            console.log(`[deposit-monitor] Processed ${newEventCount} new event(s), lastEventId=${lastEventId}`);
+            console.log(`[deposit-monitor] Processed ${newEventCount} new event(s), lastProcessedLt=${lastProcessedLt.toString()}`);
         }
     } catch (error) {
         console.error("[deposit-monitor] Error fetching events:", error);
