@@ -170,7 +170,7 @@ async function pollEvents(
                     });
 
                     if (depositCode) {
-                        const depositData = {
+                        const depositData = new DepositData({
                             transactionHash: event.eventId, // Use eventId as unique identifier
                             transactionLt: event.lt?.toString() || "0",
                             bodyHash: event.eventId, // Use eventId for duplicate detection
@@ -181,7 +181,7 @@ async function pollEvents(
                             jettonMasterAddress: null,
                             jettonSymbol: null,
                             jettonDecimals: null,
-                        };
+                        });
 
                         console.log(`[deposit-monitor] ✅ Valid TON deposit code found: ${depositCode}`);
                         console.log(`[deposit-monitor] Amount: ${amountTon} TON, Sender: ${senderStr}`);
@@ -248,7 +248,7 @@ async function pollEvents(
                     });
 
                     if (depositCode) {
-                        const depositData = {
+                        const depositData = new DepositData({
                             transactionHash: event.eventId,
                             transactionLt: event.lt?.toString() || "0",
                             bodyHash: event.eventId,
@@ -259,7 +259,7 @@ async function pollEvents(
                             jettonMasterAddress: jettonMasterAddress,
                             jettonSymbol: jettonSymbol,
                             jettonDecimals: jettonDecimals,
-                        };
+                        });
 
                         console.log(`[deposit-monitor] ✅ Valid Jetton deposit code found: ${depositCode}`);
                         console.log(`[deposit-monitor] Amount: ${amountReadable} ${jettonSymbol}, Sender: ${senderStr}`);
@@ -308,21 +308,47 @@ function validateDepositCode(comment: string): string | null {
     return normalized;
 }
 
-async function publishDepositTransaction(
-    channel: Channel,
-    exchange: string,
-    data: {
+export class DepositData {
+    transactionHash: string;
+    transactionLt: string;
+    bodyHash: string;
+    comment: string;
+    amountNano: string;
+    sender: string;
+    assetType: "TON" | "JETTON";
+    jettonMasterAddress: string | null;
+    jettonSymbol: string | null;
+    jettonDecimals: number | null;
+
+    constructor(fields: {
         transactionHash: string;
-        transactionLt: string;
-        bodyHash: string;
+        transactionLt?: string;
+        bodyHash?: string;
         comment: string;
         amountNano: string;
         sender: string;
         assetType: "TON" | "JETTON";
-        jettonMasterAddress: string | null;
-        jettonSymbol: string | null;
-        jettonDecimals: number | null;
+        jettonMasterAddress?: string | null;
+        jettonSymbol?: string | null;
+        jettonDecimals?: number | null;
+    }) {
+        this.transactionHash = fields.transactionHash;
+        this.transactionLt = fields.transactionLt ?? "0";
+        this.bodyHash = fields.bodyHash ?? fields.transactionHash;
+        this.comment = fields.comment;
+        this.amountNano = fields.amountNano;
+        this.sender = fields.sender;
+        this.assetType = fields.assetType;
+        this.jettonMasterAddress = fields.jettonMasterAddress ?? null;
+        this.jettonSymbol = fields.jettonSymbol ?? null;
+        this.jettonDecimals = fields.jettonDecimals ?? null;
     }
+}
+
+async function publishDepositTransaction(
+    channel: Channel,
+    exchange: string,
+    data: DepositData
 ) {
     const event = {
         type: "deposit.transaction-found",
