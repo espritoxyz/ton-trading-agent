@@ -20,21 +20,35 @@ class DepositService(
     private val depositRequestRepository: DepositRequestRepository,
     private val processedTransactionRepository: ProcessedTransactionRepository,
     private val assetService: AssetService,
-    @Value("\${deposit.wallet.address}") private val depositWalletAddress: String
+    @Value("\${deposit.wallet.address}") private val depositWalletAddress: String,
+    @Value("\${deposit.expiry.hours:24}") private val expiryHours: Long
 ) {
     private val logger = LoggerFactory.getLogger(DepositService::class.java)
 
     companion object {
         private const val CODE_LENGTH = 6
         private const val CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        private const val EXPIRY_HOURS = 24L
     }
 
     @Transactional
     fun initiateDeposit(userId: Long): InitiateDepositResponse {
-        val code = generateUniqueCode()
         val now = Instant.now()
-        val expiresAt = now.plusSeconds(EXPIRY_HOURS * 3600)
+
+        // Check if user already has an active deposit request
+        val activeDeposit = depositRequestRepository.findFirstByUserIdAndStatusAndExpiresAtAfterOrderByCreatedAtDesc(
+            userId = userId,
+            status = DepositStatus.PENDING,
+            expiresAt = now
+        )
+
+        if (activeDeposit != null) {
+            logger.info("Returning existing active deposit request for user $userId with code ${activeDeposit.code}")
+            return activeDeposit.toInitiateDepositResponse()
+        }
+
+        // Create new deposit request
+        val code = generateUniqueCode()
+        val expiresAt = now.plusSeconds(expiryHours * 3600)
 
         val depositRequest = DepositRequest(
             userId = userId,
@@ -47,15 +61,9 @@ class DepositService(
 
         val saved = depositRequestRepository.save(depositRequest)
 
-        logger.info("Created deposit request for user $userId with code $code, expires at $expiresAt")
+        logger.info("Created new deposit request for user $userId with code $code, expires at $expiresAt")
 
-        return InitiateDepositResponse(
-            depositRequestId = saved.id!!,
-            code = saved.code,
-            depositWalletAddress = saved.depositWalletAddress,
-            expiresAt = saved.expiresAt,
-            status = saved.status
-        )
+        return saved.toInitiateDepositResponse()
     }
 
     fun getDepositStatus(depositRequestId: Long): DepositStatusResponse? {
@@ -200,5 +208,15 @@ class DepositService(
     private fun nanoToReadable(nanoAmount: Long, decimals: Int): String {
         val divisor = Math.pow(10.0, decimals.toDouble())
         return String.format("%.${decimals}f", nanoAmount / divisor)
+    }
+
+    private fun DepositRequest.toInitiateDepositResponse(): InitiateDepositResponse {
+        return InitiateDepositResponse(
+            depositRequestId = this.id!!,
+            code = this.code,
+            depositWalletAddress = this.depositWalletAddress,
+            expiresAt = this.expiresAt,
+            status = this.status
+        )
     }
 }

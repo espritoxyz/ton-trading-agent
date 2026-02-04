@@ -13,6 +13,7 @@ const copiedCode = ref(false)
 const pollInterval = ref<number | null>(null)
 const status = ref<'pending' | 'completed' | 'expired'>('pending')
 const amountTon = ref<string | null>(null)
+const assetSymbol = ref<string>('TON')
 const transactionHash = ref<string | null>(null)
 
 const timeRemaining = ref('')
@@ -40,6 +41,7 @@ async function pollStatus() {
         if (statusData.status === 'COMPLETED') {
             status.value = 'completed'
             amountTon.value = statusData.amountTon
+            assetSymbol.value = statusData.jettonSymbol || statusData.assetType || 'TON'
             transactionHash.value = statusData.transactionHash
             stopPolling()
             emits('completed')
@@ -134,7 +136,7 @@ onUnmounted(() => {
                             <h3 class="text-xl font-bold text-gray-900 dark:text-white">
                                 <span class="gradient-text">Top Up Wallet</span>
                             </h3>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Deposit TON</p>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Deposit TON or Jettons</p>
                         </div>
                     </div>
                     <button
@@ -165,7 +167,7 @@ onUnmounted(() => {
                 <div v-else-if="status === 'completed'" class="flex flex-col items-center justify-center py-12">
                     <CheckCircle :size="64" class="text-emerald-500" />
                     <h4 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Deposit Received!</h4>
-                    <p class="mt-2 text-lg text-gray-700 dark:text-gray-300">{{ amountTon }} TON</p>
+                    <p class="mt-2 text-lg text-gray-700 dark:text-gray-300">{{ amountTon }} {{ assetSymbol }}</p>
                     <a
                         v-if="tonViewerLink"
                         :href="tonViewerLink"
@@ -201,9 +203,10 @@ onUnmounted(() => {
                     <div class="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-xl p-4">
                         <div class="flex gap-3">
                             <AlertCircle :size="20" class="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                            <p class="text-xs text-amber-800 dark:text-amber-300">
-                                <strong>Important:</strong> You must include the code below in the comment/memo field when sending TON.
-                            </p>
+                            <div class="text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                                <p><strong>Important:</strong> Include the code below in the comment/memo field when sending your deposit.</p>
+                                <p><strong>One-time use:</strong> This code works for a single transaction. For additional deposits, create a new request.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -241,7 +244,7 @@ onUnmounted(() => {
                     <!-- Wallet Address -->
                     <div>
                         <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block">
-                            Send TON to this address
+                            Deposit Address (TON or Jettons)
                         </label>
                         <div class="flex gap-2">
                             <div class="flex-1 bg-gray-50 dark:bg-white/10 border-2 border-gray-300 dark:border-white/20 rounded-xl px-4 py-3 font-mono text-xs text-gray-900 dark:text-white break-all">
@@ -272,7 +275,7 @@ onUnmounted(() => {
                             </li>
                             <li class="flex gap-2">
                                 <span class="font-bold">3.</span>
-                                <span>Send TON to the address above</span>
+                                <span>Send TON or Jettons to the address above</span>
                             </li>
                             <li class="flex gap-2">
                                 <span class="font-bold">4.</span>
@@ -280,7 +283,11 @@ onUnmounted(() => {
                             </li>
                             <li class="flex gap-2">
                                 <span class="font-bold">5.</span>
-                                <span>Wait for confirmation (10-30 seconds)</span>
+                                <span>Wait for confirmation (usually 10-30 seconds)</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="font-bold">6.</span>
+                                <span>For additional deposits, click "Top Up" again to get a new code</span>
                             </li>
                         </ol>
                     </div>

@@ -14,7 +14,10 @@ export interface DepositStatus {
     depositRequestId: number
     code: string
     status: 'PENDING' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
-    amountTon: string | null
+    amountTon: string | null // Renamed but contains readable amount for any asset
+    assetType: string | null // "TON" or "JETTON"
+    jettonSymbol: string | null
+    jettonMasterAddress: string | null
     transactionHash: string | null
     createdAt: string
     expiresAt: string

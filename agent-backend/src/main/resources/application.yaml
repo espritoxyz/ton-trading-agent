@@ -52,3 +52,5 @@ deposit:
   wallet:
     address: ${DEPOSIT_WALLET_ADDRESS}
   poll-interval-ms: ${DEPOSIT_POLL_INTERVAL_MS:8000}
+  expiry:
+    hours: 24
