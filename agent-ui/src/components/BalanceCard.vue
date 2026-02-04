@@ -10,6 +10,35 @@ const loggedIn = computed(() => !!accessToken.value)
 const showTopUpModal = ref(false)
 const assetsListRef = ref<InstanceType<typeof AssetsList>>()
 
+const formattedBalance = computed(() => {
+  if (!balanceUsd.value) return '0.00'
+
+  const balance = parseFloat(balanceUsd.value)
+
+  if (isNaN(balance)) return '0.00'
+
+  // Large numbers with abbreviations
+  if (balance >= 1_000_000_000) {
+    return (balance / 1_000_000_000).toFixed(2) + 'B'
+  } else if (balance >= 1_000_000) {
+    return (balance / 1_000_000).toFixed(2) + 'M'
+  } else if (balance >= 1_000) {
+    return (balance / 1_000).toFixed(2) + 'K'
+  }
+
+  // Normal numbers - limit to 2 decimal places
+  if (balance >= 0.01) {
+    return balance.toFixed(2)
+  }
+
+  // Very small numbers
+  if (balance > 0) {
+    return '< 0.01'
+  }
+
+  return '0.00'
+})
+
 onMounted(async () => {
   if (loggedIn.value) await refreshBalance()
 })
@@ -62,7 +91,7 @@ function handleRefresh() {
           </template>
           <template v-else>
             <div class="text-4xl font-bold gradient-text">
-              ${{ balanceUsd ?? '0.00' }}
+              ${{ formattedBalance }}
             </div>
             <div class="text-lg text-gray-600 dark:text-gray-400 font-medium">USD</div>
           </template>
