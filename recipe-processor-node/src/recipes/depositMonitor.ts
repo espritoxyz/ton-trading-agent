@@ -1,14 +1,13 @@
-import { TonApiClient } from '@ton-api/client';
-import { Address } from "@ton/core";
-import { mnemonicToPrivateKey } from "@ton/crypto";
-import { WalletContractV5R1 } from "@ton/ton";
-import { mnemonic_array } from "../mnemonics.js";
-import { parseDepositComment } from "../commentParser.js";
-import { sleep } from "../utils.js";
-import type { Channel } from "amqplib";
+import {TonApiClient} from '@ton-api/client';
+import {Address} from "@ton/core";
+import {mnemonicToPrivateKey} from "@ton/crypto";
+import {WalletContractV5R1} from "@ton/ton";
+import {mnemonic_array} from "../mnemonics.js";
+import {sleep} from "../utils.js";
+import type {Channel} from "amqplib";
 
-const TONAPI_BASE_URL = process.env.TONAPI_BASE_URL || "https://tonapi.io";
-const TONAPI_KEY = process.env.TONAPI_KEY || "AGLZ4WFE7CTUJ2IAAAAF5WJRJG45LEVDRELXVXW53FFMAWDNU4AFU5CDDPUDBOYQDYWGE6I";
+const TONAPI_BASE_URL = process.env.TONAPI_BASE_URL;
+const TONAPI_KEY = process.env.TONAPI_KEY;
 const POLL_INTERVAL_MS = parseInt(process.env.DEPOSIT_POLL_INTERVAL_MS || "8000");
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 1000;
@@ -30,9 +29,9 @@ export async function startDepositMonitoring(rabbitChannel: Channel, rabbitExcha
         apiKey: TONAPI_KEY,
     });
 
-    const { publicKey } = await mnemonicToPrivateKey(mnemonic_array);
-    const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
-    const walletAddress = wallet.address.toString({ bounceable: false });
+    const {publicKey} = await mnemonicToPrivateKey(mnemonic_array);
+    const wallet = WalletContractV5R1.create({publicKey, workchain: 0});
+    const walletAddress = wallet.address.toString({bounceable: false});
 
     console.log("[deposit-monitor] Starting deposit monitoring...");
     console.log("[deposit-monitor] TonAPI endpoint:", TONAPI_BASE_URL);
@@ -108,7 +107,7 @@ async function pollEvents(
     const startTime = Date.now();
     try {
         // Fetch recent account events (includes both TON and Jetton transfers)
-        const params: any = { limit: 20 };
+        const params: any = {limit: 20};
 
         const eventsResponse = await client.accounts.getAccountEvents(Address.parse(walletAddress), params);
         const duration = Date.now() - startTime;
@@ -152,10 +151,10 @@ async function pollEvents(
 
                     // Check if this is an incoming transfer (recipient is our wallet)
                     const recipientAddr = tonTransfer.recipient?.address;
-                    if (!recipientAddr || recipientAddr.toString({ bounceable: false }) !== walletAddress) continue;
+                    if (!recipientAddr || recipientAddr.toString({bounceable: false}) !== walletAddress) continue;
 
                     const senderAddr = tonTransfer.sender?.address;
-                    const senderStr = senderAddr ? senderAddr.toString({ bounceable: false }) : "unknown";
+                    const senderStr = senderAddr ? senderAddr.toString({bounceable: false}) : "unknown";
                     const amountNano = tonTransfer.amount?.toString() || "0";
                     const amountTon = (Number(amountNano) / 1_000_000_000).toFixed(4);
 
@@ -205,11 +204,11 @@ async function pollEvents(
 
                     // Check if this is an incoming transfer
                     const recipientAddr = jettonTransfer.recipient?.address;
-                    if (!recipientAddr || recipientAddr.toString({ bounceable: false }) !== walletAddress) continue;
+                    if (!recipientAddr || recipientAddr.toString({bounceable: false}) !== walletAddress) continue;
 
                     const senderAddr = jettonTransfer.sender?.address;
                     const senderStr = senderAddr
-                        ? (typeof senderAddr === 'string' ? senderAddr : senderAddr.toString({ bounceable: false }))
+                        ? (typeof senderAddr === 'string' ? senderAddr : senderAddr.toString({bounceable: false}))
                         : "unknown";
 
                     const amountBigInt = typeof jettonTransfer.amount === 'bigint'
@@ -227,7 +226,7 @@ async function pollEvents(
                     const jettonMasterAddr = jetton.address;
                     const jettonMasterAddress = typeof jettonMasterAddr === 'string'
                         ? jettonMasterAddr
-                        : jettonMasterAddr.toString({ bounceable: true });
+                        : jettonMasterAddr.toString({bounceable: true});
 
                     const jettonSymbol = jetton.symbol || "UNKNOWN";
                     const jettonDecimals = jetton.decimals || 9;

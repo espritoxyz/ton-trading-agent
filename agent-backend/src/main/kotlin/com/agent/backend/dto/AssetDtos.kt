@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull
 
 data class AssetCreateRequest(
     @field:NotBlank val address: String,
-    @field:NotNull  val amountNano: Long
+    @field:NotNull val amountNano: Long
 )
 
 data class AssetUpdateRequest(
@@ -16,5 +16,10 @@ data class AssetUpdateRequest(
 data class AssetResponse(
     val id: Long,
     val address: String,
-    val amountNano: Long
+    val amountNano: Long,
+    val symbol: String? = null,
+    val decimals: Int? = null,
+    val name: String? = null,
+    val imageUrl: String? = null,
+    val usdValue: Double? = null
 )

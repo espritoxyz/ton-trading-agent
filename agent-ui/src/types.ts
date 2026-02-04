@@ -21,3 +21,23 @@ export interface WalletBalances {
 export interface UserProfile {
     email: string
 }
+
+export interface Asset {
+    id: number
+    address: string
+    amountNano: string
+    symbol?: string
+    decimals?: number
+    name?: string
+    imageUrl?: string
+    usdValue?: number
+}
+
+export interface JettonMetadata {
+    address: string
+    name: string
+    symbol: string
+    decimals: number
+    image: string
+    verification?: string
+}
