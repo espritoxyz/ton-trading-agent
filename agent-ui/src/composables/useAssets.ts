@@ -50,84 +50,46 @@ async function fetchJettonMetadata(address: string): Promise<JettonMetadata | nu
 
 /**
  * Enrich assets with jetton metadata from TonAPI
+ * Backend already provides symbol, decimals, readableAmount, unitPrice, usdValue
+ * We only need to fetch imageUrl from TonAPI
  */
 async function enrichAssetsWithMetadata(rawAssets: Asset[]): Promise<Asset[]> {
     return await Promise.all(
         rawAssets.map(async (asset) => {
             // TON native token
-            if (asset.address === 'TON') {
+            if (asset.address === 'TON' || asset.symbol === 'TON') {
                 return {
                     ...asset,
-                    symbol: 'TON',
-                    decimals: 9,
-                    name: 'Toncoin',
+                    symbol: asset.symbol || 'TON',
+                    decimals: asset.decimals || 9,
+                    name: asset.name || 'Toncoin',
                     imageUrl: 'https://ton.org/download/ton_symbol.png'
                 }
             }
 
-            // Jetton - fetch metadata from TonAPI
-            const metadata = await fetchJettonMetadata(asset.address)
-            if (metadata) {
-                return {
-                    ...asset,
-                    symbol: metadata.symbol,
-                    decimals: metadata.decimals,
-                    name: metadata.name,
-                    imageUrl: metadata.image
+            // For jettons, only fetch image if not provided by backend
+            if (!asset.imageUrl) {
+                const metadata = await fetchJettonMetadata(asset.address)
+                if (metadata) {
+                    return {
+                        ...asset,
+                        imageUrl: metadata.image
+                    }
                 }
             }
 
-            // Fallback if metadata fetch failed
-            return {
-                ...asset,
-                symbol: asset.address.substring(0, 8) + '...',
-                decimals: 9,
-                name: 'Unknown Token'
-            }
+            // Return asset as-is (backend already provided symbol, decimals, etc.)
+            return asset
         })
     )
 }
 
 /**
- * Calculate readable amount based on decimals
- */
-function calculateReadableAmount(amountNano: string, decimals: number): string {
-    const amount = BigInt(amountNano)
-    const divisor = BigInt(10 ** decimals)
-
-    // Convert to decimal
-    const integerPart = amount / divisor
-    const remainder = amount % divisor
-
-    // Format with decimals
-    const remainderStr = remainder.toString().padStart(decimals, '0')
-    const trimmedRemainder = remainderStr.replace(/0+$/, '')
-
-    if (trimmedRemainder === '') {
-        return integerPart.toString()
-    }
-
-    return `${integerPart}.${trimmedRemainder}`
-}
-
-/**
- * Computed: assets with readable amounts
- */
-const assetsWithReadable = computed(() => {
-    return assets.value.map(asset => ({
-        ...asset,
-        readableAmount: calculateReadableAmount(
-            asset.amountNano,
-            asset.decimals || 9
-        )
-    }))
-})
-
-/**
  * Computed: sorted assets (TON first, then by USD value if available, then by amount)
+ * Backend already provides readableAmount, so no need to calculate it
  */
 const sortedAssets = computed(() => {
-    return [...assetsWithReadable.value].sort((a, b) => {
+    return [...assets.value].sort((a, b) => {
         // TON always first
         if (a.address === 'TON') return -1
         if (b.address === 'TON') return 1

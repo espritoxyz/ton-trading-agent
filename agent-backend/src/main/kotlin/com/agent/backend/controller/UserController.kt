@@ -91,8 +91,7 @@ class UserController(
 
     /**
      * Get list of all user's assets with metadata.
-     * Returns assets with basic info (address, amount).
-     * Frontend should enrich with jetton metadata via TonAPI.
+     * Returns assets enriched with price data, decimals, and metadata from STON.fi.
      */
     @GetMapping("/{userId}/assets")
     fun getAssets(
@@ -104,17 +103,7 @@ class UserController(
 
         val assets = assetService.list(userId)
         val responses = assets.map { asset ->
-            AssetResponse(
-                id = asset.id!!,
-                address = asset.address,
-                amountNano = asset.amountNano,
-                // Frontend will fetch metadata from TonAPI
-                symbol = null,
-                decimals = null,
-                name = null,
-                imageUrl = null,
-                usdValue = null
-            )
+            balanceService.enrichAsset(asset)
         }
         return ResponseEntity.ok(responses)
     }

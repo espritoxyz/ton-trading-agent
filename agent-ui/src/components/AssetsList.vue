@@ -58,8 +58,13 @@
           <div class="font-mono font-semibold text-white">
             {{ asset.readableAmount }} {{ asset.symbol }}
           </div>
-          <div v-if="asset.usdValue" class="text-xs text-gray-400">
-            ${{ asset.usdValue.toFixed(2) }}
+          <div class="text-xs text-gray-400 space-y-0.5">
+            <div v-if="asset.unitPrice">
+              ${{ formatPrice(asset.unitPrice) }} / {{ asset.symbol }}
+            </div>
+            <div v-if="asset.usdValue" class="font-semibold text-gray-300">
+              ${{ asset.usdValue.toFixed(2) }}
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +132,22 @@ const handleImageError = (event: Event) => {
   // Hide broken image
   const img = event.target as HTMLImageElement
   img.style.display = 'none'
+}
+
+const formatPrice = (price: number) => {
+  if (price >= 1) {
+    // For prices >= 1, show 2 decimals
+    return price.toFixed(2)
+  } else if (price >= 0.01) {
+    // For prices >= 0.01, show up to 4 decimals
+    return price.toFixed(4).replace(/\.?0+$/, '')
+  } else if (price >= 0.0001) {
+    // For prices >= 0.0001, show up to 6 decimals
+    return price.toFixed(6).replace(/\.?0+$/, '')
+  } else {
+    // For very small prices, show up to 8 decimals
+    return price.toFixed(8).replace(/\.?0+$/, '')
+  }
 }
 
 onMounted(() => {

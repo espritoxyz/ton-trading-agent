@@ -30,6 +30,8 @@ export interface Asset {
     decimals?: number
     name?: string
     imageUrl?: string
+    readableAmount?: string
+    unitPrice?: number
     usdValue?: number
 }
 

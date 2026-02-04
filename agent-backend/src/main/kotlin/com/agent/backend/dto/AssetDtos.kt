@@ -21,5 +21,7 @@ data class AssetResponse(
     val decimals: Int? = null,
     val name: String? = null,
     val imageUrl: String? = null,
+    val readableAmount: String? = null,
+    val unitPrice: Double? = null,
     val usdValue: Double? = null
 )
