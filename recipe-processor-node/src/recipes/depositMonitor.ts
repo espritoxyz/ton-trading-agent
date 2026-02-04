@@ -166,7 +166,7 @@ async function pollTransactions(
             const bodyHash = inMsg.body ? bufToHex(inMsg.body.hash()) : txHash;
 
             // Parse comment from transaction body
-            const comment = parseDepositComment(inMsg.body);
+            const comment = parseDepositComment(inMsg);
 
             console.log(`[deposit-monitor] New incoming transaction:`, {
                 lt: tx.lt.toString(),
@@ -174,7 +174,6 @@ async function pollTransactions(
                 from: sender,
                 amount: `${amountTon} TON (${amountNano} nano)`,
                 comment: comment || "(no valid deposit code)",
-                hasBody: !!inMsg.body
             });
 
             // If there's a valid deposit code, publish event to backend
