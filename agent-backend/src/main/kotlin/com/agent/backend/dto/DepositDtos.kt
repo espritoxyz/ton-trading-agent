@@ -19,7 +19,10 @@ data class DepositStatusResponse(
     val depositRequestId: Long,
     val code: String,
     val status: DepositStatus,
-    val amountTon: String?,
+    val amountTon: String?, // Renamed but still works for backward compatibility - now contains readable amount for any asset
+    val assetType: String?, // "TON" or "JETTON"
+    val jettonSymbol: String?,
+    val jettonMasterAddress: String?,
     val transactionHash: String?,
     val createdAt: Instant,
     val expiresAt: Instant,
@@ -30,7 +33,9 @@ data class DepositHistoryItem(
     val depositRequestId: Long,
     val code: String,
     val status: DepositStatus,
-    val amountTon: String?,
+    val amountTon: String?, // Renamed but still works for backward compatibility
+    val assetType: String?,
+    val jettonSymbol: String?,
     val transactionHash: String?,
     val createdAt: Instant,
     val completedAt: Instant?

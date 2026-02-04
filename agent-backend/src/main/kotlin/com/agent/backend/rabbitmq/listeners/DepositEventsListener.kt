@@ -48,12 +48,16 @@ class DepositEventsListener(
                         return
                     }
 
-                    val amountTonNano = (data["amountTonNano"] as? String)?.toLongOrNull() ?: run {
-                        logger.warn { "Missing or invalid amountTonNano in deposit event" }
+                    val amountNano = (data["amountNano"] as? String)?.toLongOrNull() ?: run {
+                        logger.warn { "Missing or invalid amountNano in deposit event" }
                         return
                     }
 
                     val sender = data["sender"] as? String
+                    val assetType = data["assetType"] as? String ?: "TON"
+                    val jettonMasterAddress = data["jettonMasterAddress"] as? String
+                    val jettonSymbol = data["jettonSymbol"] as? String
+                    val jettonDecimals = (data["jettonDecimals"] as? Number)?.toInt()
 
                     // Validate code format (6 characters, uppercase alphanumeric)
                     val normalizedCode = comment.trim().uppercase()
@@ -62,9 +66,19 @@ class DepositEventsListener(
                         return
                     }
 
+                    val assetDisplay = when (assetType) {
+                        "TON" -> "${amountNano / 1_000_000_000.0} TON"
+                        "JETTON" -> {
+                            val decimals = jettonDecimals ?: 9
+                            val amount = amountNano / Math.pow(10.0, decimals.toDouble())
+                            "$amount ${jettonSymbol ?: "JETTON"}"
+                        }
+                        else -> "${amountNano}nano"
+                    }
+
                     logger.info {
-                        "Processing deposit transaction: code=$normalizedCode, amount=${amountTonNano}nano, " +
-                        "tx=$transactionHash, lt=$transactionLt, sender=$sender"
+                        "Processing deposit transaction: code=$normalizedCode, amount=$assetDisplay, " +
+                        "assetType=$assetType, tx=$transactionHash, lt=$transactionLt, sender=$sender"
                     }
 
                     try {
@@ -73,12 +87,15 @@ class DepositEventsListener(
                             transactionHash = transactionHash,
                             transactionLt = transactionLt,
                             bodyHash = bodyHash,
-                            amountTonNano = amountTonNano
+                            amountNano = amountNano,
+                            assetType = assetType,
+                            jettonMasterAddress = jettonMasterAddress,
+                            jettonSymbol = jettonSymbol,
+                            jettonDecimals = jettonDecimals
                         )
 
                         logger.info {
-                            "Successfully processed deposit for code $normalizedCode: " +
-                            "${amountTonNano / 1_000_000_000.0} TON"
+                            "Successfully processed deposit for code $normalizedCode: $assetDisplay"
                         }
                     } catch (e: IllegalArgumentException) {
                         logger.warn { "Failed to process deposit: ${e.message}" }

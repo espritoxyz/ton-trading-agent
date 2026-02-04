@@ -1,18 +1,19 @@
-import { TonClient, Address } from "@ton/ton";
+import { TonApiClient } from '@ton-api/client';
+import { Address } from "@ton/core";
 import { mnemonicToPrivateKey } from "@ton/crypto";
 import { WalletContractV5R1 } from "@ton/ton";
 import { mnemonic_array } from "../mnemonics.js";
 import { parseDepositComment } from "../commentParser.js";
-import { sleep, bufToHex } from "../utils.js";
+import { sleep } from "../utils.js";
 import type { Channel } from "amqplib";
 
-const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
-const apiKey = process.env.TONCENTER_API_KEY || "";
+const TONAPI_BASE_URL = process.env.TONAPI_BASE_URL || "https://tonapi.io";
+const TONAPI_KEY = process.env.TONAPI_KEY || "AGLZ4WFE7CTUJ2IAAAAF5WJRJG45LEVDRELXVXW53FFMAWDNU4AFU5CDDPUDBOYQDYWGE6I";
 const POLL_INTERVAL_MS = parseInt(process.env.DEPOSIT_POLL_INTERVAL_MS || "8000");
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 1000;
 
-let lastLt: bigint = BigInt(0);
+let lastEventId: string | null = null;
 let isMonitoring = false;
 let consecutiveErrors = 0;
 
@@ -24,28 +25,28 @@ export async function startDepositMonitoring(rabbitChannel: Channel, rabbitExcha
 
     isMonitoring = true;
 
-    const client = new TonClient({
-        endpoint,
-        apiKey,
-        timeout: 30000, // 30 second timeout
+    const client = new TonApiClient({
+        baseUrl: TONAPI_BASE_URL,
+        apiKey: TONAPI_KEY,
     });
+
     const { publicKey } = await mnemonicToPrivateKey(mnemonic_array);
     const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
     const walletAddress = wallet.address.toString({ bounceable: false });
 
     console.log("[deposit-monitor] Starting deposit monitoring...");
-    console.log("[deposit-monitor] Endpoint:", endpoint);
+    console.log("[deposit-monitor] TonAPI endpoint:", TONAPI_BASE_URL);
     console.log("[deposit-monitor] Deposit wallet address:", walletAddress);
     console.log("[deposit-monitor] Polling interval:", POLL_INTERVAL_MS, "ms");
 
     while (isMonitoring) {
         try {
-            await pollTransactionsWithRetry(client, wallet.address, rabbitChannel, rabbitExchange);
+            await pollEventsWithRetry(client, walletAddress, rabbitChannel, rabbitExchange);
             consecutiveErrors = 0; // Reset error counter on success
         } catch (error: any) {
             consecutiveErrors++;
             const errorMsg = error?.message || String(error);
-            console.error(`[deposit-monitor] Error polling transactions (attempt ${consecutiveErrors}):`, errorMsg);
+            console.error(`[deposit-monitor] Error polling events (attempt ${consecutiveErrors}):`, errorMsg);
 
             if (consecutiveErrors >= 10) {
                 console.error("[deposit-monitor] Too many consecutive errors, waiting longer before retry...");
@@ -57,9 +58,9 @@ export async function startDepositMonitoring(rabbitChannel: Channel, rabbitExcha
     }
 }
 
-async function pollTransactionsWithRetry(
-    client: TonClient,
-    walletAddress: Address,
+async function pollEventsWithRetry(
+    client: TonApiClient,
+    walletAddress: string,
     rabbitChannel: Channel,
     rabbitExchange: string
 ) {
@@ -67,7 +68,7 @@ async function pollTransactionsWithRetry(
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-            await pollTransactions(client, walletAddress, rabbitChannel, rabbitExchange);
+            await pollEvents(client, walletAddress, rabbitChannel, rabbitExchange);
             return; // Success
         } catch (error: any) {
             lastError = error;
@@ -98,121 +99,203 @@ async function pollTransactionsWithRetry(
     throw lastError || new Error('Failed after all retries');
 }
 
-async function pollTransactions(
-    client: TonClient,
-    walletAddress: Address,
+async function pollEvents(
+    client: TonApiClient,
+    walletAddress: string,
     rabbitChannel: Channel,
     rabbitExchange: string
 ) {
     const startTime = Date.now();
     try {
-        const transactions = await client.getTransactions(walletAddress, { limit: 20 });
+        // Fetch account events (includes both TON and Jetton transfers)
+        const params: any = { limit: 20 };
+        if (lastEventId) {
+            params.beforeLt = lastEventId;
+        }
+
+        const eventsResponse = await client.accounts.getAccountEvents(Address.parse(walletAddress), params);
         const duration = Date.now() - startTime;
 
-        if (transactions.length === 0) {
-            console.log(`[deposit-monitor] No transactions found (${duration}ms)`);
+        if (!eventsResponse.events || eventsResponse.events.length === 0) {
+            console.log(`[deposit-monitor] No new events found (${duration}ms)`);
             return;
         }
 
-        console.log(`[deposit-monitor] Fetched ${transactions.length} transactions (${duration}ms)`);
+        console.log(`[deposit-monitor] Fetched ${eventsResponse.events.length} events (${duration}ms)`);
 
-        // Process transactions in chronological order (oldest first)
-        const sortedTxs = transactions
-            .filter((tx) => tx.inMessage && tx.inMessage.info.type === "internal")
-            .sort((a, b) => {
-                const aLt = BigInt(a.lt);
-                const bLt = BigInt(b.lt);
-                return aLt < bLt ? -1 : aLt > bLt ? 1 : 0;
-            });
+        // Process events in chronological order (oldest first)
+        const sortedEvents = [...eventsResponse.events].reverse();
 
-        let newTxCount = 0;
+        let newEventCount = 0;
 
-        for (const tx of sortedTxs) {
-            const txLt = BigInt(tx.lt);
-
-            // Skip if we've already processed this transaction
-            if (txLt <= lastLt) {
+        for (const event of sortedEvents) {
+            // Skip if we've already processed this event
+            if (lastEventId && event.eventId === lastEventId) {
                 continue;
             }
 
-            const inMsg = tx.inMessage;
-            if (!inMsg || inMsg.info.type !== "internal") {
-                continue;
-            }
+            // Process actions in the event
+            for (const action of event.actions) {
+                const actionType = action.type;
 
-            // Skip bounced messages
-            if (inMsg.info.bounced) {
-                console.log(`[deposit-monitor] Skipping bounced transaction, lt=${tx.lt}`);
-                continue;
-            }
+                // Handle TON Transfer
+                if (actionType === 'TonTransfer') {
+                    const tonTransfer = action.TonTransfer;
+                    if (!tonTransfer) continue;
 
-            // Check if transaction has value (skip zero-value notifications)
-            const txValue = inMsg.info.value.coins;
-            if (txValue === 0n) {
-                console.log(`[deposit-monitor] Skipping zero-value transaction, lt=${tx.lt}`);
-                continue;
-            }
+                    // Check if this is an incoming transfer (recipient is our wallet)
+                    const recipientAddr = tonTransfer.recipient?.address;
+                    if (!recipientAddr || recipientAddr.toString({ bounceable: false }) !== walletAddress) continue;
 
-            // Extract transaction details
-            const sender = inMsg.info.src.toString({ bounceable: false });
+                    const senderAddr = tonTransfer.sender?.address;
+                    const senderStr = senderAddr ? senderAddr.toString({ bounceable: false }) : "unknown";
+                    const amountNano = tonTransfer.amount?.toString() || "0";
+                    const amountTon = (Number(amountNano) / 1_000_000_000).toFixed(4);
 
-            // Get amount in nanotons - inMsg.info.value.coins is a Coins object (bigint)
-            const amountNano = inMsg.info.value.coins.toString();
-            const amountTon = (Number(inMsg.info.value.coins) / 1_000_000_000).toFixed(4);
+                    // Extract comment from the action
+                    const comment = tonTransfer.comment || null;
+                    const depositCode = comment ? validateDepositCode(comment) : null;
 
-            const txHash = bufToHex(tx.hash());
+                    console.log(`[deposit-monitor] 📥 New TON transfer:`, {
+                        eventId: event.eventId,
+                        from: senderStr,
+                        amount: `${amountTon} TON (${amountNano} nano)`,
+                        comment: depositCode || "(no valid deposit code)",
+                    });
 
-            // Compute body hash for duplicate detection
-            const bodyHash = inMsg.body ? bufToHex(inMsg.body.hash()) : txHash;
+                    if (depositCode) {
+                        const depositData = {
+                            transactionHash: event.eventId, // Use eventId as unique identifier
+                            transactionLt: event.lt?.toString() || "0",
+                            bodyHash: event.eventId, // Use eventId for duplicate detection
+                            comment: depositCode,
+                            amountNano: amountNano,
+                            sender: senderStr,
+                            assetType: "TON" as const,
+                            jettonMasterAddress: null,
+                            jettonSymbol: null,
+                            jettonDecimals: null,
+                        };
 
-            // Parse comment from transaction body
-            const comment = parseDepositComment(inMsg);
+                        console.log(`[deposit-monitor] ✅ Valid TON deposit code found: ${depositCode}`);
+                        console.log(`[deposit-monitor] Amount: ${amountTon} TON, Sender: ${senderStr}`);
 
-            console.log(`[deposit-monitor] New incoming transaction:`, {
-                lt: tx.lt.toString(),
-                hash: txHash,
-                from: sender,
-                amount: `${amountTon} TON (${amountNano} nano)`,
-                comment: comment || "(no valid deposit code)",
-            });
-
-            // If there's a valid deposit code, publish event to backend
-            if (comment) {
-                const depositData = {
-                    transactionHash: txHash,
-                    transactionLt: tx.lt.toString(),
-                    bodyHash,
-                    comment,
-                    amountTonNano: amountNano,
-                    sender,
-                };
-
-                console.log(`[deposit-monitor] ✅ Valid deposit code found: ${comment}`);
-                console.log(`[deposit-monitor] Amount: ${amountTon} TON, Sender: ${sender}`);
-
-                try {
-                    await publishDepositTransaction(rabbitChannel, rabbitExchange, depositData);
-                    console.log(`[deposit-monitor] 📤 Published deposit event to backend`);
-                } catch (publishError) {
-                    console.error(`[deposit-monitor] ❌ Failed to publish deposit event:`, publishError);
-                    // Don't throw - we'll try again on next poll if needed
+                        try {
+                            await publishDepositTransaction(rabbitChannel, rabbitExchange, depositData);
+                            console.log(`[deposit-monitor] 📤 Published TON deposit event to backend`);
+                        } catch (publishError) {
+                            console.error(`[deposit-monitor] ❌ Failed to publish deposit event:`, publishError);
+                        }
+                    } else {
+                        console.log(`[deposit-monitor] TON transfer without deposit code (normal transfer)`);
+                    }
                 }
-            } else {
-                // Log transactions without valid deposit codes at debug level
-                console.log(`[deposit-monitor] Transaction without deposit code (normal transfer or other operation)`);
+
+                // Handle Jetton Transfer
+                if (actionType === 'JettonTransfer') {
+                    const jettonTransfer = action.JettonTransfer;
+                    if (!jettonTransfer) continue;
+
+                    // Check if this is an incoming transfer
+                    const recipientAddr = jettonTransfer.recipient?.address;
+                    if (!recipientAddr || recipientAddr.toString({ bounceable: false }) !== walletAddress) continue;
+
+                    const senderAddr = jettonTransfer.sender?.address;
+                    const senderStr = senderAddr
+                        ? (typeof senderAddr === 'string' ? senderAddr : senderAddr.toString({ bounceable: false }))
+                        : "unknown";
+
+                    const amountBigInt = typeof jettonTransfer.amount === 'bigint'
+                        ? jettonTransfer.amount
+                        : BigInt(jettonTransfer.amount || "0");
+                    const amountNano = amountBigInt.toString();
+
+                    const jetton = jettonTransfer.jetton;
+
+                    if (!jetton) {
+                        console.log(`[deposit-monitor] ⚠️ Jetton transfer without jetton info, skipping`);
+                        continue;
+                    }
+
+                    const jettonMasterAddr = jetton.address;
+                    const jettonMasterAddress = typeof jettonMasterAddr === 'string'
+                        ? jettonMasterAddr
+                        : jettonMasterAddr.toString({ bounceable: true });
+
+                    const jettonSymbol = jetton.symbol || "UNKNOWN";
+                    const jettonDecimals = jetton.decimals || 9;
+                    const jettonName = jetton.name || jettonSymbol;
+
+                    const amountReadable = (Number(amountBigInt) / Math.pow(10, jettonDecimals)).toFixed(jettonDecimals);
+
+                    // Extract comment from the action
+                    const comment = jettonTransfer.comment || null;
+                    const depositCode = comment ? validateDepositCode(comment) : null;
+
+                    console.log(`[deposit-monitor] 🪙 New Jetton transfer:`, {
+                        eventId: event.eventId,
+                        jetton: `${jettonName} (${jettonSymbol})`,
+                        from: senderStr,
+                        amount: `${amountReadable} ${jettonSymbol} (${amountNano} nano)`,
+                        jettonMaster: jettonMasterAddress,
+                        comment: depositCode || "(no valid deposit code)",
+                    });
+
+                    if (depositCode) {
+                        const depositData = {
+                            transactionHash: event.eventId,
+                            transactionLt: event.lt?.toString() || "0",
+                            bodyHash: event.eventId,
+                            comment: depositCode,
+                            amountNano: amountNano,
+                            sender: senderStr,
+                            assetType: "JETTON" as const,
+                            jettonMasterAddress: jettonMasterAddress,
+                            jettonSymbol: jettonSymbol,
+                            jettonDecimals: jettonDecimals,
+                        };
+
+                        console.log(`[deposit-monitor] ✅ Valid Jetton deposit code found: ${depositCode}`);
+                        console.log(`[deposit-monitor] Amount: ${amountReadable} ${jettonSymbol}, Sender: ${senderStr}`);
+
+                        try {
+                            await publishDepositTransaction(rabbitChannel, rabbitExchange, depositData);
+                            console.log(`[deposit-monitor] 📤 Published Jetton deposit event to backend`);
+                        } catch (publishError) {
+                            console.error(`[deposit-monitor] ❌ Failed to publish deposit event:`, publishError);
+                        }
+                    } else {
+                        console.log(`[deposit-monitor] Jetton transfer without deposit code (normal transfer)`);
+                    }
+                }
             }
 
-            newTxCount++;
-            lastLt = txLt;
+            newEventCount++;
+            lastEventId = event.eventId;
         }
 
-        if (newTxCount > 0) {
-            console.log(`[deposit-monitor] Processed ${newTxCount} new transaction(s), lastLt=${lastLt}`);
+        if (newEventCount > 0) {
+            console.log(`[deposit-monitor] Processed ${newEventCount} new event(s), lastEventId=${lastEventId}`);
         }
     } catch (error) {
-        console.error("[deposit-monitor] Error fetching transactions:", error);
+        console.error("[deposit-monitor] Error fetching events:", error);
         throw error;
     }
+}
+
+// Helper function to validate deposit code format
+function validateDepositCode(comment: string): string | null {
+    if (!comment) return null;
+
+    const normalized = comment.trim().toUpperCase();
+
+    // Check if it matches the 6-character code format
+    const CODE_REGEX = /^[A-Z0-9]{6}$/;
+    if (!CODE_REGEX.test(normalized)) {
+        return null;
+    }
+
+    return normalized;
 }
 
 async function publishDepositTransaction(
@@ -223,8 +306,12 @@ async function publishDepositTransaction(
         transactionLt: string;
         bodyHash: string;
         comment: string;
-        amountTonNano: string;
+        amountNano: string;
         sender: string;
+        assetType: "TON" | "JETTON";
+        jettonMasterAddress: string | null;
+        jettonSymbol: string | null;
+        jettonDecimals: number | null;
     }
 ) {
     const event = {
@@ -235,10 +322,16 @@ async function publishDepositTransaction(
 
     const routingKey = "deposit.transaction-found";
 
+    const assetDisplay = data.assetType === "JETTON"
+        ? `${data.jettonSymbol} (Jetton)`
+        : "TON";
+
     console.log(`[deposit-monitor] Publishing event:`, {
         type: event.type,
         code: data.comment,
-        amount: data.amountTonNano,
+        assetType: data.assetType,
+        asset: assetDisplay,
+        amount: data.amountNano,
         txHash: data.transactionHash.substring(0, 16) + "...",
     });
 

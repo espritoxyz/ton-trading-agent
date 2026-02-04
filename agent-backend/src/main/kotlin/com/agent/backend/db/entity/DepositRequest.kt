@@ -29,8 +29,20 @@ class DepositRequest(
     @Column(nullable = false, length = 20)
     var status: DepositStatus = DepositStatus.PENDING,
 
-    @Column(name = "amount_ton_nano")
-    var amountTonNano: Long? = null,
+    @Column(name = "amount_nano")
+    var amountNano: Long? = null,
+
+    @Column(name = "asset_type", length = 20)
+    var assetType: String? = null, // "TON" or "JETTON"
+
+    @Column(name = "jetton_master_address", length = 100)
+    var jettonMasterAddress: String? = null,
+
+    @Column(name = "jetton_symbol", length = 20)
+    var jettonSymbol: String? = null,
+
+    @Column(name = "jetton_decimals")
+    var jettonDecimals: Int? = null,
 
     @Column(name = "transaction_hash", length = 64)
     var transactionHash: String? = null,

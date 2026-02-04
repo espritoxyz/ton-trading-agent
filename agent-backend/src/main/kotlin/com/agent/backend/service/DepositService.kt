@@ -65,7 +65,12 @@ class DepositService(
             depositRequestId = depositRequest.id!!,
             code = depositRequest.code,
             status = depositRequest.status,
-            amountTon = depositRequest.amountTonNano?.let { nanoToTon(it) },
+            amountTon = depositRequest.amountNano?.let {
+                nanoToReadable(it, depositRequest.jettonDecimals ?: 9)
+            },
+            assetType = depositRequest.assetType,
+            jettonSymbol = depositRequest.jettonSymbol,
+            jettonMasterAddress = depositRequest.jettonMasterAddress,
             transactionHash = depositRequest.transactionHash,
             createdAt = depositRequest.createdAt,
             expiresAt = depositRequest.expiresAt,
@@ -79,7 +84,11 @@ class DepositService(
                 depositRequestId = dr.id!!,
                 code = dr.code,
                 status = dr.status,
-                amountTon = dr.amountTonNano?.let { nanoToTon(it) },
+                amountTon = dr.amountNano?.let {
+                    nanoToReadable(it, dr.jettonDecimals ?: 9)
+                },
+                assetType = dr.assetType,
+                jettonSymbol = dr.jettonSymbol,
                 transactionHash = dr.transactionHash,
                 createdAt = dr.createdAt,
                 completedAt = dr.completedAt
@@ -93,7 +102,11 @@ class DepositService(
         transactionHash: String,
         transactionLt: Long,
         bodyHash: String,
-        amountTonNano: Long
+        amountNano: Long,
+        assetType: String,
+        jettonMasterAddress: String? = null,
+        jettonSymbol: String? = null,
+        jettonDecimals: Int? = null
     ) {
         // Find pending deposit request by code
         val depositRequest = depositRequestRepository.findByCodeAndStatus(code, DepositStatus.PENDING)
@@ -107,7 +120,11 @@ class DepositService(
 
         // Update deposit request
         depositRequest.status = DepositStatus.COMPLETED
-        depositRequest.amountTonNano = amountTonNano
+        depositRequest.amountNano = amountNano
+        depositRequest.assetType = assetType
+        depositRequest.jettonMasterAddress = jettonMasterAddress
+        depositRequest.jettonSymbol = jettonSymbol
+        depositRequest.jettonDecimals = jettonDecimals
         depositRequest.transactionHash = transactionHash
         depositRequest.transactionLt = transactionLt
         depositRequest.completedAt = Instant.now()
@@ -122,10 +139,24 @@ class DepositService(
         )
         processedTransactionRepository.save(processedTx)
 
-        // Update user's asset balance
-        assetService.addOrUpdateAsset(depositRequest.userId, "TON", amountTonNano)
+        // Determine asset address for the Asset table
+        val assetAddress = when (assetType) {
+            "TON" -> "TON"
+            "JETTON" -> jettonMasterAddress ?: throw IllegalArgumentException("Jetton master address is required for jetton deposits")
+            else -> throw IllegalArgumentException("Unknown asset type: $assetType")
+        }
 
-        logger.info("Deposit completed for code $code: ${nanoToTon(amountTonNano)} TON, user ${depositRequest.userId}, tx $transactionHash")
+        // Update user's asset balance
+        assetService.addOrUpdateAsset(depositRequest.userId, assetAddress, amountNano)
+
+        // Log with appropriate units
+        val readableAmount = when (assetType) {
+            "TON" -> "${nanoToReadable(amountNano, 9)} TON"
+            "JETTON" -> "${nanoToReadable(amountNano, jettonDecimals ?: 9)} ${jettonSymbol ?: "JETTON"}"
+            else -> "$amountNano nano"
+        }
+
+        logger.info("Deposit completed for code $code: $readableAmount ($assetType), user ${depositRequest.userId}, tx $transactionHash")
     }
 
     @Transactional
@@ -164,5 +195,10 @@ class DepositService(
 
     private fun nanoToTon(nanoTon: Long): String {
         return String.format("%.4f", nanoTon / 1_000_000_000.0)
+    }
+
+    private fun nanoToReadable(nanoAmount: Long, decimals: Int): String {
+        val divisor = Math.pow(10.0, decimals.toDouble())
+        return String.format("%.${decimals}f", nanoAmount / divisor)
     }
 }
