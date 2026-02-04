@@ -48,8 +48,48 @@
               {{ asset.name }}
             </span>
           </div>
-          <div class="text-xs text-gray-400 truncate">
-            {{ formatAddress(asset.address) }}
+          <div class="flex items-center gap-1.5 text-xs text-gray-400">
+            <span
+                v-if="asset.address !== 'TON'"
+                @click="copyAddress(asset.address, asset.id)"
+                class="truncate cursor-pointer hover:text-cyan-400 transition-colors"
+                title="Click to copy address"
+            >
+              {{ formatAddress(asset.address) }}
+            </span>
+            <span v-else class="truncate">{{ formatAddress(asset.address) }}</span>
+            <!-- Action Icons -->
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <!-- Copy Address (only for jettons, not for TON) -->
+              <button
+                  v-if="asset.address !== 'TON'"
+                  @click="copyAddress(asset.address, asset.id)"
+                  :class="{'copied': copiedAssetId === asset.id}"
+                  class="copy-btn p-0.5 hover:text-cyan-400 transition-all duration-200"
+                  title="Copy address"
+              >
+                <svg v-if="copiedAssetId !== asset.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+              </button>
+              <!-- TonViewer -->
+              <a
+                  :href="getTonViewerUrl(asset.address)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="p-0.5 hover:opacity-80 transition-opacity flex items-center"
+                  title="View on TonViewer"
+              >
+                <img
+                    src="https://www.google.com/s2/favicons?domain=tonviewer.com&sz=64"
+                    alt="TonViewer"
+                    class="w-3.5 h-3.5"
+                />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -58,13 +98,8 @@
           <div class="font-mono font-semibold text-white">
             {{ asset.readableAmount }} {{ asset.symbol }}
           </div>
-          <div class="text-xs text-gray-400 space-y-0.5">
-            <div v-if="asset.unitPrice">
-              ${{ formatPrice(asset.unitPrice) }} / {{ asset.symbol }}
-            </div>
-            <div v-if="asset.usdValue" class="font-semibold text-gray-300">
-              ${{ asset.usdValue.toFixed(2) }}
-            </div>
+          <div v-if="asset.unitPrice" class="text-xs text-gray-400">
+            ${{ formatPrice(asset.unitPrice) }} / {{ asset.symbol }}
           </div>
         </div>
       </div>
@@ -105,6 +140,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const {assets, loadingAssets, assetsError, loadAssets} = useAssets()
 const showAll = ref(false)
+const copiedAssetId = ref<number | null>(null)
 
 const displayedAssets = computed(() => {
   if (showAll.value) {
@@ -150,6 +186,27 @@ const formatPrice = (price: number) => {
   }
 }
 
+const copyAddress = async (address: string, assetId: number) => {
+  try {
+    await navigator.clipboard.writeText(address)
+    copiedAssetId.value = assetId
+    // Reset after 2 seconds
+    setTimeout(() => {
+      copiedAssetId.value = null
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy address:', err)
+  }
+}
+
+const getTonViewerUrl = (address: string) => {
+  if (address === 'TON') {
+    // For native TON, just link to tonviewer homepage or TON currency page
+    return 'https://tonviewer.com/'
+  }
+  return `https://tonviewer.com/${address}`
+}
+
 onMounted(() => {
   loadAssets(props.userId)
 })
@@ -167,5 +224,22 @@ defineExpose({
 
 .asset-item:hover {
   border-color: rgba(99, 102, 241, 0.3);
+}
+
+.copy-btn.copied {
+  color: #22c55e;
+  animation: copy-success 0.3s ease-in-out;
+}
+
+@keyframes copy-success {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>
