@@ -134,7 +134,7 @@ onUnmounted(() => {
                         </div>
                         <div>
                             <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-                                <span class="gradient-text">Top Up Wallet</span>
+                                <span class="gradient-text">Deposit</span>
                             </h3>
                             <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Deposit TON or Jettons</p>
                         </div>
@@ -287,7 +287,7 @@ onUnmounted(() => {
                             </li>
                             <li class="flex gap-2">
                                 <span class="font-bold">6.</span>
-                                <span>For additional deposits, click "Top Up" again to get a new code</span>
+                                <span>For additional deposits, click "Deposit" again to get a new code</span>
                             </li>
                         </ol>
                     </div>

@@ -93,12 +93,12 @@ async function handleOpenTopUp() {
         <div v-if="acted === null" class="pt-2">
           <button @click="handleOpenTopUp" class="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-3 text-white hover:shadow-lg transition font-semibold flex items-center justify-center gap-2">
             <Wallet :size="18" />
-            <span>Top Up Wallet</span>
+            <span>Deposit</span>
           </button>
         </div>
         <div v-else-if="acted==='opened'" class="flex items-center gap-2 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30">
           <CheckCircle :size="18" class="text-emerald-600 dark:text-emerald-400" />
-          <span class="text-emerald-700 dark:text-emerald-300 font-medium">Top-up dialog opened</span>
+          <span class="text-emerald-700 dark:text-emerald-300 font-medium">Deposit dialog opened</span>
         </div>
       </div>
     </template>

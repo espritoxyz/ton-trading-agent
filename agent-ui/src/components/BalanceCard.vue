@@ -123,7 +123,7 @@ function handleRefresh() {
             @click="showTopUpModal = true"
         >
           <Plus :size="16"/>
-          <span>Top Up</span>
+          <span>Deposit</span>
         </button>
         <button
             class="rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2 group"
