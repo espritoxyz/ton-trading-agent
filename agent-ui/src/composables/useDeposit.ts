@@ -22,6 +22,8 @@ export interface DepositStatus {
     createdAt: string
     expiresAt: string
     completedAt: string | null
+    unitPrice: number | null // USD price per unit of asset
+    usdValue: number | null // Total USD value of the deposit
 }
 
 export const currentDeposit = ref<DepositRequest | null>(null)

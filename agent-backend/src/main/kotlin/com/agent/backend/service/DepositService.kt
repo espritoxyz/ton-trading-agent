@@ -20,6 +20,7 @@ class DepositService(
     private val depositRequestRepository: DepositRequestRepository,
     private val processedTransactionRepository: ProcessedTransactionRepository,
     private val assetService: AssetService,
+    private val balanceService: BalanceService,
     @Value("\${deposit.wallet.address}") private val depositWalletAddress: String,
     @Value("\${deposit.expiry.hours:24}") private val expiryHours: Long
 ) {
@@ -69,6 +70,27 @@ class DepositService(
     fun getDepositStatus(depositRequestId: Long): DepositStatusResponse? {
         val depositRequest = depositRequestRepository.findById(depositRequestId).orElse(null) ?: return null
 
+        // Calculate price and USD value if deposit is completed
+        var unitPrice: Double? = null
+        var usdValue: Double? = null
+
+        if (depositRequest.status == DepositStatus.COMPLETED && depositRequest.amountNano != null) {
+            // Create a temporary Asset object to use enrichAsset
+            val tempAsset = com.agent.backend.db.entity.Asset(
+                userId = depositRequest.userId,
+                address = when (depositRequest.assetType) {
+                    "TON" -> "TON"
+                    "JETTON" -> depositRequest.jettonMasterAddress ?: "UNKNOWN"
+                    else -> "UNKNOWN"
+                },
+                amountNano = depositRequest.amountNano!!
+            )
+
+            val enrichedAsset = balanceService.enrichAsset(tempAsset)
+            unitPrice = enrichedAsset.unitPrice
+            usdValue = enrichedAsset.usdValue
+        }
+
         return DepositStatusResponse(
             depositRequestId = depositRequest.id!!,
             code = depositRequest.code,
@@ -82,7 +104,9 @@ class DepositService(
             transactionHash = depositRequest.transactionHash,
             createdAt = depositRequest.createdAt,
             expiresAt = depositRequest.expiresAt,
-            completedAt = depositRequest.completedAt
+            completedAt = depositRequest.completedAt,
+            unitPrice = unitPrice,
+            usdValue = usdValue
         )
     }
 

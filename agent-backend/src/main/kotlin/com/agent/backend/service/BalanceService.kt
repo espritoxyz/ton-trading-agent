@@ -32,7 +32,7 @@ open class BalanceService(
         val assets = assetService.list(userId)
 
         val totalUsd = assets.sumOf { asset ->
-            val decimals = if (asset.address.equals(tonAddress, ignoreCase = true)) {
+            val decimals = if (asset.address.equals(tonAddress, ignoreCase = true) || asset.address.equals("TON", ignoreCase = true)) {
                 9 // Native TON uses 9 decimals
             } else {
                 stonfiAssetsCache.getDecimals(asset.address) ?: 9 // Fallback to 9 if unknown
@@ -55,8 +55,8 @@ open class BalanceService(
     }
 
     private fun priceUsdPerUnit(address: String): Double {
-        // Check if this is native TON
-        if (address.equals(tonAddress, ignoreCase = true)) {
+        // Check if this is native TON (supports both "TON" and full address)
+        if (address.equals(tonAddress, ignoreCase = true) || address.equals("TON", ignoreCase = true)) {
             return getTonToUSDT() ?: 1.0
         }
 
@@ -80,7 +80,7 @@ open class BalanceService(
      * Enriches asset with price data, decimals, and metadata.
      */
     fun enrichAsset(asset: Asset): AssetResponse {
-        val isTon = asset.address.equals(tonAddress, ignoreCase = true)
+        val isTon = asset.address.equals(tonAddress, ignoreCase = true) || asset.address.equals("TON", ignoreCase = true)
 
         // Get decimals
         val decimals = if (isTon) {

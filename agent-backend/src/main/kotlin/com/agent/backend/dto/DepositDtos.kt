@@ -26,7 +26,9 @@ data class DepositStatusResponse(
     val transactionHash: String?,
     val createdAt: Instant,
     val expiresAt: Instant,
-    val completedAt: Instant?
+    val completedAt: Instant?,
+    val unitPrice: Double?, // USD price per unit of asset
+    val usdValue: Double? // Total USD value of the deposit
 )
 
 data class DepositHistoryItem(

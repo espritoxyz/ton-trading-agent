@@ -15,6 +15,8 @@ const status = ref<'pending' | 'completed' | 'expired'>('pending')
 const amountTon = ref<string | null>(null)
 const assetSymbol = ref<string>('TON')
 const transactionHash = ref<string | null>(null)
+const usdValue = ref<number | null>(null)
+const assetType = ref<string | null>(null)
 
 const timeRemaining = ref('')
 
@@ -42,7 +44,9 @@ async function pollStatus() {
             status.value = 'completed'
             amountTon.value = statusData.amountTon
             assetSymbol.value = statusData.jettonSymbol || statusData.assetType || 'TON'
+            assetType.value = statusData.assetType
             transactionHash.value = statusData.transactionHash
+            usdValue.value = statusData.usdValue
             stopPolling()
             emits('completed')
         } else if (statusData.status === 'EXPIRED') {
@@ -165,9 +169,25 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else-if="status === 'completed'" class="flex flex-col items-center justify-center py-12">
+                    <!-- Asset Icon -->
+                    <div class="mb-4">
+                        <img
+                            v-if="assetType === 'TON'"
+                            src="https://ton.org/download/ton_symbol.png"
+                            alt="TON"
+                            class="w-20 h-20 rounded-full"
+                        />
+                        <div
+                            v-else
+                            class="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-2xl"
+                        >
+                            {{ assetSymbol.substring(0, 2) }}
+                        </div>
+                    </div>
                     <CheckCircle :size="64" class="text-emerald-500" />
                     <h4 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Deposit Received!</h4>
-                    <p class="mt-2 text-lg text-gray-700 dark:text-gray-300">{{ amountTon }} {{ assetSymbol }}</p>
+                    <p class="mt-2 text-lg font-semibold text-gray-700 dark:text-gray-300">{{ amountTon }} {{ assetSymbol }}</p>
+                    <p v-if="usdValue" class="mt-1 text-sm text-gray-600 dark:text-gray-400">≈ ${{ usdValue.toFixed(2) }}</p>
                     <a
                         v-if="tonViewerLink"
                         :href="tonViewerLink"
