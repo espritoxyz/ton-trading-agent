@@ -63,7 +63,7 @@ async function enrichAssetsWithMetadata(rawAssets: Asset[]): Promise<Asset[]> {
                     symbol: asset.symbol || 'TON',
                     decimals: asset.decimals || 9,
                     name: asset.name || 'Toncoin',
-                    imageUrl: 'https://ton.org/download/ton_symbol.png'
+                    imageUrl: 'https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png'
                 }
             }
 

@@ -173,7 +173,7 @@ onUnmounted(() => {
                     <div class="mb-4">
                         <img
                             v-if="assetType === 'TON'"
-                            src="https://ton.org/download/ton_symbol.png"
+                            src="https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png"
                             alt="TON"
                             class="w-20 h-20 rounded-full"
                         />
