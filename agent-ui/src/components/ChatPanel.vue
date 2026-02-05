@@ -4,11 +4,13 @@ import * as chatModule from '../composables/useChat.ts'
 import { accessToken } from '../composables/useAuth.ts'
 import MessageBubble from './MessageBubble.vue'
 import InputBar from './InputBar.vue'
+import TopUpModal from './TopUpModal.vue'
 import { MessageCircle, Lock } from 'lucide-vue-next'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
 const sending = chat.sending
+const showTopUpModal = ref(false)
 
 async function clearConversation() {
   try {
@@ -133,6 +135,15 @@ async function handleSend(text: string) {
   await nextTick()
   requestAnimationFrame(() => scrollToBottom(true))
 }
+
+function handleOpenTopUp() {
+  showTopUpModal.value = true
+}
+
+function handleTopUpCompleted() {
+  showTopUpModal.value = false
+  // Optionally refresh assets here if needed
+}
 </script>
 
 <template>
@@ -171,6 +182,7 @@ async function handleSend(text: string) {
           :utility-kind="m.utilityKind"
           :utility-meta="m.utilityMeta"
           @dismiss="(id) => { if (!id) return; const idx = messages.findIndex(x => x.id === id); if (idx !== -1) messages.splice(idx, 1) }"
+          @open-top-up="handleOpenTopUp"
         />
       </div>
 
@@ -190,6 +202,12 @@ async function handleSend(text: string) {
 
     <InputBar :disabled="!ready" @send="handleSend" />
   </div>
+
+  <TopUpModal
+    v-if="showTopUpModal"
+    @close="showTopUpModal = false"
+    @completed="handleTopUpCompleted"
+  />
 </template>
 
 <style scoped>

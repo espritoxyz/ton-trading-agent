@@ -155,13 +155,21 @@ export function useChat(userId?: number) {
                 for (const c of confs) {
                     const exists = messages.value.some(m => m.backendMessageId === c.id)
                     if (!exists && c.status === 'PENDING') {
+                        // Map toolName to utilityKind
+                        let utilityKind: 'CONFIRM_SEND_TON' | 'SHOW_TOP_UP' = 'CONFIRM_SEND_TON'
+                        if (c.toolName === 'show_top_up_dialog') {
+                            utilityKind = 'SHOW_TOP_UP'
+                        } else if (c.toolName === 'send_ton_to_address') {
+                            utilityKind = 'CONFIRM_SEND_TON'
+                        }
+
                         messages.value.push({
                             id: `CONFIRM_${c.id}`,
                             role: 'SYSTEM',
                             content: c.text,
                             backendMessageId: c.id,
                             createdAt: new Date().toISOString(),
-                            utilityKind: 'CONFIRM_SEND_TON',
+                            utilityKind,
                             utilityMeta: { messageId, confirmationId: c.id }
                         })
                     }
@@ -184,7 +192,7 @@ export function useChat(userId?: number) {
     }
 
     async function listConfirmations(messageId: string) {
-        const { data } = await api.get<Array<{ id: string; text: string; status: 'PENDING' | 'APPROVED' | 'DECLINED' }>>(`/chat/messages/${messageId}/confirmations`)
+        const { data } = await api.get<Array<{ id: string; toolName: string; text: string; status: 'PENDING' | 'APPROVED' | 'DECLINED' }>>(`/chat/messages/${messageId}/confirmations`)
         return data
     }
 

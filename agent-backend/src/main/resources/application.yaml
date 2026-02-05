@@ -47,3 +47,10 @@ security:
       key: ${TOKEN_ENCRYPTION_KEY}
       key-id: ${TOKEN_ENCRYPTION_KEY_ID:default}
     token-hash-secret: ${TOKEN_HASH_SECRET}
+
+deposit:
+  wallet:
+    address: ${DEPOSIT_WALLET_ADDRESS}
+  poll-interval-ms: ${DEPOSIT_POLL_INTERVAL_MS:8000}
+  expiry:
+    hours: 24

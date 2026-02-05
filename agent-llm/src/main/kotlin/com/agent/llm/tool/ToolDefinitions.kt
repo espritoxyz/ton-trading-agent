@@ -14,5 +14,6 @@ class ToolDefinitions(
         SwapTonToTokenAgentTool(bcAdapter),
         SwapTokenToTonAgentTool(bcAdapter),
         GetCandidateAssetsAgentTool(bcAdapter),
+        ShowTopUpAgentTool(bcAdapter),
     )
 }

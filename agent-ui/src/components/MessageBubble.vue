@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {ref} from 'vue'
 import type {ChatRole, ChatUtilityKind} from "../types.ts";
-import { Zap, Check, X, CheckCircle, XCircle } from 'lucide-vue-next'
+import { Zap, Check, X, CheckCircle, XCircle, Wallet } from 'lucide-vue-next'
 
 const props = defineProps<{
   role: ChatRole;
@@ -13,9 +13,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'dismiss', id: string | undefined): void
+  (e: 'openTopUp'): void
 }>()
 
-const acted = ref<null | 'approved' | 'declined'>(null)
+const acted = ref<null | 'approved' | 'declined' | 'opened'>(null)
 
 import { api } from '../composables/useApi.ts'
 
@@ -37,6 +38,17 @@ async function handleDecline() {
       await api.post(`/chat/messages/${props.utilityMeta.messageId}/confirmations/${props.utilityMeta.confirmationId}/decline`)
     }
   } catch {}
+  emit('dismiss', props.localId)
+}
+
+async function handleOpenTopUp() {
+  acted.value = 'opened'
+  try {
+    if (props.utilityMeta?.messageId && props.utilityMeta?.confirmationId) {
+      await api.post(`/chat/messages/${props.utilityMeta.messageId}/confirmations/${props.utilityMeta.confirmationId}/approve`)
+    }
+  } catch {}
+  emit('openTopUp')
   emit('dismiss', props.localId)
 }
 </script>
@@ -69,6 +81,24 @@ async function handleDecline() {
         <div v-else class="flex items-center gap-2 p-3 rounded-xl bg-rose-100 dark:bg-rose-500/20 border border-rose-300 dark:border-rose-500/30">
           <XCircle :size="18" class="text-rose-600 dark:text-rose-400" />
           <span class="text-rose-700 dark:text-rose-300 font-medium">Declined</span>
+        </div>
+      </div>
+    </template>
+    <template v-else-if="utilityKind === 'SHOW_TOP_UP'">
+      <div class="space-y-3">
+        <div class="flex items-start gap-2">
+          <Wallet :size="18" class="text-emerald-500 flex-shrink-0 mt-0.5" />
+          <div>{{ text }}</div>
+        </div>
+        <div v-if="acted === null" class="pt-2">
+          <button @click="handleOpenTopUp" class="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-3 text-white hover:shadow-lg transition font-semibold flex items-center justify-center gap-2">
+            <Wallet :size="18" />
+            <span>Top Up Wallet</span>
+          </button>
+        </div>
+        <div v-else-if="acted==='opened'" class="flex items-center gap-2 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30">
+          <CheckCircle :size="18" class="text-emerald-600 dark:text-emerald-400" />
+          <span class="text-emerald-700 dark:text-emerald-300 font-medium">Top-up dialog opened</span>
         </div>
       </div>
     </template>
