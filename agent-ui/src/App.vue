@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, getCurrentInstance } from 'vue'
 import LandingApp from '../landing/src/App.vue'
 import AppLayout from './layouts/AppLayout.vue'
 import Dashboard from './pages/Dashboard.vue'
@@ -9,6 +9,15 @@ import BlogPage from '../landing/src/BlogPage.vue'
 import TermsPage from '../landing/src/TermsPage.vue'
 
 const route = ref(window.location.pathname || '/')
+const instance = getCurrentInstance()
+const metrika = instance?.appContext.config.globalProperties.$metrika
+
+// Track page views in Yandex Metrika
+watch(route, (newRoute) => {
+  if (metrika) {
+    metrika.hit(newRoute)
+  }
+})
 
 function navigate(to: string) {
   if (to === route.value) return
@@ -17,6 +26,11 @@ function navigate(to: string) {
 }
 
 onMounted(() => {
+  // Track initial page view
+  if (metrika) {
+    metrika.hit(route.value)
+  }
+
   window.addEventListener('popstate', () => {
     route.value = window.location.pathname
   })
