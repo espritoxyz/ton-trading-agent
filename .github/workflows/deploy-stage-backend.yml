@@ -1,0 +1,48 @@
+name: Deploy STAGE Backend
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - "agent-backend/**"
+      - "agent-llm/**"
+      - "recipe-processor-node/**"
+      - "docker-compose*.yml"
+      - "Dockerfile*"
+      - ".github/workflows/deploy-stage-backend.yml"
+
+concurrency:
+  group: esprito-stage-backend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Backend via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            /opt/esprito/deploy-stage-backend.sh
+
+      - name: Diagnostics (only if failed)
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set +e
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep esprito-stage || true
+            docker compose --project-directory /opt/esprito/repo -p esprito-stage \
+              --env-file /opt/esprito/env/stage.env \
+              -f /opt/esprito/compose/stage.yml logs --tail=300 agent-backend keycloak || true
+            curl -I http://127.0.0.1:8182/ | head -n 20 || true
+            curl -I http://127.0.0.1:18182/auth/ | head -n 20 || true
