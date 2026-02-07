@@ -20,8 +20,9 @@ async function bootstrap() {
   if (metrikaId && metrikaId !== 'YOUR_METRIKA_ID') {
     app.use(VueYandexMetrika, {
       id: metrikaId,
-      env: import.meta.env.MODE,
-      debug: import.meta.env.DEV,
+      router: false,              // We use custom routing in App.vue with manual tracking
+      env: 'production',          // Always 'production' to enable tracking
+      debug: import.meta.env.DEV, // In dev mode, logs to console instead of sending data
       options: {
         clickmap: true,           // Track clicks
         trackLinks: true,         // Track external links
