@@ -1,10 +1,17 @@
 package com.agent.backend.llm
 
 import com.agent.backend.rabbitmq.RabbitConfig
+import com.agent.backend.service.PriceTrackerService
+import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.llm.tool.api.BlockchainAdapter
+import com.explyt.ai.dto.ToolResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
@@ -27,12 +34,9 @@ class AgentBlockchainAdapter(
     private var messageId: UUID,
     private val poolsCache: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val priceTrackerService: PriceTrackerService,
+    private val externalToolResultService: ExternalToolResultService,
 ) : BlockchainAdapter(userId) {
-
-
-    private val COINMARKETCAP_API_TOKEN = "e004ca7d-3fc3-4e57-8441-424806178ff5"
-    private val COINMARKETCAP_TON_NETWORK_ID = 173
-
     private val binanceClient: RestClient = RestClient.builder()
         .baseUrl("https://api.binance.com/api/v3")
         .build()
@@ -179,4 +183,38 @@ class AgentBlockchainAdapter(
         val best = candidates.maxByOrNull { it.popularityIndex ?: Double.NEGATIVE_INFINITY }
         return best?.toString() ?: ""
     }
+
+    override fun createPriceTracker(jettonMaster: String, targetPrice: Double) {
+        priceTrackerService.createTracker(userId, jettonMaster, targetPrice)
+    }
+
+    override fun listPriceTrackers(): String {
+        val trackers = priceTrackerService.listUntriggeredByUser(userId)
+        if (trackers.isEmpty()) return ""
+
+        return trackers.joinToString(separator = "\n") { t ->
+            "[jettonMaster=${t.jettonMaster}, targetPrice=${t.targetPrice}, createdAt=${t.createdAt}]"
+        }
+    }
+
+    override suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> =
+        coroutineScope {
+            toolResponses.map { tr ->
+                // For send/swap tools we wait for the final async result from RabbitMQ
+                if (tr.name.contains("send", ignoreCase = true) ||
+                    tr.name.contains("swap", ignoreCase = true)
+                ) {
+                    async {
+                        val finalReport = externalToolResultService
+                            .registerWait(messageId, tr.name)
+                            .await()
+                        tr.copy(responseData = finalReport)
+                    }
+                } else {
+                    async { tr }
+                }
+            }.awaitAll()
+        }
 }
+
+

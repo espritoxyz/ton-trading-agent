@@ -14,5 +14,7 @@ class ToolDefinitions(
         SwapTonToTokenAgentTool(bcAdapter),
         SwapTokenToTonAgentTool(bcAdapter),
         GetCandidateAssetsAgentTool(bcAdapter),
+        CreatePriceTrackerAgentTool(bcAdapter),
+        ListPriceTrackersAgentTool(bcAdapter),
     )
 }

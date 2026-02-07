@@ -1,5 +1,6 @@
 package com.agent.llm.tool.api
 
+import com.explyt.ai.dto.ToolResponse
 import java.util.UUID
 
 abstract class BlockchainAdapter(val userId: Long) {
@@ -16,4 +17,12 @@ abstract class BlockchainAdapter(val userId: Long) {
     abstract fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double)
 
     abstract fun getCandidateAssets(symbol: String): String
+
+    abstract fun createPriceTracker(jettonMaster: String, targetPrice: Double)
+
+    abstract fun listPriceTrackers(): String
+
+    open suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> = toolResponses
 }
+
+

@@ -68,7 +68,6 @@ class OpenAIChatter(
 
     data class RequestAnswer(
         val responseString: String?,
-        val containedToolsWithGeneratedSummaries: Boolean,
     )
 
     suspend fun processRequest(
@@ -82,7 +81,6 @@ class OpenAIChatter(
         var currentMessage = Message.user(userRequestContent)
         var chatResponse: ChatResponse? = null
         var inc = 0
-        var hadSendOrSwap = false
 
         @Suppress("UNCHECKED_CAST")
         suspend fun callTools(plannedToolCalls: List<PlannedToolCall>): List<ToolResponse> {
@@ -108,10 +106,6 @@ class OpenAIChatter(
 
             return approvedPlanned.map { plannedToolCall ->
                 val tc = plannedToolCall.call
-                if (tc.name.contains(Regex("send|swap"))) {
-                    logger.error { "Setting hadSendOrSwap=true" }
-                    hadSendOrSwap = true
-                }
 
                 val agentTool = allTools.firstOrNull { it.definition.name == tc.name }
                     ?: error("No agent tool named ${tc.name} found")
@@ -144,7 +138,6 @@ class OpenAIChatter(
                     logger.debug { "Finished request processing for messageId=$messageId " }
                     return RequestAnswer(
                         chatResponse?.response,
-                        hadSendOrSwap
                     )
                 }
                 error("Unreachable state with ${currentMessage.toolCalls.size} tools in assistant message")
@@ -158,7 +151,6 @@ class OpenAIChatter(
 
         return RequestAnswer(
             chatResponse?.response,
-            hadSendOrSwap
         )
 
     }
@@ -193,7 +185,13 @@ class OpenAIChatter(
 
                 val prompt = Prompt(chatEnv.chatHistory)
                 atomicStatus.set(ChatterStatus.PROCESSING)
-                val response = router.chat(ChatRequest(modelConfig, prompt))
+                var response = router.chat(ChatRequest(modelConfig, prompt))
+
+                // No further tool calls = summarize executed
+                if (response.toolCalls.isEmpty()) {
+                    response = summarizeToolCalls(toolResponses)
+                }
+
                 return llmResponse(response, response.toolCalls)
             }
 
@@ -202,6 +200,22 @@ class OpenAIChatter(
             }
         }
     }
+
+    private suspend fun summarizeToolCalls(toolResponses: List<ToolResponse>): ChatResponse {
+        val enriched = bcAdapter.awaitExternalResults(toolResponses)
+        val requestContent = buildString {
+            appendLine(AgentPrompt.utilitySummarizeAnchor)
+            enriched.forEach {
+                appendLine(it.responseData)
+            }
+        }
+
+        val assistantMessage = Message.assistant("")
+        val utilityRequest = Message.user(requestContent)
+        val prompt = Prompt(chatEnv.chatHistory + assistantMessage + utilityRequest)
+        return router.chat(ChatRequest(modelConfig, prompt))
+    }
+
 
     private fun llmResponse(
         response: ChatResponse?,

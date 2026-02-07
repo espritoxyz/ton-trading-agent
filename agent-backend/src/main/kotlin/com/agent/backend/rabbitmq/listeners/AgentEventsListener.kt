@@ -2,9 +2,10 @@ package com.agent.backend.rabbitmq.listeners
 
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
+import com.agent.backend.service.ExternalToolResultService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.UUID
-import kotlinx.coroutines.runBlocking
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Component
@@ -13,8 +14,10 @@ private val logger = KotlinLogging.logger {}
 
 @Component
 class AgentEventsListener(
-    private val jobService: ChatJobService
+    private val jobService: ChatJobService,
+    private val externalToolResultService: ExternalToolResultService,
 ) {
+
 
     @RabbitListener(queues = [RabbitConfig.QUEUE])
     fun onEvent(@Payload payload: Map<String, Any?>) {
@@ -48,15 +51,12 @@ class AgentEventsListener(
                         "TON transfer failed. Attempted to send $amount TON to $receiver. Error: $error."
                     }
 
+                    externalToolResultService.complete(
+                        messageId = messageId,
+                        toolName = "send_ton_to_address",
+                        result = report,
+                    )
 
-                    runBlocking {
-                        jobService.finalizeWithToolResult(
-                            messageId = messageId,
-                            userId = userId,
-                            toolName = "send_ton_to_address",
-                            toolResult = report
-                        )
-                    }
                 }
                 "agent-llm.swap-ton-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
@@ -82,15 +82,12 @@ class AgentEventsListener(
                         "Swap TON->Token failed. Error: $error."
                     }
 
+                    externalToolResultService.complete(
+                        messageId = messageId,
+                        toolName = "swap_ton_to_token",
+                        result = report,
+                    )
 
-                    runBlocking {
-                        jobService.finalizeWithToolResult(
-                            messageId = messageId,
-                            userId = userId,
-                            toolName = "swap_ton_to_token",
-                            toolResult = report
-                        )
-                    }
                 }
                 "agent-llm.swap-token-to-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
@@ -115,15 +112,12 @@ class AgentEventsListener(
                     } else {
                         "Swap Token->TON failed. Error: $error."
                     }
+                    externalToolResultService.complete(
+                        messageId = messageId,
+                        toolName = "swap_token_to_ton",
+                        result = report,
+                    )
 
-                    runBlocking {
-                        jobService.finalizeWithToolResult(
-                            messageId = messageId,
-                            userId = userId,
-                            toolName = "swap_token_to_ton",
-                            toolResult = report
-                        )
-                    }
                 }
                 else -> return
 
