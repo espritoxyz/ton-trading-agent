@@ -64,7 +64,17 @@ class AuthService(
                 val body = ex.responseBodyAsString
                 val wwwAuth = ex.responseHeaders?.getFirst("WWW-Authenticate")
                 logger.warn { "Keycloak error: status={$status}, www-auth={$wwwAuth}, body={$body}" }
-                if (status in 400..499) throw AuthException("Invalid credentials")
+
+                if (status in 400..499) {
+                    // Try to extract error_description from Keycloak error response
+                    val errorMessage = try {
+                        val errorMatch = """"error_description"\s*:\s*"([^"]+)"""".toRegex().find(body)
+                        errorMatch?.groupValues?.get(1) ?: "Invalid credentials"
+                    } catch (e: Exception) {
+                        "Invalid credentials"
+                    }
+                    throw AuthException(errorMessage)
+                }
                 throw AuthException("Keycloak auth failed: $status")
             }
 

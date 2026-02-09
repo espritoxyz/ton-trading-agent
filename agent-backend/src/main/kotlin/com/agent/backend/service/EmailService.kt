@@ -26,7 +26,8 @@ class EmailService(
             val htmlContent = emailTemplateService.generateVerificationEmail(
                 email = toEmail,
                 verificationLink = verificationLink,
-                expiresInHours = tokenTtlHours
+                expiresInHours = tokenTtlHours,
+                baseUrl = baseUrl
             )
 
             logger.info { "Sending verification email to $toEmail" }

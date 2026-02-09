@@ -15,6 +15,7 @@ const error = ref<string | null>(null)
 async function onSubmit() {
   error.value = null
   submitting.value = true
+  success.value = false
   try {
     const data = await register(email.value, password.value, displayName.value)
     success.value = true

@@ -6,11 +6,12 @@ import org.springframework.stereotype.Service
 @Service
 class EmailTemplateService {
 
-    fun generateVerificationEmail(email: String, verificationLink: String, expiresInHours: Int): String {
+    fun generateVerificationEmail(email: String, verificationLink: String, expiresInHours: Int, baseUrl: String): String {
         val template = loadTemplate("templates/email/verification-email.html")
         return template
             .replace("{{verificationLink}}", verificationLink)
             .replace("{{expiresInHours}}", expiresInHours.toString())
+            .replace("{{baseUrl}}", baseUrl)
     }
 
     private fun loadTemplate(path: String): String {

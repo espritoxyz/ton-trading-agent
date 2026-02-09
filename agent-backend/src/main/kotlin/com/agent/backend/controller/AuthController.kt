@@ -47,13 +47,13 @@ class AuthController(
      * Returns access/refresh tokens; the SPA stores access_token in sessionStorage (dev) or use gateway cookies in prod.
      */
     @PostMapping("/login")
-    fun login(@Valid @RequestBody body: LoginRequest): ResponseEntity<TokenResponse> {
+    fun login(@Valid @RequestBody body: LoginRequest): ResponseEntity<Any> {
         logger.info { "login request: ${body.username}" }
         val tokens = try {
             authService.directLogin(body)
         } catch (e: jakarta.security.auth.message.AuthException) {
             logger.warn(e) { "Login failed: auth service returned error" }
-            return ResponseEntity.status(401).body(TokenResponse("", null, null, null, null))
+            return ResponseEntity.status(401).body(mapOf("message" to (e.message ?: "Invalid credentials")))
         }
 
         var savedErr: String? = null
@@ -101,9 +101,7 @@ class AuthController(
             }
         }
 
-        val resp = ResponseEntity.ok()
-        val finalResp = if (savedErr != null) resp.body(tokens) else resp.body(tokens)
-        return finalResp
+        return ResponseEntity.ok<Any>(tokens)
     }
 
     @PostMapping("/register")

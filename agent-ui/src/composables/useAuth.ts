@@ -7,10 +7,13 @@ export const subject = ref<string | null>(null)
 export const userId = ref<number | null>(null)
 export const loggingIn = ref(false)
 export const authError = ref<string | null>(null)
+export const needsVerification = ref(false)
+export const verificationEmail = ref<string | null>(null)
 
 export async function login(username: string, password: string) {
     loggingIn.value = true
     authError.value = null
+    needsVerification.value = false
     try {
         const resp = await api.post('/auth/login', {username, password})
         const data = resp.data
@@ -22,7 +25,16 @@ export async function login(username: string, password: string) {
         accessToken.value = token
         await refreshProfile()
     } catch (e: any) {
-        authError.value = e?.message ?? 'Login failed'
+        const errorMsg = e?.response?.data?.message || e?.message || 'Login failed'
+
+        // Check if account needs email verification
+        if (errorMsg.includes('Account is not fully set up') || errorMsg.includes('not fully set up')) {
+            needsVerification.value = true
+            verificationEmail.value = username
+            authError.value = 'Please verify your email address before logging in'
+        } else {
+            authError.value = errorMsg
+        }
         throw e
     } finally {
         loggingIn.value = false
