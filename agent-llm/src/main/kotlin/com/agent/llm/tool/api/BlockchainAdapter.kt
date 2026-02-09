@@ -22,6 +22,8 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun listPriceTrackers(): String
 
+    abstract fun deletePriceTrackers(ids: List<Long>)
+
     open suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> = toolResponses
 }
 

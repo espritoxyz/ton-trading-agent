@@ -125,6 +125,7 @@ Data format: [jettonMaster=text, targetPrice=number, createdAt=time]
 Template: 
 'Active tracks:
 *empty line*
+*empty line*
 @jettonMaster --- @targetPrice USD, @createdAt
 @jettonMaster --- @targetPrice USD, @createdAt
 ...'

@@ -43,6 +43,12 @@ class PriceTrackerService(
         return priceTrackers.save(tracker)
     }
 
+    @Transactional
+    fun deleteById(id: Long) {
+        logger.info { "[price-tracker] Deleting tracker id=$id" }
+        priceTrackers.deleteById(id)
+    }
+
     @Scheduled(fixedDelayString = "15000")
     @Transactional
     fun checkUntriggeredTrackers() {

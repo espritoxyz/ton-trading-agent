@@ -193,8 +193,12 @@ class AgentBlockchainAdapter(
         if (trackers.isEmpty()) return ""
 
         return trackers.joinToString(separator = "\n") { t ->
-            "[jettonMaster=${t.jettonMaster}, targetPrice=${t.targetPrice}, createdAt=${t.createdAt}]"
+            "[jettonMaster=${t.jettonMaster}, targetPrice=${t.targetPrice}, createdAt=${t.createdAt}, id=${t.id}]"
         }
+    }
+
+    override fun deletePriceTrackers(ids: List<Long>) {
+        TODO("Not yet implemented")
     }
 
     override suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> =

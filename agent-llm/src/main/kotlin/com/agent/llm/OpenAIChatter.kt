@@ -188,7 +188,7 @@ class OpenAIChatter(
                 var response = router.chat(ChatRequest(modelConfig, prompt))
 
                 // No further tool calls = summarize executed
-                if (response.toolCalls.isEmpty()) {
+                if (response.toolCalls.isEmpty() && toolResponses.any { it.responseData.isNotBlank() }) {
                     response = summarizeToolCalls(toolResponses)
                 }
 
