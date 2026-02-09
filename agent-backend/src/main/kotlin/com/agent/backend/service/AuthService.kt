@@ -8,6 +8,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.security.auth.message.AuthException
 import jakarta.servlet.UnavailableException
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Lazy
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -29,7 +30,8 @@ class AuthService(
     @Value("\${keycloak.realm}") private val realm: String,
     @Value("\${keycloak.client-id}") private val clientId: String,
     @Value("\${keycloak.client-secret}") private val clientSecret: String,
-    private val provisioning: UserProvisioningService
+    private val provisioning: UserProvisioningService,
+    @Lazy private val emailVerificationService: EmailVerificationService
 ) {
 
     private val client: RestClient = RestClient.builder()
@@ -132,7 +134,9 @@ class AuthService(
         val createUserPayload = mapOf(
             "username" to req.email,
             "email" to req.email,
-            "enabled" to true
+            "enabled" to true,
+            "emailVerified" to false,
+            "requiredActions" to listOf("VERIFY_EMAIL")
         )
 
         try {
@@ -174,34 +178,18 @@ class AuthService(
                 .retrieve()
                 .body(String::class.java)
 
-            // Ensure account is fully setup: mark emailVerified and clear requiredActions
-            try {
-                // Fetch full user representation and update fields (Keycloak expects full representation on PUT)
-                val userRep = client.get()
-                    .uri("/admin/realms/$realm/users/$keycloakId")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer $adminToken")
-                    .retrieve()
-                    .body(Map::class.java) as Map<String, Any?>
-
-                val updated = HashMap(userRep)
-                updated["emailVerified"] = true
-                updated["enabled"] = true
-                updated["requiredActions"] = emptyList<String>()
-
-                client.put()
-                    .uri("/admin/realms/$realm/users/$keycloakId")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer $adminToken")
-                    .body(updated)
-                    .retrieve()
-                    .body(String::class.java)
-            } catch (uEx: Exception) {
-                logger.warn(uEx) { "Failed to update user attributes (emailVerified/requiredActions) for $keycloakId" }
-            }
-
             // 5) create local user
             val issuer = "$baseUrl/realms/$realm"
             val local = provisioning.createLocalForKeycloak(keycloakId, req.email)
+
+            // 6) send verification email
+            try {
+                emailVerificationService.sendVerificationEmail(local)
+                logger.info { "Verification email sent to ${req.email}" }
+            } catch (emailEx: Exception) {
+                logger.error(emailEx) { "Failed to send verification email to ${req.email}" }
+                // Don't fail registration if email sending fails
+            }
 
             return RegisterResponse(userId = local.id!!, keycloakId = keycloakId, initialBalanceUsd = 0.0)
         } catch (inner: Exception) {
@@ -268,6 +256,54 @@ class AuthService(
         } catch (e: Exception) {
             logger.warn(e) { "Failed to decode/validate access token (allow expired)" }
             null
+        }
+    }
+
+    fun updateKeycloakEmailVerified(keycloakId: String, verified: Boolean) {
+        try {
+            // Get admin token
+            val tokenForm = LinkedMultiValueMap<String, String>().apply {
+                add("grant_type", "client_credentials")
+                add("client_id", clientId)
+                add("client_secret", clientSecret)
+            }
+
+            val adminTokenResp = client.post()
+                .uri("/realms/$realm/protocol/openid-connect/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(tokenForm)
+                .retrieve()
+                .body(TokenResponse::class.java)!!
+
+            val adminToken = adminTokenResp.accessToken
+
+            // Get current user representation
+            val userRep = client.get()
+                .uri("/admin/realms/$realm/users/$keycloakId")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $adminToken")
+                .retrieve()
+                .body(Map::class.java) as Map<String, Any?>
+
+            // Update emailVerified and requiredActions
+            val updated = HashMap(userRep)
+            updated["emailVerified"] = verified
+            if (verified) {
+                updated["requiredActions"] = emptyList<String>()
+            }
+
+            // Save back to Keycloak
+            client.put()
+                .uri("/admin/realms/$realm/users/$keycloakId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $adminToken")
+                .body(updated)
+                .retrieve()
+                .body(String::class.java)
+
+            logger.info { "Updated Keycloak user $keycloakId emailVerified=$verified" }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to update Keycloak emailVerified for user $keycloakId" }
+            throw RuntimeException("Failed to update Keycloak email verification status", e)
         }
     }
 

@@ -134,3 +134,22 @@ function b64urlToUtf8(b64url: string): string {
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
     return new TextDecoder().decode(bytes)
 }
+
+export async function verifyEmail(token: string): Promise<{success: boolean, message: string}> {
+    try {
+        const { data } = await api.post('/auth/verify-email', { token }, { headers: { Authorization: undefined } })
+        return { success: data.success ?? true, message: data.message || 'Email verified successfully' }
+    } catch (e: any) {
+        return { success: false, message: e?.response?.data?.message || 'Verification failed' }
+    }
+}
+
+export async function resendVerificationEmail(email?: string): Promise<{success: boolean, message: string}> {
+    try {
+        const body = email ? { email } : {}
+        const { data } = await api.post('/auth/resend-verification', body)
+        return { success: data.success ?? true, message: data.message || 'Verification email sent' }
+    } catch (e: any) {
+        return { success: false, message: e?.response?.data?.message || 'Failed to send' }
+    }
+}
