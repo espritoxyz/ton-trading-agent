@@ -1,336 +1,262 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
     <meta name="color-scheme" content="light dark">
     <meta name="supported-color-schemes" content="light dark">
     <title>Verify Your Email - Esprito AI</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
     <style>
-        :root {
-            color-scheme: light dark;
-            supported-color-schemes: light dark;
-        }
-
+        /* Reset and base styles */
         body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f5f7fa;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
         }
-
-        .email-wrapper {
-            width: 100%;
-            background-color: #f5f7fa;
-            padding: 20px 0;
+        table {
+            border-collapse: collapse;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
         }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        }
-
-        .header {
-            background: #207BF9;
-            padding: 48px 32px;
-            text-align: center;
-        }
-
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 24px;
-            display: block;
-        }
-
-        .header h1 {
-            margin: 0;
-            color: #ffffff;
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
-
-        .content {
-            padding: 48px 40px;
-        }
-
-        .greeting {
-            color: #1a1a1a;
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 24px 0;
-        }
-
-        .content p {
-            color: #4a5568;
-            font-size: 16px;
-            line-height: 1.6;
-            margin: 0 0 16px 0;
-        }
-
-        .button-container {
-            text-align: center;
-            margin: 36px 0;
-        }
-
-        .verify-button {
-            display: inline-block;
-            padding: 16px 48px;
-            background: #207BF9;
-            color: #ffffff !important;
+        img {
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
             text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 12px rgba(32, 123, 249, 0.3);
-            transition: all 0.2s ease;
+            -ms-interpolation-mode: bicubic;
+        }
+        a {
+            text-decoration: none;
         }
 
-        .verify-button:hover {
-            background: #1a66d4;
-            box-shadow: 0 6px 16px rgba(32, 123, 249, 0.4);
-            transform: translateY(-2px);
+        /* Hide preheader */
+        .preheader {
+            display: none !important;
+            visibility: hidden;
+            mso-hide: all;
+            font-size: 1px;
+            line-height: 1px;
+            max-height: 0;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
         }
 
-        .divider {
-            height: 1px;
-            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
-            margin: 32px 0;
-        }
-
-        .link-section {
-            margin: 32px 0;
-            padding: 20px;
-            background-color: #f7fafc;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .link-section-title {
-            font-size: 14px;
-            color: #64748b;
-            margin: 0 0 12px 0;
-        }
-
-        .link-text {
-            word-break: break-all;
-            color: #207BF9;
-            font-size: 13px;
-            font-family: 'Courier New', monospace;
-            background: #ffffff;
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-            display: block;
-        }
-
-        .expiry-notice {
-            margin: 32px 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-left: 4px solid #f59e0b;
-            border-radius: 10px;
-        }
-
-        .expiry-notice p {
-            color: #92400e;
-            font-size: 14px;
-            margin: 0;
-            line-height: 1.5;
-        }
-
-        .expiry-notice strong {
-            color: #78350f;
-        }
-
-        .security-note {
-            margin-top: 32px;
-            padding-top: 32px;
-            border-top: 1px solid #e2e8f0;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .footer {
-            padding: 32px 40px;
-            text-align: center;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .footer p {
-            color: #94a3b8;
-            font-size: 13px;
-            margin: 8px 0;
-            line-height: 1.5;
-        }
-
-        .footer-brand {
-            color: #64748b;
-            font-weight: 600;
+        /* Button hover - only works in some clients */
+        .button-link:hover {
+            background-color: #1a66d4 !important;
         }
 
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
-            body, .email-wrapper {
-                background-color: #1a1a1a;
-            }
-
-            .container {
-                background: #2d2d2d;
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-            }
-
-            .greeting {
-                color: #f1f5f9;
-            }
-
-            .content p {
-                color: #cbd5e1;
-            }
-
-            .link-section {
-                background-color: #1e293b;
-                border-color: #334155;
-            }
-
-            .link-section-title {
-                color: #94a3b8;
-            }
-
-            .link-text {
-                background: #0f172a;
-                border-color: #334155;
-                color: #60a5fa;
-            }
-
-            .expiry-notice {
-                background: linear-gradient(135deg, #422006 0%, #713f12 100%);
-                border-left-color: #f59e0b;
-            }
-
-            .expiry-notice p {
-                color: #fde68a;
-            }
-
-            .expiry-notice strong {
-                color: #fef3c7;
-            }
-
-            .security-note {
-                border-top-color: #334155;
-                color: #94a3b8;
-            }
-
-            .footer {
-                background: #1e1e1e;
-                border-top-color: #334155;
-            }
-
-            .footer p {
-                color: #64748b;
-            }
-
-            .footer-brand {
-                color: #94a3b8;
-            }
+            .bg-light { background-color: #1a1a1a !important; }
+            .bg-white { background-color: #2d2d2d !important; }
+            .text-dark { color: #f1f5f9 !important; }
+            .text-gray { color: #cbd5e1 !important; }
+            .text-muted { color: #94a3b8 !important; }
+            .bg-gray-light { background-color: #1e293b !important; }
+            .border-gray { border-color: #334155 !important; }
+            .link-box { background-color: #0f172a !important; border-color: #334155 !important; }
+            .link-text { color: #60a5fa !important; }
+            .warning-box { background-color: #422006 !important; }
+            .warning-text { color: #fde68a !important; }
+            .warning-strong { color: #fef3c7 !important; }
+            .footer-bg { background-color: #1e1e1e !important; }
         }
 
         /* Mobile responsive */
         @media only screen and (max-width: 600px) {
-            .email-wrapper {
-                padding: 10px;
-            }
-
-            .container {
-                border-radius: 12px;
-            }
-
-            .header {
-                padding: 36px 24px;
-            }
-
-            .logo {
-                width: 64px;
-                height: 64px;
-                margin-bottom: 20px;
-            }
-
-            .header h1 {
-                font-size: 22px;
-            }
-
-            .content {
-                padding: 36px 24px;
-            }
-
-            .greeting {
-                font-size: 17px;
-            }
-
-            .content p {
-                font-size: 15px;
-            }
-
-            .verify-button {
-                padding: 14px 36px;
-                font-size: 15px;
-            }
-
-            .footer {
-                padding: 24px 20px;
-            }
+            .wrapper { width: 100% !important; }
+            .container { width: 100% !important; max-width: 100% !important; }
+            .mobile-padding { padding: 20px !important; }
+            .mobile-padding-small { padding: 16px !important; }
+            .button-link { padding: 14px 32px !important; font-size: 15px !important; }
         }
     </style>
 </head>
-<body>
-    <div class="email-wrapper">
-        <div class="container">
-            <div class="header">
-                <img src="data:image/svg+xml,%3Csvg width='96' height='96' viewBox='0 0 96 96' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 38.4C0 24.9587 0 18.2381 2.61584 13.1042C4.9168 8.58834 8.58834 4.9168 13.1042 2.61584C18.2381 0 24.9587 0 38.4 0H57.6C71.0413 0 77.7619 0 82.8958 2.61584C87.4117 4.9168 91.0832 8.58834 93.3842 13.1042C96 18.2381 96 24.9587 96 38.4V57.6C96 71.0413 96 77.7619 93.3842 82.8958C91.0832 87.4117 87.4117 91.0832 82.8958 93.3842C77.7619 96 71.0413 96 57.6 96H38.4C24.9587 96 18.2381 96 13.1042 93.3842C8.58834 91.0832 4.9168 87.4117 2.61584 82.8958C0 77.7619 0 71.0413 0 57.6V38.4Z' fill='%23ffffff'/%3E%3Cpath d='M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z' fill='%23207BF9'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z' fill='%23207BF9'/%3E%3C/svg%3E" class="logo" alt="Esprito AI Logo" />
-                <h1>Verify Your Email Address</h1>
-            </div>
+<body style="margin: 0; padding: 0; background-color: #f5f7fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
 
-            <div class="content">
-                <p class="greeting">Welcome to Esprito AI!</p>
-
-                <p>We're excited to have you on board. To get started and unlock the full potential of your account, we need to verify your email address.</p>
-
-                <p>Click the button below to complete your registration:</p>
-
-                <div class="button-container">
-                    <a href="{{verificationLink}}" class="verify-button">Verify Email Address</a>
-                </div>
-
-                <div class="divider"></div>
-
-                <div class="link-section">
-                    <p class="link-section-title">Alternatively, copy and paste this link into your browser:</p>
-                    <code class="link-text">{{verificationLink}}</code>
-                </div>
-
-                <div class="expiry-notice">
-                    <p><strong>⏰ Time-sensitive:</strong> This verification link will expire in <strong>{{expiresInHours}} hours</strong>. If it expires, you can request a new verification link from the login page.</p>
-                </div>
-
-                <div class="security-note">
-                    <p>If you didn't create an account with Esprito AI, you can safely ignore this email. No further action is required.</p>
-                </div>
-            </div>
-
-            <div class="footer">
-                <p class="footer-brand">Esprito AI</p>
-                <p>© 2026 Esprito AI. All rights reserved.</p>
-                <p>This is an automated message, please do not reply to this email.</p>
-            </div>
-        </div>
+    <!-- Preheader text -->
+    <div class="preheader">
+        Complete your Esprito AI registration by verifying your email address. This link expires in {{expiresInHours}} hours.
     </div>
+
+    <!-- Email wrapper -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="bg-light" style="background-color: #f5f7fa;">
+        <tr>
+            <td align="center" style="padding: 20px 10px;">
+
+                <!-- Main container -->
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" class="container bg-white" style="max-width: 600px; background-color: #ffffff; border-radius: 16px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="background-color: #207BF9; padding: 48px 32px; border-radius: 16px 16px 0 0;">
+                            <!--[if mso]>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td align="center">
+                                        <div style="color: #ffffff; font-size: 24px; font-weight: 600;">Esprito AI</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding-top: 16px;">
+                            <![endif]-->
+                            <img src="data:image/svg+xml,%3Csvg width='96' height='96' viewBox='0 0 96 96' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 38.4C0 24.9587 0 18.2381 2.61584 13.1042C4.9168 8.58834 8.58834 4.9168 13.1042 2.61584C18.2381 0 24.9587 0 38.4 0H57.6C71.0413 0 77.7619 0 82.8958 2.61584C87.4117 4.9168 91.0832 8.58834 93.3842 13.1042C96 18.2381 96 24.9587 96 38.4V57.6C96 71.0413 96 77.7619 93.3842 82.8958C91.0832 87.4117 87.4117 91.0832 82.8958 93.3842C77.7619 96 71.0413 96 57.6 96H38.4C24.9587 96 18.2381 96 13.1042 93.3842C8.58834 91.0832 4.9168 87.4117 2.61584 82.8958C0 77.7619 0 71.0413 0 57.6V38.4Z' fill='%23ffffff'/%3E%3Cpath d='M71.6404 45H24.3596C20.9765 45 19.3231 40.8734 21.7703 38.5375L45.4107 15.9716C46.8598 14.5884 49.1402 14.5884 50.5893 15.9716L74.2297 38.5374C76.6768 40.8734 75.0235 45 71.6404 45Z' fill='%23207BF9'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M28.1159 52.8038C27.4167 52.1278 26.4821 51.75 25.5096 51.75L24.3595 51.75C20.9764 51.75 19.323 55.8766 21.7702 58.2126L45.4106 80.7784C46.8597 82.1616 49.1401 82.1616 50.5891 80.7784L74.2295 58.2126C76.6767 55.8766 75.0233 51.75 71.6403 51.75L70.4901 51.75C69.5175 51.75 68.583 52.1278 67.8837 52.8038L50.6062 69.5055C49.1526 70.9105 46.847 70.9105 45.3935 69.5054L28.1159 52.8038Z' fill='%23207BF9'/%3E%3C/svg%3E"
+                                 width="80"
+                                 height="80"
+                                 alt="Esprito AI"
+                                 style="display: block; width: 80px; height: 80px; margin: 0 auto 24px; max-width: 80px;">
+                            <!--[if mso]>
+                                    </td>
+                                </tr>
+                            </table>
+                            <![endif]-->
+                            <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 600; line-height: 1.3;">Verify Your Email Address</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td class="mobile-padding" style="padding: 48px 40px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+                                <!-- Greeting -->
+                                <tr>
+                                    <td class="text-dark" style="color: #1a1a1a; font-size: 18px; font-weight: 600; padding-bottom: 24px;">
+                                        Welcome to Esprito AI!
+                                    </td>
+                                </tr>
+
+                                <!-- Main text -->
+                                <tr>
+                                    <td class="text-gray" style="color: #4a5568; font-size: 16px; line-height: 1.6; padding-bottom: 16px;">
+                                        We're excited to have you on board. To get started and unlock the full potential of your account, we need to verify your email address.
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="text-gray" style="color: #4a5568; font-size: 16px; line-height: 1.6; padding-bottom: 36px;">
+                                        Click the button below to complete your registration:
+                                    </td>
+                                </tr>
+
+                                <!-- Button -->
+                                <tr>
+                                    <td align="center" style="padding-bottom: 36px;">
+                                        <!--[if mso]>
+                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{verificationLink}}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="20%" strokecolor="#207BF9" fillcolor="#207BF9">
+                                            <w:anchorlock/>
+                                            <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:600;">Verify Email Address</center>
+                                        </v:roundrect>
+                                        <![endif]-->
+                                        <!--[if !mso]><!-->
+                                        <a href="{{verificationLink}}" class="button-link" style="display: inline-block; padding: 16px 48px; background-color: #207BF9; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                                            Verify Email Address
+                                        </a>
+                                        <!--<![endif]-->
+                                    </td>
+                                </tr>
+
+                                <!-- Divider -->
+                                <tr>
+                                    <td style="padding-bottom: 32px;">
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="border-top: 1px solid #e2e8f0;"></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Alternative link section -->
+                                <tr>
+                                    <td class="mobile-padding-small bg-gray-light border-gray" style="background-color: #f7fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td class="text-muted" style="color: #64748b; font-size: 14px; padding-bottom: 12px;">
+                                                    Alternatively, copy and paste this link into your browser:
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="link-box" style="background-color: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                                    <a href="{{verificationLink}}" class="link-text" style="color: #207BF9; font-size: 13px; font-family: 'Courier New', monospace; word-break: break-all; text-decoration: none;">{{verificationLink}}</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Expiry notice -->
+                                <tr>
+                                    <td style="padding-top: 32px;">
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="warning-box" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 10px;">
+                                            <tr>
+                                                <td class="mobile-padding-small" style="padding: 20px;">
+                                                    <p class="warning-text" style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                                                        <span class="warning-strong" style="font-weight: 600; color: #78350f;">⏰ Time-sensitive:</span> This verification link will expire in <span class="warning-strong" style="font-weight: 600; color: #78350f;">{{expiresInHours}} hours</span>. If it expires, you can request a new verification link from the login page.
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Security note -->
+                                <tr>
+                                    <td class="text-muted border-gray" style="padding-top: 32px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 14px; line-height: 1.6;">
+                                        <p style="margin: 0 0 12px 0;"><strong>Security Notice:</strong></p>
+                                        <p style="margin: 0;">If you didn't create an account with Esprito AI, you can safely ignore this email. No account has been created and no further action is required.</p>
+                                    </td>
+                                </tr>
+
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td class="mobile-padding footer-bg border-gray" style="padding: 32px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 16px 16px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td align="center" class="text-muted" style="color: #64748b; font-size: 14px; font-weight: 600; padding-bottom: 8px;">
+                                        Esprito AI
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" class="text-muted" style="color: #94a3b8; font-size: 13px; line-height: 1.5; padding-bottom: 8px;">
+                                        © 2026 Esprito AI. All rights reserved.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" class="text-muted" style="color: #94a3b8; font-size: 13px; line-height: 1.5;">
+                                        This is an automated message, please do not reply to this email.
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- End main container -->
+
+            </td>
+        </tr>
+    </table>
+    <!-- End email wrapper -->
+
 </body>
 </html>
