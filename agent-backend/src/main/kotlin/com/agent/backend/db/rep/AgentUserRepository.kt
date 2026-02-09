@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface AgentUserRepository : JpaRepository<AgentUser, Long> {
     fun findBySubject(subject: String): Optional<AgentUser>
+    fun findByEmail(email: String): Optional<AgentUser>
 }

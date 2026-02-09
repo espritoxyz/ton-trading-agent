@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref, defineEmits } from 'vue'
-import { register, login } from '../composables/useAuth'
-import { refreshBalance } from '../composables/useBalance'
-import { refreshProfile } from '../composables/useAuth'
-import { Sparkles, Mail, Lock, User, AlertTriangle, Loader } from 'lucide-vue-next'
+import { register } from '../composables/useAuth'
+import { Sparkles, Mail, Lock, User, AlertTriangle, Loader, CheckCircle } from 'lucide-vue-next'
 
 const emits = defineEmits(['registered','close'])
 
@@ -11,45 +9,29 @@ const email = ref('')
 const password = ref('')
 const displayName = ref('')
 const submitting = ref(false)
+const success = ref(false)
 const error = ref<string | null>(null)
-
-async function sleep(ms: number) { return new Promise(res => setTimeout(res, ms)) }
-
-async function tryAutoLogin(emailVal: string, passVal: string) {
-  const maxAttempts = 5
-  let attempt = 0
-  while (attempt < maxAttempts) {
-    try {
-      await login(emailVal, passVal)
-      return true
-    } catch (e) {
-      attempt++
-      // if 4xx, break early (bad credentials); otherwise retry
-      const is4xx = (e?.response?.status ?? 0) >= 400 && (e?.response?.status ?? 0) < 500
-      if (is4xx) throw e
-      await sleep( Math.min(1000 * 2.0.pow(attempt), 5000) )
-    }
-  }
-  return false
-}
 
 async function onSubmit() {
   error.value = null
   submitting.value = true
+  success.value = false
   try {
     const data = await register(email.value, password.value, displayName.value)
-    // auto-login with retries
-    const logged = await tryAutoLogin(email.value, password.value)
-    if (!logged) {
-      error.value = 'Registered but failed to auto-login — please login manually.'
-      emits('registered', data)
-      return
-    }
-
-    await Promise.all([refreshProfile(), refreshBalance()])
+    success.value = true
     emits('registered', data)
+
+    // Auto-close after 8 seconds
+    setTimeout(() => emits('close'), 8000)
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+    console.error('Registration error:', e)
+    const errorMessage = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+    error.value = errorMessage
+
+    // If timeout error, show helpful message
+    if (e?.code === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+      error.value = 'Registration is taking longer than expected. Please wait a moment and check your email.'
+    }
   } finally {
     submitting.value = false
   }
@@ -86,7 +68,34 @@ function onClose() {
           </button>
         </div>
 
-        <form class="space-y-4" @submit.prevent="onSubmit">
+        <div v-if="success" class="space-y-4 py-6">
+          <div class="flex flex-col items-center justify-center text-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
+              <CheckCircle :size="32" class="text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Check Your Email!</h4>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                We've sent a verification link to <strong>{{ email }}</strong>
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-500 mt-3 px-4">
+                Please check your inbox and click the verification link to activate your account. The link will expire in 24 hours.
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-500 mt-2 italic">
+                Don't forget to check your spam folder!
+              </p>
+            </div>
+            <button
+              type="button"
+              class="mt-4 cosmic-button rounded-xl px-6 py-2.5 text-sm font-bold text-white shadow-lg"
+              @click="onClose"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+
+        <form v-else class="space-y-4" @submit.prevent="onSubmit">
           <div>
             <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
               <Mail :size="14" />

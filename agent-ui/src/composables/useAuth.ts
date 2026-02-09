@@ -7,10 +7,13 @@ export const subject = ref<string | null>(null)
 export const userId = ref<number | null>(null)
 export const loggingIn = ref(false)
 export const authError = ref<string | null>(null)
+export const needsVerification = ref(false)
+export const verificationEmail = ref<string | null>(null)
 
 export async function login(username: string, password: string) {
     loggingIn.value = true
     authError.value = null
+    needsVerification.value = false
     try {
         const resp = await api.post('/auth/login', {username, password})
         const data = resp.data
@@ -22,7 +25,16 @@ export async function login(username: string, password: string) {
         accessToken.value = token
         await refreshProfile()
     } catch (e: any) {
-        authError.value = e?.message ?? 'Login failed'
+        const errorMsg = e?.response?.data?.message || e?.message || 'Login failed'
+
+        // Check if account needs email verification
+        if (errorMsg.includes('Account is not fully set up') || errorMsg.includes('not fully set up')) {
+            needsVerification.value = true
+            verificationEmail.value = username
+            authError.value = 'Please verify your email address before logging in'
+        } else {
+            authError.value = errorMsg
+        }
         throw e
     } finally {
         loggingIn.value = false
@@ -133,4 +145,23 @@ function b64urlToUtf8(b64url: string): string {
     const binary = atob(base64)
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
     return new TextDecoder().decode(bytes)
+}
+
+export async function verifyEmail(token: string): Promise<{success: boolean, message: string}> {
+    try {
+        const { data } = await api.post('/auth/verify-email', { token }, { headers: { Authorization: undefined } })
+        return { success: data.success ?? true, message: data.message || 'Email verified successfully' }
+    } catch (e: any) {
+        return { success: false, message: e?.response?.data?.message || 'Verification failed' }
+    }
+}
+
+export async function resendVerificationEmail(email?: string): Promise<{success: boolean, message: string}> {
+    try {
+        const body = email ? { email } : {}
+        const { data } = await api.post('/auth/resend-verification', body)
+        return { success: data.success ?? true, message: data.message || 'Verification email sent' }
+    } catch (e: any) {
+        return { success: false, message: e?.response?.data?.message || 'Failed to send' }
+    }
 }

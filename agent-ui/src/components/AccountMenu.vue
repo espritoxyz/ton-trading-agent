@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { login, logout, loggingIn, accessToken, email, refreshProfile, authError } from '../composables/useAuth.ts'
+import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail } from '../composables/useAuth.ts'
 import { refreshBalance } from '../composables/useBalance.ts'
 import { APP_VERSION } from '../config'
 import RegisterModal from './RegisterModal.vue'
-import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn } from 'lucide-vue-next'
+import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle } from 'lucide-vue-next'
 
 const username = ref('')
 const password = ref('')
@@ -14,6 +14,8 @@ const containerRef = ref<HTMLElement>()
 const buttonRef = ref<HTMLElement>()
 const dropdownContentRef = ref<HTMLElement>()
 const dropdownPosition = ref({ top: 0, right: 0 })
+const resendingVerification = ref(false)
+const resendSuccess = ref(false)
 
 async function onLogin() {
   await login(username.value, password.value)
@@ -43,13 +45,38 @@ function closeRegister() {
 }
 
 function onRegistered() {
-  closeRegister()
+  // Don't close immediately - let RegisterModal show success message
+  // RegisterModal will auto-close after 8 seconds
+}
+
+async function handleResendVerification() {
+  if (!verificationEmail.value) return
+  resendingVerification.value = true
+  resendSuccess.value = false
+  try {
+    const result = await resendVerificationEmail(verificationEmail.value)
+    if (result.success) {
+      resendSuccess.value = true
+      setTimeout(() => {
+        resendSuccess.value = false
+      }, 5000)
+    }
+  } catch (e) {
+    console.error('Failed to resend verification:', e)
+  } finally {
+    resendingVerification.value = false
+  }
 }
 
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
   if (showDropdown.value && buttonRef.value) {
     updateDropdownPosition()
+  }
+  // Reset verification state when closing dropdown
+  if (!showDropdown.value) {
+    needsVerification.value = false
+    resendSuccess.value = false
   }
 }
 
@@ -156,7 +183,35 @@ onUnmounted(() => {
           />
         </div>
 
-        <div v-if="authError" class="flex items-center gap-2 p-2 rounded-lg bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30">
+        <!-- Email Verification Needed -->
+        <div v-if="needsVerification" class="space-y-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30">
+          <div class="flex items-start gap-2">
+            <Mail :size="16" class="text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div class="flex-1">
+              <div class="text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">Email Verification Required</div>
+              <div class="text-xs text-amber-800 dark:text-amber-300">Please check your inbox and click the verification link to activate your account.</div>
+            </div>
+          </div>
+
+          <div v-if="resendSuccess" class="flex items-center gap-2 p-2 rounded bg-green-100 dark:bg-green-500/20 border border-green-300 dark:border-green-500/30">
+            <CheckCircle :size="14" class="text-green-600 dark:text-green-400" />
+            <div class="text-xs text-green-700 dark:text-green-300">Verification email sent! Check your inbox.</div>
+          </div>
+
+          <button
+            type="button"
+            @click="handleResendVerification"
+            :disabled="resendingVerification"
+            class="w-full rounded-lg bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 px-3 py-2 text-xs font-semibold text-white transition flex items-center justify-center gap-2"
+          >
+            <Loader v-if="resendingVerification" :size="14" class="animate-spin" />
+            <Mail v-else :size="14" />
+            <span>{{ resendingVerification ? 'Sending...' : 'Resend Verification Email' }}</span>
+          </button>
+        </div>
+
+        <!-- Other Errors -->
+        <div v-else-if="authError" class="flex items-center gap-2 p-2 rounded-lg bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30">
           <AlertTriangle :size="16" class="text-red-600 dark:text-red-400" />
           <div class="text-xs text-red-700 dark:text-red-300">{{ authError }}</div>
         </div>
