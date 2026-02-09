@@ -7,6 +7,7 @@ import com.agent.backend.db.rep.EmailVerificationTokenRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.transaction.Transactional
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.security.SecureRandom
 import java.time.Instant
@@ -71,21 +72,32 @@ class EmailVerificationService(
         return savedToken
     }
 
-    fun sendVerificationEmail(user: AgentUser): Boolean {
-        if (user.email == null) {
-            throw IllegalArgumentException("User email is null")
-        }
+    @Async
+    fun sendVerificationEmail(user: AgentUser) {
+        try {
+            if (user.email == null) {
+                logger.warn { "Cannot send verification email: user email is null" }
+                return
+            }
 
-        if (user.emailVerified) {
-            throw IllegalStateException("User email is already verified")
-        }
+            if (user.emailVerified) {
+                logger.warn { "Cannot send verification email: email is already verified" }
+                return
+            }
 
-        val token = createVerificationToken(user)
-        return emailService.sendVerificationEmail(user.email!!, token.token)
+            val token = createVerificationToken(user)
+            emailService.sendVerificationEmail(user.email!!, token.token)
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to send verification email for user ${user.id}" }
+        }
     }
 
     @Transactional
     fun resendVerificationEmail(userId: Long): Boolean {
+        return resendVerificationEmailInternal(userId)
+    }
+
+    private fun resendVerificationEmailInternal(userId: Long): Boolean {
         val user = agentUserRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("User not found") }
 
@@ -128,7 +140,8 @@ class EmailVerificationService(
         } else {
             // No active token exists, create a new one
             logger.info { "No active token found for user $userId, creating new one" }
-            return sendVerificationEmail(user)
+            val token = createVerificationToken(user)
+            return emailService.sendVerificationEmail(user.email!!, token.token)
         }
     }
 

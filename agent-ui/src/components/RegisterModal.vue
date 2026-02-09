@@ -20,10 +20,17 @@ async function onSubmit() {
     success.value = true
     emits('registered', data)
 
-    // Auto-close after 5 seconds
-    setTimeout(() => emits('close'), 5000)
+    // Auto-close after 8 seconds
+    setTimeout(() => emits('close'), 8000)
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+    console.error('Registration error:', e)
+    const errorMessage = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+    error.value = errorMessage
+
+    // If timeout error, show helpful message
+    if (e?.code === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+      error.value = 'Registration is taking longer than expected. Please wait a moment and check your email.'
+    }
   } finally {
     submitting.value = false
   }

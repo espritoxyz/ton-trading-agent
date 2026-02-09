@@ -182,14 +182,9 @@ class AuthService(
             val issuer = "$baseUrl/realms/$realm"
             val local = provisioning.createLocalForKeycloak(keycloakId, req.email)
 
-            // 6) send verification email
-            try {
-                emailVerificationService.sendVerificationEmail(local)
-                logger.info { "Verification email sent to ${req.email}" }
-            } catch (emailEx: Exception) {
-                logger.error(emailEx) { "Failed to send verification email to ${req.email}" }
-                // Don't fail registration if email sending fails
-            }
+            // 6) send verification email asynchronously (won't block registration)
+            emailVerificationService.sendVerificationEmail(local)
+            logger.info { "Verification email queued for ${req.email}" }
 
             return RegisterResponse(userId = local.id!!, keycloakId = keycloakId, initialBalanceUsd = 0.0)
         } catch (inner: Exception) {

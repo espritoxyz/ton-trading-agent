@@ -28,7 +28,12 @@ class ResendClient(
     @Value("\${email.resend.api-key}") private val apiKey: String,
     @Value("\${email.resend.api-url}") private val apiUrl: String
 ) {
-    private val restClient = RestClient.create()
+    private val restClient = RestClient.builder()
+        .requestFactory(org.springframework.http.client.SimpleClientHttpRequestFactory().apply {
+            setConnectTimeout(java.time.Duration.ofSeconds(5))
+            setReadTimeout(java.time.Duration.ofSeconds(10))
+        })
+        .build()
 
     fun sendEmail(from: String, to: String, subject: String, htmlBody: String): Boolean {
         return try {
