@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>Verify Your Email - Esprito AI</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            supported-color-schemes: light dark;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .email-wrapper {
+            width: 100%;
+            background-color: #f5f7fa;
+            padding: 20px 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            background: #207BF9;
+            padding: 48px 32px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            display: block;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .content {
+            padding: 48px 40px;
+        }
+
+        .greeting {
+            color: #1a1a1a;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 24px 0;
+        }
+
+        .content p {
+            color: #4a5568;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 36px 0;
+        }
+
+        .verify-button {
+            display: inline-block;
+            padding: 16px 48px;
+            background: #207BF9;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(32, 123, 249, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .verify-button:hover {
+            background: #1a66d4;
+            box-shadow: 0 6px 16px rgba(32, 123, 249, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+            margin: 32px 0;
+        }
+
+        .link-section {
+            margin: 32px 0;
+            padding: 20px;
+            background-color: #f7fafc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .link-section-title {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0 0 12px 0;
+        }
+
+        .link-text {
+            word-break: break-all;
+            color: #207BF9;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            display: block;
+        }
+
+        .expiry-notice {
+            margin: 32px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            border-radius: 10px;
+        }
+
+        .expiry-notice p {
+            color: #92400e;
+            font-size: 14px;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .expiry-notice strong {
+            color: #78350f;
+        }
+
+        .security-note {
+            margin-top: 32px;
+            padding-top: 32px;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .footer {
+            padding: 32px 40px;
+            text-align: center;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            color: #94a3b8;
+            font-size: 13px;
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .footer-brand {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body, .email-wrapper {
+                background-color: #1a1a1a;
+            }
+
+            .container {
+                background: #2d2d2d;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            }
+
+            .greeting {
+                color: #f1f5f9;
+            }
+
+            .content p {
+                color: #cbd5e1;
+            }
+
+            .link-section {
+                background-color: #1e293b;
+                border-color: #334155;
+            }
+
+            .link-section-title {
+                color: #94a3b8;
+            }
+
+            .link-text {
+                background: #0f172a;
+                border-color: #334155;
+                color: #60a5fa;
+            }
+
+            .expiry-notice p {
+                color: #fef3c7;
+            }
+
+            .expiry-notice strong {
+                color: #fde68a;
+            }
+
+            .security-note {
+                border-top-color: #334155;
+                color: #94a3b8;
+            }
+
+            .footer {
+                background: #1e1e1e;
+                border-top-color: #334155;
+            }
+
+            .footer p {
+                color: #64748b;
+            }
+
+            .footer-brand {
+                color: #94a3b8;
+            }
+        }
+
+        /* Mobile responsive */
+        @media only screen and (max-width: 600px) {
+            .email-wrapper {
+                padding: 10px;
+            }
+
+            .container {
+                border-radius: 12px;
+            }
+
+            .header {
+                padding: 36px 24px;
+            }
+
+            .logo {
+                width: 64px;
+                height: 64px;
+                margin-bottom: 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .content {
+                padding: 36px 24px;
+            }
+
+            .greeting {
+                font-size: 17px;
+            }
+
+            .content p {
+                font-size: 15px;
+            }
+
+            .verify-button {
+                padding: 14px 36px;
+                font-size: 15px;
+            }
+
+            .footer {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="container">
+            <div class="header">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAgMzguNEMwIDI0Ljk1ODcgMCAxOC4yMzgxIDIuNjE1ODQgMTMuMTA0MkM0LjkxNjggOC41ODgzNCA4LjU4ODM0IDQuOTE2OCAxMy4xMDQyIDIuNjE1ODRDMTGUOTM4MSAwIDI0Ljk1ODcgMCAzOC40IDBINTcuNkM3MS4wNDEzIDAgNzcuNzYxOSAwIDgyLjg5NTggMi42MTU4NEM4Ny40MTE3IDQuOTE2OCA5MS4wODMyIDguNTg4MzQgOTMuMzg0MiAxMy4xMDQyQzk2IDE4LjIzODEgOTYgMjQuOTU4NyA5NiAzOC40VjU3LjZDOTYgNzEuMDQxMyA5NiA3Ny43NjE5IDkzLjM4NDIgODIuODk1OEM5MS4wODMyIDg3LjQxMTcgODcuNDExNyA5MS4wODMyIDgyLjg5NTggOTMuMzg0MkM3Ny43NjE5IDk2IDcxLjA0MTMgOTYgNTcuNiA5NkgzOC40QzI0Ljk1ODcgOTYgMTguMjM4MSA5NiAxMy4xMDQyIDkzLjM4NDJDOC41ODgzNCA5MS4wODMyIDQuOTE2OCA4Ny40MTE3IDIuNjE1ODQgODIuODk1OEMwIDc3Ljc2MTkgMCA3MS4wNDEzIDAgNTcuNlYzOC40WiIgZmlsbD0iI2ZmZmZmZiIvPgo8cGF0aCBkPSJNNzEuNjQwNCA0NUgyNC4zNTk2QzIwLjk3NjUgNDUgMTkuMzIzMSA0MC44NzM0IDIxLjc3MDMgMzguNTM3NUw0NS40MTA3IDE1Ljk3MTZDNDYuODU5OCAxNC41ODg0IDQ5LjE0MDIgMTQuNTg4NCA1MC41ODkzIDE1Ljk3MTZMNzQuMjI5NyAzOC41Mzc0Qzc2LjY3NjggNDAuODczNCA3NS4wMjM1IDQ1IDcxLjY0MDQgNDVaIiBmaWxsPSIjMjA3QkY5Ii8+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjguMTE1OSA1Mi44MDM4QzI3LjQxNjcgNTIuMTI3OCAyNi40ODIxIDUxLjc1IDI1LjUwOTYgNTEuNzVMMjQuMzU5NSA1MS43NUMyMC45NzY0IDUxLjc1IDE5LjMyMyA1NS44NzY2IDIxLjc3MDIgNTguMjEyNkw0NS40MTA2IDgwLjc3ODRDNDYUODU5NyA4Mi4xNjE2IDQ5LjE0MDEgODIuMTYxNiA1MC41ODkxIDgwLjc3ODRMNC4yMjk1IDU4LjIxMjZDNzYuNjc2NyA1NS44NzY2IDc1LjAyMzMgNTEuNzUgNzEuNjQwMyA1MS43NUw3MC40OTAxIDUxLjc1QzY5LjUxNzUgNTEuNzUgNjguNTgzIDUyLjEyNzggNjcuODgzNyA1Mi44MDM4TDUwLjYwNjIgNjkuNTA1NUM0OS4xNTI2IDcwLjkxMDUgNDYuODQ3IDcwLjkxMDUgNDUuMzkzNSA2OS41MDU0TDI4LjExNTkgNTIuODAzOFoiIGZpbGw9IiMyMDdCRjkiLz4KPC9zdmc+" class="logo" alt="Esprito AI Logo" />
+                <h1>Verify Your Email Address</h1>
+            </div>
+
+            <div class="content">
+                <p class="greeting">Welcome to Esprito AI!</p>
+
+                <p>We're excited to have you on board. To get started and unlock the full potential of your account, we need to verify your email address.</p>
+
+                <p>Click the button below to complete your registration:</p>
+
+                <div class="button-container">
+                    <a href="{{verificationLink}}" class="verify-button">Verify Email Address</a>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="link-section">
+                    <p class="link-section-title">Alternatively, copy and paste this link into your browser:</p>
+                    <code class="link-text">{{verificationLink}}</code>
+                </div>
+
+                <div class="expiry-notice">
+                    <p><strong>⏰ Time-sensitive:</strong> This verification link will expire in <strong>{{expiresInHours}} hours</strong>. If it expires, you can request a new verification link from the login page.</p>
+                </div>
+
+                <div class="security-note">
+                    <p>If you didn't create an account with Esprito AI, you can safely ignore this email. No further action is required.</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p class="footer-brand">Esprito AI</p>
+                <p>© 2026 Esprito AI. All rights reserved.</p>
+                <p>This is an automated message, please do not reply to this email.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
