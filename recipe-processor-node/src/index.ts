@@ -1,5 +1,5 @@
 import {publishJson, setupRabbit, shutdown, startConsumer} from "./rabbit.js";
-import {mockSendTon, sendTon} from "./recipes/transactions.js";
+import {mockSendTon, sendTon, sendToken} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
@@ -52,6 +52,54 @@ await startConsumer(ch, queue, async (_msg, body) => {
                         receiverAddress: receiver,
                         success: false,
                         error: String(err?.message || err),
+                    },
+                });
+            }
+        } else if (type === "agent-llm.send-token") {
+            const messageId = data?.messageId;
+            const userId = data?.userId;
+            const amountHuman = data?.tokenAmount;
+            const amountNano = data?.tokenAmountNano;
+            const jettonMaster = data?.jettonMaster;
+            const receiver = data?.receiverAddress;
+            console.log(`[${SERVICE}] send-token requested:`, { messageId, userId, amountHuman, amountNano, jettonMaster, receiver });
+            
+            try {
+                const txId = await sendToken(jettonMaster, amountNano, receiver);
+
+                console.log(`[${SERVICE}] send-token done: txId=${txId}`);
+                publishJson(ch, exchange, "agent-llm.send-token.result", {
+                    type: "agent-llm.send-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tokenAmount: amountHuman,
+                        tokenAmountNano: amountNano,
+                        jettonMaster,
+                        receiverAddress: receiver,
+                        success: true,
+                        txId,
+
+                    },
+                });
+            } catch (err: any) {
+                console.error(`[${SERVICE}] send-token error:`, err);
+                publishJson(ch, exchange, "agent-llm.send-token.result", {
+                    type: "agent-llm.send-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tokenAmount: amountHuman,
+                        tokenAmountNano: amountNano,
+                        jettonMaster,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: String(err?.message || err),
+
                     },
                 });
             }

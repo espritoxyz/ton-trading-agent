@@ -5,17 +5,12 @@ import com.agent.backend.dto.ChatMessageResponse
 import com.agent.backend.dto.ChatMessageStatusResponse
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.service.UserProvisioningService
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.Valid
-import java.util.*
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.web.bind.annotation.*
+import java.util.*
 
 private val chatLogger = KotlinLogging.logger {}
 

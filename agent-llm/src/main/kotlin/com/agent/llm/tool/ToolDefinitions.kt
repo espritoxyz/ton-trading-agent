@@ -11,10 +11,12 @@ class ToolDefinitions(
         GetTonToUSDTAgentTool(bcAdapter),
         TokenToTonAgentTool(bcAdapter),
         SendTonAgentTool(bcAdapter),
+        SendTokenAgentTool(bcAdapter),
         SwapTonToTokenAgentTool(bcAdapter),
         SwapTokenToTonAgentTool(bcAdapter),
         GetCandidateAssetsAgentTool(bcAdapter),
         CreatePriceTrackerAgentTool(bcAdapter),
         ListPriceTrackersAgentTool(bcAdapter),
+        DeletePriceTrackersAgentTool(bcAdapter),
     )
 }

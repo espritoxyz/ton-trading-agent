@@ -1,8 +1,8 @@
 package com.agent.backend.llm
 
 import com.agent.backend.rabbitmq.RabbitConfig
-import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.llm.tool.api.BlockchainAdapter
@@ -11,7 +11,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
@@ -73,6 +72,34 @@ class AgentBlockchainAdapter(
 
         rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "agent-llm.send-ton", payload)
     }
+
+    override fun sendTokenToAddress(tokenAmount: Double, jettonMaster: String, receiverAddress: String) {
+        // Convert human-readable token amount to smallest units (nanojettons) using known decimals.
+        val decimals = assetsCache.getDecimals(jettonMaster) ?: 9 // fallback if unknown
+        val factor = BigDecimal.TEN.pow(decimals)
+        val nanoAmount = BigDecimal.valueOf(tokenAmount)
+            .multiply(factor)
+            .setScale(0, RoundingMode.CEILING)
+            .toLong()
+
+        val payload = mapOf(
+            "type" to "agent-llm.send-token",
+            "occurredAt" to Instant.now().toString(),
+            "data" to mapOf(
+                "messageId" to messageId.toString(),
+                "userId" to userId,
+                // keep original human amount for reporting
+                "tokenAmount" to tokenAmount,
+                "tokenAmountNano" to nanoAmount,
+                "jettonMaster" to jettonMaster,
+                "receiverAddress" to receiverAddress
+            )
+        )
+
+        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "agent-llm.send-token", payload)
+    }
+
+
 
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
         val tokenToTonRate = getTokenToTon(jettonMaster)
@@ -198,7 +225,9 @@ class AgentBlockchainAdapter(
     }
 
     override fun deletePriceTrackers(ids: List<Long>) {
-        TODO("Not yet implemented")
+        ids.forEach {
+            priceTrackerService.deleteById(it)
+        }
     }
 
     override suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> =

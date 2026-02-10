@@ -1,9 +1,9 @@
 package com.agent.backend.service
 
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 import org.springframework.stereotype.Service
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Registry for async tool results (e.g. blockchain send/swap) keyed by (messageId, toolName).

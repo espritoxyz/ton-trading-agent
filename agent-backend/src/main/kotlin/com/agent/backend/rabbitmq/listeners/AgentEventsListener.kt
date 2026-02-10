@@ -4,11 +4,10 @@ import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
 import io.github.oshai.kotlinlogging.KotlinLogging
-import java.util.UUID
-
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Component
+import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -54,6 +53,34 @@ class AgentEventsListener(
                     externalToolResultService.complete(
                         messageId = messageId,
                         toolName = "send_ton_to_address",
+                        result = report,
+                    )
+
+                }
+                "agent-llm.send-token.result" -> {
+                    val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
+                    val userId = (data["userId"] as? Number)?.toLong() ?: return
+                    val success = data["success"] as? Boolean ?: false
+                    val amount = data["tokenAmount"]
+                    val jettonMaster = data["jettonMaster"] as? String
+                    val receiver = data["receiverAddress"] as? String
+                    val txId = data["txId"] as? String
+                    val error = data["error"] as? String
+
+                    val report = if (success) {
+                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">https://tonviewer.com/transaction/$it</a>" }
+                        if (txLink != null) {
+                            "Token transfer succeeded. Sent $amount of $jettonMaster to $receiver. Transaction: $txLink"
+                        } else {
+                            "Token transfer succeeded. Sent $amount of $jettonMaster to $receiver. (Transaction id unavailable)"
+                        }
+                    } else {
+                        "Token transfer failed. Attempted to send $amount of $jettonMaster to $receiver. Error: $error."
+                    }
+
+                    externalToolResultService.complete(
+                        messageId = messageId,
+                        toolName = "send_token_to_address",
                         result = report,
                     )
 
