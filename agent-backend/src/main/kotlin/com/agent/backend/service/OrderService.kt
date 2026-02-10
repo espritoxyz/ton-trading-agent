@@ -5,13 +5,12 @@ import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.llm.AgentBlockchainAdapter
 import com.agent.backend.rabbitmq.RabbitConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
-
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Service
 class OrderService(

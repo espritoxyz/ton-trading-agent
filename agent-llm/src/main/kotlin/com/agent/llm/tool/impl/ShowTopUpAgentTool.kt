@@ -7,7 +7,6 @@ import com.agent.llm.tool.dto.ShowTopUpArgs
 import com.explyt.ai.dto.ExplytJsonSchema
 import com.explyt.ai.dto.ToolDefinition
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 
 private val logger = KotlinLogging.logger {}
