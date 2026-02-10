@@ -8,7 +8,7 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun getTonToUSDT(): Double?
 
-    abstract fun getTokenToTon(jettonMaster: String): Double?
+    abstract fun getTokenToTon(jettonMaster: String): Pair<Double?, Double?>
 
     abstract fun sendTonToAddress(amount: Double, receiverAddress: String)
 
@@ -26,7 +26,17 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun deletePriceTrackers(ids: List<Long>)
 
+    abstract fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double)
+
+    abstract fun listUnfulfilledOrders(): String
+
     open suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> = toolResponses
 }
+
+
+
+
+
+
 
 

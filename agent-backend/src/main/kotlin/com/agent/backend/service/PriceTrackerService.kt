@@ -1,6 +1,8 @@
 package com.agent.backend.service
 
+import com.agent.backend.db.entity.Order
 import com.agent.backend.db.entity.PriceTracker
+import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
@@ -13,7 +15,9 @@ import kotlin.math.min
 @Service
 class PriceTrackerService(
     private val priceTrackers: PriceTrackerRepository,
+    private val orders: OrderRepository,
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
+    private val orderService: OrderService,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -37,7 +41,6 @@ class PriceTrackerService(
             else -> "up" // fallback, should not really happen
         }
 
-
         val tracker = PriceTracker(
             userId = userId,
             jettonMaster = jettonMaster,
@@ -47,6 +50,31 @@ class PriceTrackerService(
         return priceTrackers.save(tracker)
     }
 
+    @Transactional
+    fun createOrderWithTracker(
+        userId: Long,
+        jettonMaster: String,
+        action: String,
+        amount: Double,
+        targetPrice: Double,
+    ): Order {
+        val order = Order(
+            userId = userId,
+            jettonMaster = jettonMaster,
+            action = action,
+            amount = amount,
+        )
+
+        val saved = orders.save(order)
+
+        val tracker = createTracker(userId, jettonMaster, targetPrice).apply {
+            orderId = saved.id
+        }
+        priceTrackers.save(tracker)
+
+        return saved
+    }
+    
     @Transactional
     fun deleteById(id: Long) {
         logger.info { "[price-tracker] Deleting tracker id=$id" }
@@ -71,12 +99,32 @@ class PriceTrackerService(
                 "up" -> isGreaterOrEqual(price, t.targetPrice)
                 else -> false
             }
-
-
+            
             if (triggeredNow) {
                 t.triggered = true
                 logger.debug { "Triggered tracker $t" }
                 priceTrackers.save(t)
+
+                // If this tracker is linked to an order, execute the corresponding swap automatically.
+                t.orderId?.let { orderId ->
+                    val order = orders.findById(orderId).orElse(null)
+                    if (order == null) {
+                        logger.warn { "[price-tracker] Triggered tracker ${t.id} references missing order $orderId" }
+                    } else if (!order.fulfilled) {
+                        try {
+                            executeOrderSwap(order)
+                            order.fulfilled = true
+                            orders.save(order)
+                            logger.info {
+                                "[price-tracker] Order ${order.id} fulfilled for user=${order.userId}: " +
+                                    "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
+                            }
+
+                        } catch (e: Exception) {
+                            logger.error(e) { "[price-tracker] Failed to execute swap for order ${order.id}" }
+                        }
+                    }
+                }
                 notifyUser(t.userId, t)
             }
         }
@@ -92,6 +140,9 @@ class PriceTrackerService(
 
     private fun isLessOrEqual(a: Double, b: Double): Boolean = a < b || nearlyEquals(a, b)
 
+    private fun executeOrderSwap(order: Order) {
+        orderService.executeOrderSwap(order)
+    }
 
     private fun notifyUser(userId: Long, tracker: PriceTracker) {
         logger.info {

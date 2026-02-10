@@ -4,8 +4,8 @@ import jakarta.persistence.*
 import java.time.Instant
 
 @Entity
-@Table(name = "price_tracker")
-class PriceTracker(
+@Table(name = "orders")
+class Order(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
@@ -16,18 +16,16 @@ class PriceTracker(
     @Column(name = "jetton_master", nullable = false)
     var jettonMaster: String,
 
-    @Column(name = "target_price", nullable = false)
-    var targetPrice: Double,
+    // buy/sell
+    @Column(name = "action", nullable = false)
+    var action: String,
 
-    @Column(name = "triggered", nullable = false)
-    var triggered: Boolean = false,
-
-    @Column(name = "order_id", nullable = true)
-    var orderId: Long? = null,
-
-    @Column(name = "direction", nullable = false)
-    var direction: String, // "up" or "down"
+    @Column(name = "amount", nullable = false)
+    var amount: Double,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
+
+    @Column(name = "fulfilled", nullable = false)
+    var fulfilled: Boolean = false,
 )

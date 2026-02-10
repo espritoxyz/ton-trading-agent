@@ -42,8 +42,9 @@ class ChatJobService(
     private val poolsCacheService: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
     private val priceTrackerService: PriceTrackerService,
+    private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
-    ) {
+) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
 
@@ -112,6 +113,7 @@ class ChatJobService(
                 poolsCacheService,
                 assetsCache,
                 priceTrackerService,
+                orderService,
                 externalToolResultService
             )
         )

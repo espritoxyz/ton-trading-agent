@@ -18,5 +18,7 @@ class ToolDefinitions(
         CreatePriceTrackerAgentTool(bcAdapter),
         ListPriceTrackersAgentTool(bcAdapter),
         DeletePriceTrackersAgentTool(bcAdapter),
+        CreateOrderAgentTool(bcAdapter),
+        ListOrdersAgentTool(bcAdapter),
     )
 }
