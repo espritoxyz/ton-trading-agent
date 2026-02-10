@@ -6,6 +6,7 @@ import com.agent.backend.dto.InitiateDepositRequest
 import com.agent.backend.dto.InitiateDepositResponse
 import com.agent.backend.service.DepositService
 import com.agent.backend.service.UserProvisioningService
+import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
@@ -14,11 +15,17 @@ import org.springframework.web.bind.annotation.*
 
 private val depositLogger = KotlinLogging.logger {}
 
+data class SimpleDepositResponse(
+    val walletAddress: String,
+    val message: String
+)
+
 @RestController
 @RequestMapping("/deposit")
 class DepositController(
     private val provisioning: UserProvisioningService,
-    private val depositService: DepositService
+    private val depositService: DepositService,
+    private val walletService: WalletService
 ) {
     private fun currentUserId(auth: JwtAuthenticationToken): Long {
         val sub = auth.token.subject
@@ -30,6 +37,30 @@ class DepositController(
     fun initiateDeposit(
         auth: JwtAuthenticationToken,
         @Valid @RequestBody body: InitiateDepositRequest
+    ): ResponseEntity<SimpleDepositResponse> {
+        val userId = currentUserId(auth)
+
+        // Verify that the request userId matches the authenticated user
+        require(body.userId == userId) { "User ID mismatch" }
+
+        // Get user's burner wallet
+        val wallet = walletService.getUserWallet(userId)
+            ?: return ResponseEntity.status(404).build()
+
+        depositLogger.info { "Deposit info requested for user $userId: wallet=${wallet.walletAddress}" }
+
+        val response = SimpleDepositResponse(
+            walletAddress = wallet.walletAddress,
+            message = "Send TON or Jettons to this address. Transactions will be detected automatically."
+        )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/initiate-legacy")
+    fun initiateDepositLegacy(
+        auth: JwtAuthenticationToken,
+        @Valid @RequestBody body: InitiateDepositRequest
     ): ResponseEntity<InitiateDepositResponse> {
         val userId = currentUserId(auth)
 
@@ -37,7 +68,7 @@ class DepositController(
         require(body.userId == userId) { "User ID mismatch" }
 
         val response = depositService.initiateDeposit(userId)
-        depositLogger.info { "Deposit initiated for user $userId: code=${response.code}" }
+        depositLogger.info { "Legacy deposit initiated for user $userId: code=${response.code}" }
 
         return ResponseEntity.ok(response)
     }

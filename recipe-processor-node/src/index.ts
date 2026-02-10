@@ -4,6 +4,8 @@ import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
 import { startDepositMonitoring } from "./recipes/depositMonitor.js";
+import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
+import { startMultiWalletMonitoring, updateMonitoredWallets } from "./recipes/multiWalletMonitor.js";
 
 
 startPoolsUpdater();
@@ -11,17 +13,33 @@ startPoolsUpdater();
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
 
-const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#"]);
+const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#", "wallet.#"]);
 
-// Start deposit monitoring
+// Start deposit monitoring (legacy)
 startDepositMonitoring(ch, exchange).catch((err) => {
     console.error("[recipe-processor-node] Failed to start deposit monitoring:", err);
+});
+
+// Start multi-wallet monitoring
+startMultiWalletMonitoring(ch, exchange).catch((err) => {
+    console.error("[recipe-processor-node] Failed to start multi-wallet monitoring:", err);
 });
 
 await startConsumer(ch, queue, async (_msg, body) => {
     try {
         if (!body || typeof body !== "object") return;
         const { type, data, occurredAt } = body;
+
+        // Handle wallet events
+        if (type === "wallet.create-request") {
+            await handleWalletCreationRequest(data, ch, exchange);
+            return;
+        } else if (type === "wallet.list-active-response") {
+            const wallets = data?.wallets || [];
+            updateMonitoredWallets(wallets);
+            return;
+        }
+
         if (type === "agent-llm.send-ton") {
             const messageId = data?.messageId;
             const userId = data?.userId;

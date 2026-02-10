@@ -15,9 +15,10 @@ class RabbitConfig {
     companion object {
         const val EXCHANGE = "app.events"
         const val QUEUE = "agent-backend"
-        // Match both agent-llm.* and deposit.* patterns
+        // Match agent-llm.*, deposit.*, and wallet.* patterns
         const val ROUTING_PATTERN_1 = "agent-llm.#"
         const val ROUTING_PATTERN_2 = "deposit.#"
+        const val ROUTING_PATTERN_WALLET = "wallet.#"
     }
 
     @Bean
@@ -48,4 +49,7 @@ class RabbitConfig {
 
     @Bean fun binding2(): Binding =
         BindingBuilder.bind(queue()).to(exchange()).with(ROUTING_PATTERN_2)
+
+    @Bean fun bindingWallet(): Binding =
+        BindingBuilder.bind(queue()).to(exchange()).with(ROUTING_PATTERN_WALLET)
 }

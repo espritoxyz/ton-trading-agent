@@ -8,7 +8,8 @@ import java.time.Instant
 
 @Service
 open class UserProvisioningService(
-    private val users: AgentUserRepository
+    private val users: AgentUserRepository,
+    private val walletService: WalletService
 ) {
     @Transactional
     open fun resolveOrCreate(subject: String, email: String?): AgentUser {
@@ -42,6 +43,11 @@ open class UserProvisioningService(
             createdAt = Instant.now(),
             lastLoginAt = Instant.now()
         )
-        return users.save(u)
+        val savedUser = users.save(u)
+
+        // Create wallet for new user
+        walletService.createWalletForUser(savedUser.id!!)
+
+        return savedUser
     }
 }
