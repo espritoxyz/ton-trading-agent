@@ -1,18 +1,20 @@
-name: Deploy STAGE
+name: Deploy PROD Frontend
 
 on:
   push:
-    branches: ["dev"]
+    branches: ["main"]
+    paths:
+      - "agent-ui/**"
 
 concurrency:
-  group: esprito-stage
+  group: esprito-prod-frontend
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy Frontend via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -21,7 +23,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            /opt/esprito/deploy-stage.sh
+            /opt/esprito/deploy-prod-frontend.sh
 
       - name: Diagnostics (only if failed)
         if: failure()
@@ -33,9 +35,5 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set +e
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep esprito-stage || true
-            docker compose --project-directory /opt/esprito/repo -p esprito-stage \
-              --env-file /opt/esprito/env/stage.env \
-              -f /opt/esprito/compose/stage.yml logs --tail=300 agent-backend keycloak || true
-            curl -I http://127.0.0.1:8182/ | head -n 20 || true
-            curl -I http://127.0.0.1:18182/auth/ | head -n 20 || true
+            ls -la /var/www/esprito/prod/ | head -n 20 || true
+            tail -n 50 /var/log/nginx/error.log || true

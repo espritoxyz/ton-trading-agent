@@ -29,4 +29,15 @@ class AssetService(
         require(a.userId == userId) { "forbidden" }
         assets.delete(a)
     }
+
+    @Transactional
+    fun addOrUpdateAsset(userId: Long, address: String, amountNano: Long): Asset {
+        val existing = assets.findByUserIdAndAddress(userId, address)
+        return if (existing != null) {
+            existing.amountNano += amountNano
+            assets.save(existing)
+        } else {
+            assets.save(Asset(userId = userId, address = address, amountNano = amountNano))
+        }
+    }
 }

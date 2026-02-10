@@ -17,6 +17,10 @@ class AgentUser(
 
     var email: String? = null,
 
+    @Column(nullable = false) var emailVerified: Boolean = false,
+
+    var emailVerificationSentAt: Instant? = null,
+
     @Column(nullable = false) var createdAt: Instant = Instant.now(),
     var lastLoginAt: Instant? = null
 )

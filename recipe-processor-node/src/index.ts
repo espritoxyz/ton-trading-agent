@@ -3,6 +3,7 @@ import {mockSendTon, sendTon, sendToken} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
+import { startDepositMonitoring } from "./recipes/depositMonitor.js";
 
 
 startPoolsUpdater();
@@ -11,6 +12,11 @@ const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/
 const SERVICE = "recipe-processor-node";
 
 const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#"]);
+
+// Start deposit monitoring
+startDepositMonitoring(ch, exchange).catch((err) => {
+    console.error("[recipe-processor-node] Failed to start deposit monitoring:", err);
+});
 
 await startConsumer(ch, queue, async (_msg, body) => {
     try {

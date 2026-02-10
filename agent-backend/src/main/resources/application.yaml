@@ -11,10 +11,16 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # Switch to Flyway/Liquibase later (recommended)
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
 
   main:
     banner-mode: "off"
@@ -47,3 +53,24 @@ security:
       key: ${TOKEN_ENCRYPTION_KEY}
       key-id: ${TOKEN_ENCRYPTION_KEY_ID:default}
     token-hash-secret: ${TOKEN_HASH_SECRET}
+
+deposit:
+  wallet:
+    address: ${DEPOSIT_WALLET_ADDRESS}
+  poll-interval-ms: ${DEPOSIT_POLL_INTERVAL_MS:8000}
+  expiry:
+    hours: 24
+
+email:
+  provider: resend
+  resend:
+    api-key: ${RESEND_API_KEY}
+    api-url: https://api.resend.com
+    from-email: ${EMAIL_FROM:noreply@yourdomain.com}
+    from-name: ${EMAIL_FROM_NAME:Esprito AI}
+  verification:
+    token-ttl-hours: 24
+    base-url: ${APP_BASE_URL:http://localhost:80}
+  rate-limit:
+    max-requests-per-hour: 5
+    max-resends-per-token: 3

@@ -75,6 +75,12 @@ services:
       GITHUB_USERNAME: ${GITHUB_USERNAME}
       GITHUB_PAT: ${GITHUB_PAT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEPOSIT_WALLET_ADDRESS: ${DEPOSIT_WALLET_ADDRESS}
+      DEPOSIT_POLL_INTERVAL_MS: ${DEPOSIT_POLL_INTERVAL_MS:-8000}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      APP_BASE_URL: ${APP_BASE_URL}
     depends_on:
       app-db:
         condition: service_started
@@ -123,10 +129,17 @@ services:
       context: ./recipe-processor-node
       dockerfile: ./Dockerfile
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     environment:
       RABBIT_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fapp
       TONCENTER_ENDPOINT: ${TONCENTER_ENDPOINT}
       TONCENTER_API_KEY: ${TONCENTER_API_KEY}
+      TONAPI_BASE_URL: ${TONAPI_BASE_URL}
+      TONAPI_KEY: ${TONAPI_KEY}
+      DEPOSIT_POLL_INTERVAL_MS: ${DEPOSIT_POLL_INTERVAL_MS:-8000}
     depends_on:
       rabbitmq:
         condition: service_healthy

@@ -13,20 +13,23 @@ function onSend() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 border-t border-gray-200 p-3 dark:border-gray-700">
+  <div class="flex items-center gap-3 border-t border-gray-200 dark:border-white/10 p-4 bg-gray-50 dark:bg-white/5">
     <input
         v-model="text"
         :disabled="disabled"
         type="text"
-        placeholder="Type a message…"
-        class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+        placeholder="Type your message..."
+        class="flex-1 rounded-xl bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         @keydown.enter="onSend"
     />
     <button
-        class="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-        :disabled="disabled"
+        class="cosmic-button rounded-xl px-6 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        :disabled="disabled || !text.trim()"
         @click="onSend">
-      Send
+      <span>Send</span>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+      </svg>
     </button>
   </div>
 </template>

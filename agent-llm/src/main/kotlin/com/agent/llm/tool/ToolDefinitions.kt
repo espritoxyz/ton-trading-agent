@@ -20,5 +20,6 @@ class ToolDefinitions(
         DeletePriceTrackersAgentTool(bcAdapter),
         CreateOrderAgentTool(bcAdapter),
         ListOrdersAgentTool(bcAdapter),
-    )
+        ShowTopUpAgentTool(bcAdapter),
+        )
 }
