@@ -6,6 +6,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 @Service
 class PriceTrackerService(
@@ -29,10 +32,11 @@ class PriceTrackerService(
                 logger.warn { "[price-tracker] No current price for $jettonMaster, defaulting direction to 'up'" }
                 "up"
             }
-            currentPrice > targetPrice -> "down"
-            currentPrice < targetPrice -> "up"
-            else -> "up" // equal, will trigger immediately on next check if treated as 'up'
+            isGreaterOrEqual(currentPrice, targetPrice) -> "down"
+            isLessOrEqual(currentPrice, targetPrice) -> "up"
+            else -> "up" // fallback, should not really happen
         }
+
 
         val tracker = PriceTracker(
             userId = userId,
@@ -63,10 +67,11 @@ class PriceTrackerService(
             }
 
             val triggeredNow = when (t.direction) {
-                "down" -> price <= t.targetPrice
-                "up" -> price >= t.targetPrice
+                "down" -> isLessOrEqual(price, t.targetPrice)
+                "up" -> isGreaterOrEqual(price, t.targetPrice)
                 else -> false
             }
+
 
             if (triggeredNow) {
                 t.triggered = true
@@ -76,6 +81,17 @@ class PriceTrackerService(
             }
         }
     }
+
+    private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
+        val diff = abs(a - b)
+        val scale = max(1.0, min(abs(a), abs(b)))
+        return diff <= max(absTol, relTol * scale)
+    }
+
+    private fun isGreaterOrEqual(a: Double, b: Double): Boolean = a > b || nearlyEquals(a, b)
+
+    private fun isLessOrEqual(a: Double, b: Double): Boolean = a < b || nearlyEquals(a, b)
+
 
     private fun notifyUser(userId: Long, tracker: PriceTracker) {
         logger.info {

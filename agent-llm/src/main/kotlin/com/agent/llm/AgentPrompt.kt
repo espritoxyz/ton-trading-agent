@@ -109,6 +109,8 @@ mentioned text a description will tell you what to do with data in the request. 
  
 DATA is a pile of json-like data, it can be of different types (like transaction results data and swap results after).
 
+Treat '\n' in the template description as new line symbol. No other new lines must be made using the template.
+
 2.5.1. '$utilitySummarizeAnchor'
 
 This utility message is used to summarize tool call results, produced by user request, and present them as a human-readable message. 
@@ -123,11 +125,9 @@ DO NOT INSERT ANY PREFIX/SUFFIX TO THE PRODUCED ANSWER, JUST COMPILE THE MESSAGE
 
 Data format: [jettonMaster=text, targetPrice=number, createdAt=time]
 Template: 
-'Active tracks:
-*empty line*
-*empty line*
-@jettonMaster --- @targetPrice USD, @createdAt
-@jettonMaster --- @targetPrice USD, @createdAt
+'Active tracks:\n\n
+@jettonMaster --- @targetPrice USD, @createdAt\n
+@jettonMaster --- @targetPrice USD, @createdAt\n
 ...'
 
 3. GENERAL INTERACTION STYLE
