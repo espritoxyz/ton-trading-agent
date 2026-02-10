@@ -15,8 +15,9 @@ class RabbitConfig {
     companion object {
         const val EXCHANGE = "app.events"
         const val QUEUE = "agent-backend"
-        // Use # to match one or more words so both "agent-llm.send-ton" and "agent-llm.send-ton.result" are delivered
-        const val ROUTING_PATTERN = "agent-llm.#"
+        // Match both agent-llm.* and deposit.* patterns
+        const val ROUTING_PATTERN_1 = "agent-llm.#"
+        const val ROUTING_PATTERN_2 = "deposit.#"
     }
 
     @Bean
@@ -42,6 +43,9 @@ class RabbitConfig {
     @Bean fun queue(): Queue =
         QueueBuilder.durable(QUEUE).build()
 
-    @Bean fun binding(): Binding =
-        BindingBuilder.bind(queue()).to(exchange()).with(ROUTING_PATTERN)
+    @Bean fun binding1(): Binding =
+        BindingBuilder.bind(queue()).to(exchange()).with(ROUTING_PATTERN_1)
+
+    @Bean fun binding2(): Binding =
+        BindingBuilder.bind(queue()).to(exchange()).with(ROUTING_PATTERN_2)
 }

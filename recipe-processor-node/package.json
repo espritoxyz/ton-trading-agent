@@ -9,11 +9,12 @@
     "dev": "nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/index.ts\""
   },
   "dependencies": {
-    "amqplib": "^0.10.4",
-    "@ton/core": "^0.62.0",
+    "@ston-fi/sdk": "^2.5.0",
+    "@ton-api/client": "^0.4.0",
+    "@ton/core": "^0.63.0",
     "@ton/crypto": "^3.3.0",
-    "@ton/ton": "^15.4.0",
-    "@ston-fi/sdk": "^2.5.0"
+    "@ton/ton": "^16.1.0",
+    "amqplib": "^0.10.4"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.7",

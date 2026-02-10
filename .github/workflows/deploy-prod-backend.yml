@@ -1,0 +1,48 @@
+name: Deploy PROD Backend
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "agent-backend/**"
+      - "agent-llm/**"
+      - "recipe-processor-node/**"
+      - "docker-compose*.yml"
+      - "Dockerfile*"
+      - ".github/workflows/deploy-prod-backend.yml"
+
+concurrency:
+  group: esprito-prod-backend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Backend via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            /opt/esprito/deploy-prod-backend.sh
+
+      - name: Diagnostics (only if failed)
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set +e
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep esprito-prod || true
+            docker compose --project-directory /opt/esprito/repo -p esprito-prod \
+              --env-file /opt/esprito/env/prod.env \
+              -f /opt/esprito/compose/prod.yml logs --tail=300 agent-backend keycloak || true
+            curl -I http://127.0.0.1:8082/ | head -n 20 || true
+            curl -I http://127.0.0.1:18082/auth/ | head -n 20 || true

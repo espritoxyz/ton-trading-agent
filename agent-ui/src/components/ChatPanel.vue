@@ -4,10 +4,13 @@ import * as chatModule from '../composables/useChat.ts'
 import { accessToken } from '../composables/useAuth.ts'
 import MessageBubble from './MessageBubble.vue'
 import InputBar from './InputBar.vue'
+import TopUpModal from './TopUpModal.vue'
+import { MessageCircle, Lock } from 'lucide-vue-next'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
 const sending = chat.sending
+const showTopUpModal = ref(false)
 
 async function clearConversation() {
   try {
@@ -132,26 +135,43 @@ async function handleSend(text: string) {
   await nextTick()
   requestAnimationFrame(() => scrollToBottom(true))
 }
+
+function handleOpenTopUp() {
+  showTopUpModal.value = true
+}
+
+function handleTopUpCompleted() {
+  showTopUpModal.value = false
+  // Optionally refresh assets here if needed
+}
 </script>
 
 <template>
-  <div class="flex w-full h-full flex-col min-h-0 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-    <div v-if="!ready" class="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-      Login to start chatting.
-    </div>
-    <div class="flex-1 min-h-0 p-2 pr-3 w-full rounded-2xl overflow-hidden relative">
-      <div class="absolute right-2 top-2 z-10">
-        <button @click="clearConversation" class="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-gray-200 bg-white shadow hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-650" title="Clear chat">
-          <svg class="w-4 h-4 text-gray-700 dark:text-gray-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-            <path d="M10 11v6"></path>
-            <path d="M14 11v6"></path>
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
-          </svg>
-        </button>
+  <div class="flex w-full h-full flex-col min-h-0 glass-card overflow-hidden cosmic-glow">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
+      <div class="flex items-center gap-2">
+        <MessageCircle :size="24" class="text-cosmic-500" />
+        <div class="text-lg font-semibold gradient-text">AI Trading Assistant</div>
       </div>
-      <div ref="scroller" class="h-full min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4 pr-12 w-full chat-scroller">
+      <button @click="clearConversation" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 transition group" title="Clear chat">
+        <svg class="w-4 h-4 text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+          <path d="M10 11v6"></path>
+          <path d="M14 11v6"></path>
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+        </svg>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition hidden sm:inline">Clear</span>
+      </button>
+    </div>
+
+    <div v-if="!ready" class="border-b border-amber-300 dark:border-amber-500/30 bg-amber-100 dark:bg-amber-500/10 px-4 py-3 flex items-center gap-3">
+      <Lock :size="20" class="text-amber-600 dark:text-amber-400" />
+      <div class="text-sm text-amber-800 dark:text-amber-200">Login to start chatting with AI</div>
+    </div>
+
+    <div class="flex-1 min-h-0 w-full overflow-hidden relative">
+      <div ref="scroller" class="h-full min-h-0 space-y-4 overflow-y-auto overscroll-contain p-6 w-full chat-scroller">
         <MessageBubble
           v-for="(m, i) in messages"
           :key="m.id + i"
@@ -162,6 +182,7 @@ async function handleSend(text: string) {
           :utility-kind="m.utilityKind"
           :utility-meta="m.utilityMeta"
           @dismiss="(id) => { if (!id) return; const idx = messages.findIndex(x => x.id === id); if (idx !== -1) messages.splice(idx, 1) }"
+          @open-top-up="handleOpenTopUp"
         />
       </div>
 
@@ -169,10 +190,10 @@ async function handleSend(text: string) {
         <button
           v-show="showTopButton"
           @click="scrollToTop(true)"
-          class="absolute bottom-4 right-6 z-10 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full p-2 shadow hover:shadow-md transition"
+          class="absolute bottom-4 right-6 z-10 bg-cosmic-500 border border-cosmic-400 rounded-full p-3 shadow-lg hover:shadow-cosmic-500/50 transition cosmic-glow"
           aria-label="Scroll to top"
         >
-          <svg class="w-4 h-4 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
           </svg>
         </button>
@@ -181,14 +202,21 @@ async function handleSend(text: string) {
 
     <InputBar :disabled="!ready" @send="handleSend" />
   </div>
+
+  <TopUpModal
+    v-if="showTopUpModal"
+    @close="showTopUpModal = false"
+    @completed="handleTopUpCompleted"
+  />
 </template>
 
 <style scoped>
 .chat-scroller {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100,100,100,0.6) transparent;
+  scrollbar-color: rgba(99, 102, 241, 0.5) transparent;
   scrollbar-gutter: stable;
 }
+
 .fade-scale-enter-active, .fade-scale-leave-active {
   transition: opacity 200ms ease, transform 200ms ease;
 }
@@ -202,16 +230,20 @@ async function handleSend(text: string) {
 }
 
 .chat-scroller::-webkit-scrollbar {
-  width: 12px;
+  width: 10px;
 }
 .chat-scroller::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
 }
 .chat-scroller::-webkit-scrollbar-thumb {
-  background-color: rgba(100,100,100,0.6);
-  border-radius: 6px;
+  background: linear-gradient(180deg, #6366f1, #a855f7);
+  border-radius: 10px;
   border: 2px solid transparent;
   background-clip: padding-box;
+}
+.chat-scroller::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7c3aed, #d946ef);
 }
 .chat-scroller:focus,
 .chat-scroller:focus-visible {

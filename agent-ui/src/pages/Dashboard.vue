@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AuthCard from '../components/AuthCard.vue'
 import BalanceCard from '../components/BalanceCard.vue'
 import ChatPanel from '../components/ChatPanel.vue'
 </script>
@@ -10,7 +9,6 @@ import ChatPanel from '../components/ChatPanel.vue'
       <ChatPanel />
     </div>
     <div class="flex h-full flex-col gap-4">
-      <AuthCard />
       <BalanceCard />
     </div>
   </div>

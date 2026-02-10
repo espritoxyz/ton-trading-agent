@@ -1,17 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
+
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <title>Agent UI</title>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900">
-<div id="app"></div>
-<script type="module" src="./src/main.ts"></script>
-</body>
+    <meta name="description" content="Trade crypto on TON DEXes effortlessly with AI-powered chat interface. No complex protocols, just simple conversations." />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Esprito AI - Trade Crypto with AI on TON Blockchain" />
+    <meta property="og:description" content="Trade crypto on TON DEXes effortlessly with AI-powered chat interface. No complex protocols, just simple conversations." />
+    <meta property="og:image" content="/favicon.svg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Esprito AI - Trade Crypto with AI on TON Blockchain" />
+    <meta name="twitter:description" content="Trade crypto on TON DEXes effortlessly with AI-powered chat interface. No complex protocols, just simple conversations." />
+    <meta name="twitter:image" content="/favicon.svg" />
+
+    <title>Esprito AI - Trade Crypto with AI on TON Blockchain</title>
+    <!-- Inline theme init: set class on <html> synchronously to avoid flash-of-unstyled-theme -->
+    <script>
+      (function(){
+        try {
+          const K = 'app-theme'
+          const saved = localStorage.getItem(K)
+          const t = (saved === 'light' || saved === 'dark') ? saved : 'dark'
+          if (t === 'dark') document.documentElement.classList.add('dark')
+        } catch (e) {
+          /* ignore */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
 </html>

@@ -10,13 +10,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
+    "build:production": "vite build --mode production",
     "preview": "vite preview",
     "dev:all": "concurrently -n BACKEND,FRONTEND -c blue,green \"cd ../agent-backend && ./gradlew bootRun\" \"vite\""
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
     "axios": "^1.7.7",
-    "vue": "^3.4.38"
+    "lucide-vue-next": "^0.563.0",
+    "vue": "^3.4.38",
+    "vue-router": "^4.3.4",
+    "vue3-yandex-metrika": "^0.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
