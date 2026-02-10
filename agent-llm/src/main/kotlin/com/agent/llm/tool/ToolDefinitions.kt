@@ -21,5 +21,5 @@ class ToolDefinitions(
         CreateOrderAgentTool(bcAdapter),
         ListOrdersAgentTool(bcAdapter),
         ShowTopUpAgentTool(bcAdapter),
-        )
+    )
 }
