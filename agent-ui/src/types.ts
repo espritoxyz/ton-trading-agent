@@ -43,3 +43,78 @@ export interface JettonMetadata {
     image: string
     verification?: string
 }
+
+export type TransactionDirection = 'INCOMING' | 'OUTGOING'
+
+export type AssetType = 'TON' | 'JETTON'
+
+export interface Transaction {
+    id: number
+    transactionHash: string
+    transactionLt: number
+    direction: TransactionDirection
+    amountNano: string
+    assetType: AssetType
+    jettonMasterAddress?: string
+    jettonSymbol?: string
+    jettonDecimals?: number
+    senderAddress?: string
+    recipientAddress?: string
+    comment?: string
+    createdAt: string
+}
+
+export interface TransactionHistoryResponse {
+    transactions: Transaction[]
+    total?: number
+}
+
+// Unified Wallet State API types
+export interface WalletStateResponse {
+    userId: number
+    balance: BalanceData
+    assets: AssetData[]
+    transactions: TransactionData[]
+    metadata: WalletStateMetadata
+}
+
+export interface BalanceData {
+    totalUsd: number
+    lastUpdated: string
+}
+
+export interface AssetData {
+    id: number
+    address: string
+    amountNano: string
+    symbol?: string
+    decimals?: number
+    name?: string
+    imageUrl?: string
+    readableAmount?: string
+    unitPrice?: number
+    usdValue?: number
+}
+
+export interface TransactionData {
+    id: number
+    transactionHash: string
+    transactionLt: number
+    direction: TransactionDirection
+    amountNano: string
+    assetType: AssetType
+    jettonMasterAddress?: string
+    jettonSymbol?: string
+    jettonDecimals?: number
+    senderAddress?: string
+    recipientAddress?: string
+    comment?: string
+    createdAt: string
+}
+
+export interface WalletStateMetadata {
+    fromCache: boolean
+    cacheAge: number | null
+    transactionCount: number
+    transactionsLimit: number
+}

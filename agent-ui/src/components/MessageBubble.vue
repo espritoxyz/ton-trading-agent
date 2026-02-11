@@ -104,7 +104,35 @@ async function handleOpenTopUp() {
     </template>
     <template v-else>
       <pre v-if="role==='USER'" class="whitespace-pre-wrap font-sans">{{ text }}</pre>
-      <div v-else class="prose prose-sm dark:prose-invert max-w-none" v-html="text"></div>
+      <div v-else class="prose prose-sm dark:prose-invert max-w-none message-content" v-html="text"></div>
     </template>
   </div>
 </template>
+
+<style scoped>
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.message-content :deep(a) {
+  color: #6366f1;
+  text-decoration: underline;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.message-content :deep(a:hover) {
+  color: #818cf8;
+}
+
+:global(.dark) .message-content :deep(a) {
+  color: #a5b4fc;
+}
+
+:global(.dark) .message-content :deep(a:hover) {
+  color: #c7d2fe;
+}
+</style>

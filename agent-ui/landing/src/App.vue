@@ -53,6 +53,9 @@ const animateStats = () => {
 }
 
 onMounted(() => {
+  // Force dark theme on landing page (landing doesn't support light theme)
+  document.documentElement.classList.add('dark')
+
   // Animate stats after a short delay
   setTimeout(animateStats, 500)
 })

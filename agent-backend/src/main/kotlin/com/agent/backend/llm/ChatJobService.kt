@@ -12,6 +12,7 @@ import com.agent.backend.service.OrderService
 import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
+import com.agent.backend.service.WalletService
 import com.agent.llm.ChatterStatus
 import com.agent.llm.OpenAIChatter
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -56,6 +57,7 @@ class ChatJobService(
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
+    private val walletService: WalletService
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -124,6 +126,7 @@ class ChatJobService(
                 job.messageId,
                 poolsCacheService,
                 assetsCache,
+                walletService,
                 priceTrackerService,
                 orderService,
                 externalToolResultService

@@ -1,9 +1,19 @@
 <script setup lang="ts">
+import { ref, provide } from 'vue'
 import { APP_VERSION } from '../config'
 import { useTheme } from '../composables/useTheme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import AccountMenu from '../components/AccountMenu.vue'
+
+const navigationTabs = ref<any[]>([])
+const activeTab = ref<any>(null)
+
+// Provide a function for child components to set navigation tabs
+provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
+  navigationTabs.value = tabs
+  activeTab.value = activeTabRef
+})
 </script>
 
 <style scoped>
@@ -57,6 +67,27 @@ import AccountMenu from '../components/AccountMenu.vue'
             </span>
           </div>
         </a>
+
+        <!-- Navigation Tabs -->
+        <div class="flex-1 flex justify-center">
+          <div v-if="navigationTabs.length > 0 && activeTab" class="flex gap-2">
+            <button
+              v-for="tab in navigationTabs"
+              :key="tab.id"
+              @click="activeTab.value = tab.id"
+              :class="[
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shrink-0',
+                activeTab.value === tab.id
+                  ? 'bg-gradient-to-r from-cosmic-500 to-purple-600 text-white shadow-lg shadow-cosmic-500/30'
+                  : 'bg-gray-200 dark:bg-transparent text-gray-800 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-white/5 border border-gray-300 dark:border-transparent shadow-sm'
+              ]"
+            >
+              <component :is="tab.icon" :size="18" />
+              <span>{{ tab.label }}</span>
+            </button>
+          </div>
+        </div>
+
         <div class="flex items-center gap-3">
           <AccountMenu />
           <ThemeToggle />

@@ -1,20 +1,28 @@
 import {internal, toNano, TonClient, WalletContractV5R1} from "@ton/ton";
-import https from "https";
+import https, {RequestOptions} from "https";
 import {mnemonicToPrivateKey} from "@ton/crypto";
 import {Address, SendMode, beginCell, Cell, toNano as coreToNano} from "@ton/core";
-import {mnemonic_array} from "../mnemonics.js"; // Expected to be provided
 import {randomBytes} from "crypto";
 import {bufToHex, sleep, waitForSeqnoIncrement} from "../utils.js";
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
 const apiKey = process.env.TONCENTER_API_KEY || "";
 
-export async function sendTon(amountTon: number | string, receiverAddress: string): Promise<string> {
+// utils imported from ./utils.js
+
+/**
+ * Sends specified TON amount to a given recipient address.
+ * @param amountTon amount in TON (number or string), e.g. 0.3
+ * @param receiverAddress TON address (raw or user-friendly)
+ * @param userMnemonic user's mnemonic phrase as array of words
+ * @returns txId (hex) when located in recent transactions
+ */
+export async function sendTon(amountTon: number | string, receiverAddress: string, userMnemonic: string[]): Promise<string> {
     if (!receiverAddress) throw new Error("receiverAddress is required");
     const amountStr = String(amountTon);
 
     const client = new TonClient({ endpoint, apiKey });
-    const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+    const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
 
     const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
     const provider = client.open(wallet);
@@ -79,6 +87,7 @@ export async function sendToken(
     jettonMasterAddress: string,
     amountJetton: string | number,
     receiverAddress: string,
+    userMnemonic: string[],
     forwardTonAmount: number | string = 0.0,
 ): Promise<string> {
     if (!jettonMasterAddress) throw new Error("jettonMasterAddress is required");
@@ -86,7 +95,7 @@ export async function sendToken(
 
     const client = new TonClient({ endpoint, apiKey });
 
-    const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+    const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
 
     const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
     const provider = client.open(wallet);
@@ -221,11 +230,11 @@ async function httpPostJson(url: URL, body: any): Promise<any> {
     return new Promise((resolve, reject) => {
         const data = JSON.stringify(body);
 
-        const options: https.RequestOptions = {
+        const options: RequestOptions = {
             method: "POST",
             hostname: url.hostname,
             path: url.pathname + (url.search || ""),
-            port: url.port || (url.protocol === "https:" ? 443 : 80),
+            port: url.port ? parseInt(url.port) : (url.protocol === "https:" ? 443 : 80),
             headers: {
                 "Content-Type": "application/json",
                 "Content-Length": Buffer.byteLength(data),

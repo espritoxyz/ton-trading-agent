@@ -6,6 +6,7 @@ import com.agent.backend.service.OrderService
 import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
+import com.agent.backend.service.WalletService
 import com.agent.llm.tool.api.BlockchainAdapter
 import com.explyt.ai.dto.ToolResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -36,6 +37,7 @@ class AgentBlockchainAdapter(
     private var messageId: UUID,
     private val poolsCache: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val walletService: WalletService,
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
@@ -68,6 +70,18 @@ class AgentBlockchainAdapter(
         this.messageId = messageId
     }
 
+    /**
+     * Get user's mnemonic as word array for blockchain operations
+     * @throws IllegalStateException if user has no wallet
+     */
+    private fun getUserMnemonicWords(): List<String> {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet. Cannot perform blockchain operations.")
+
+        val mnemonicPhrase = walletService.decryptMnemonic(wallet)
+        return mnemonicPhrase.split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
     private data class TonToUsdtDto(
         val symbol: String,
         val price: Float,
@@ -78,14 +92,20 @@ class AgentBlockchainAdapter(
     }
 
     override fun sendTonToAddress(amount: Double, receiverAddress: String) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val payload = mapOf(
             "type" to "agent-llm.send-ton",
             "occurredAt" to Instant.now().toString(),
             "data" to mapOf(
                 "messageId" to messageId.toString(),
                 "userId" to userId,
+                "walletAddress" to wallet.walletAddress,
                 "tonAmount" to amount,
-                "receiverAddress" to receiverAddress
+                "receiverAddress" to receiverAddress,
+                "mnemonic" to mnemonicWords
             )
         )
 
@@ -93,6 +113,9 @@ class AgentBlockchainAdapter(
     }
 
     override fun sendTokenToAddress(tokenAmount: Double, jettonMaster: String, receiverAddress: String) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+
         // Convert human-readable token amount to smallest units (nanojettons) using known decimals.
         val decimals = assetsCache.getDecimals(jettonMaster) ?: 9 // fallback if unknown
         val factor = BigDecimal.TEN.pow(decimals)
@@ -101,17 +124,21 @@ class AgentBlockchainAdapter(
             .setScale(0, RoundingMode.CEILING)
             .toLong()
 
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val payload = mapOf(
             "type" to "agent-llm.send-token",
             "occurredAt" to Instant.now().toString(),
             "data" to mapOf(
                 "messageId" to messageId.toString(),
                 "userId" to userId,
+                "walletAddress" to wallet.walletAddress,
                 // keep original human amount for reporting
                 "tokenAmount" to tokenAmount,
                 "tokenAmountNano" to nanoAmount,
                 "jettonMaster" to jettonMaster,
-                "receiverAddress" to receiverAddress
+                "receiverAddress" to receiverAddress,
+                "mnemonic" to mnemonicWords
             )
         )
 
@@ -121,6 +148,10 @@ class AgentBlockchainAdapter(
 
 
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
             // minimalTokenAmount tokens * (TON per token) = required TON (mid-price estimate)
@@ -137,9 +168,11 @@ class AgentBlockchainAdapter(
         val data = mutableMapOf<String, Any?>(
             "messageId" to messageId.toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTokenAmount" to minimalTokenAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords
         )
         if (swapTonAmount != null) data["swapTonAmount"] = swapTonAmount
 
@@ -154,6 +187,10 @@ class AgentBlockchainAdapter(
     }
 
     override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
 
         // Compute how many tokens are needed, then convert to smallest units (nanojettons)
@@ -179,9 +216,11 @@ class AgentBlockchainAdapter(
         val data = mutableMapOf<String, Any?>(
             "messageId" to messageId.toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTonAmount" to minimalTonAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords
         )
         if (swapTokenAmountNano != null) data["swapTokenAmount"] = swapTokenAmountNano
 
@@ -303,5 +342,3 @@ class AgentBlockchainAdapter(
             }.awaitAll()
         }
 }
-
-

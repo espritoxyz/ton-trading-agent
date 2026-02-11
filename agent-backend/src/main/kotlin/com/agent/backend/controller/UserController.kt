@@ -1,13 +1,12 @@
 package com.agent.backend.controller
 
-import com.agent.backend.dto.AssetResponse
-import com.agent.backend.dto.BalanceResponse
 import com.agent.backend.dto.UserInfoResponse
 import com.agent.backend.dto.UserUpdateRequest
-import com.agent.backend.service.AssetService
-import com.agent.backend.service.BalanceService
+import com.agent.backend.dto.WalletStateResponse
 import com.agent.backend.service.UserProvisioningService
 import com.agent.backend.service.UserService
+import com.agent.backend.service.WalletStateService
+import kotlinx.coroutines.runBlocking
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.GetMapping
@@ -15,6 +14,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -22,8 +22,7 @@ import org.springframework.web.bind.annotation.RestController
 class UserController(
     private val userService: UserService,
     private val provisioning: UserProvisioningService,
-    private val balanceService: BalanceService,
-    private val assetService: AssetService
+    private val walletStateService: WalletStateService
 ) {
     /** Resolve current local userId from JWT (creates row on first visit). */
     private fun currentUserId(auth: JwtAuthenticationToken): Long {
@@ -75,36 +74,25 @@ class UserController(
     }
 
     /**
-     * Balance endpoint moved here; now returns aggregated USD balance via BalanceService.
+     * Get unified wallet state (balance + assets + transactions) with caching.
+     *
+     * This endpoint replaces separate calls to /balance, /assets, and /wallet/transactions.
+     * Includes intelligent caching (8s TTL) with event-driven invalidation.
+     *
+     * @param userId User ID
+     * @param transactionsLimit Maximum number of transactions to return (default: 20)
+     * @return Complete wallet state with metadata
      */
-    @GetMapping("/{userId}/balance")
-    fun getBalance(
+    @GetMapping("/{userId}/wallet-state")
+    fun getWalletState(
         auth: JwtAuthenticationToken,
-        @PathVariable userId: Long
-    ): ResponseEntity<BalanceResponse> {
+        @PathVariable userId: Long,
+        @RequestParam(defaultValue = "20") transactionsLimit: Int
+    ): ResponseEntity<WalletStateResponse> = runBlocking {
         val current = currentUserId(auth)
         require(current == userId) { "forbidden" }
 
-        val bal = balanceService.getBalance(userId)
-        return ResponseEntity.ok(bal)
-    }
-
-    /**
-     * Get list of all user's assets with metadata.
-     * Returns assets enriched with price data, decimals, and metadata from STON.fi.
-     */
-    @GetMapping("/{userId}/assets")
-    fun getAssets(
-        auth: JwtAuthenticationToken,
-        @PathVariable userId: Long
-    ): ResponseEntity<List<AssetResponse>> {
-        val current = currentUserId(auth)
-        require(current == userId) { "forbidden" }
-
-        val assets = assetService.list(userId)
-        val responses = assets.map { asset ->
-            balanceService.enrichAsset(asset)
-        }
-        return ResponseEntity.ok(responses)
+        val state = walletStateService.getWalletState(userId, transactionsLimit)
+        ResponseEntity.ok(state)
     }
 }
