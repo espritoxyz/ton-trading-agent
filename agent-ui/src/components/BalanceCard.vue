@@ -5,10 +5,12 @@ import {balanceError, balanceUsd, loadingBalance, refreshBalance} from '../compo
 import {AlertTriangle, Loader, Lock, Plus, RefreshCw, Wallet} from 'lucide-vue-next'
 import TopUpModal from './TopUpModal.vue'
 import AssetsList from './AssetsList.vue'
+import TransactionHistory from './TransactionHistory.vue'
 
 const loggedIn = computed(() => !!accessToken.value)
 const showTopUpModal = ref(false)
 const assetsListRef = ref<InstanceType<typeof AssetsList>>()
+const transactionHistoryRef = ref<InstanceType<typeof TransactionHistory>>()
 
 const formattedBalance = computed(() => {
   if (!balanceUsd.value) return '0.00'
@@ -46,13 +48,15 @@ onMounted(async () => {
 function handleDepositCompleted() {
   showTopUpModal.value = false
   refreshBalance()
-  // Refresh assets list
+  // Refresh assets list and transaction history
   assetsListRef.value?.refresh()
+  transactionHistoryRef.value?.refresh()
 }
 
 function handleRefresh() {
   refreshBalance()
   assetsListRef.value?.refresh()
+  transactionHistoryRef.value?.refresh()
 }
 </script>
 
@@ -146,6 +150,11 @@ function handleRefresh() {
             :display-limit="5"
             ref="assetsListRef"
         />
+      </div>
+
+      <!-- Transaction History Section -->
+      <div class="mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
+        <TransactionHistory ref="transactionHistoryRef" />
       </div>
     </div>
 

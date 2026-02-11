@@ -43,3 +43,28 @@ export interface JettonMetadata {
     image: string
     verification?: string
 }
+
+export type TransactionDirection = 'INCOMING' | 'OUTGOING'
+
+export type AssetType = 'TON' | 'JETTON'
+
+export interface Transaction {
+    id: number
+    transactionHash: string
+    transactionLt: number
+    direction: TransactionDirection
+    amountNano: string
+    assetType: AssetType
+    jettonMasterAddress?: string
+    jettonSymbol?: string
+    jettonDecimals?: number
+    senderAddress?: string
+    recipientAddress?: string
+    comment?: string
+    createdAt: string
+}
+
+export interface TransactionHistoryResponse {
+    transactions: Transaction[]
+    total?: number
+}
