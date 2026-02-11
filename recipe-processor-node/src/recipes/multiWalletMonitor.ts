@@ -180,31 +180,23 @@ async function pollWalletEvents(
     exchange: string
 ) {
     try {
-        console.log(`[multi-wallet-monitor] Polling wallet ${wallet.walletAddress} (user ${wallet.userId}, lastLt=${wallet.lastProcessedLt})`);
-
         const events = await client.accounts.getAccountEvents(Address.parse(wallet.walletAddress), {
             limit: 20
         });
 
-        console.log(`[multi-wallet-monitor] Received ${events.events?.length || 0} events from TonAPI for ${wallet.walletAddress}`);
-
         if (!events.events || events.events.length === 0) {
-            console.log(`[multi-wallet-monitor] No events found for ${wallet.walletAddress}`);
             return;
         }
 
         // Process events in chronological order (oldest first)
         const sortedEvents = [...events.events].reverse();
         let newEventsCount = 0;
-        let skippedEventsCount = 0;
 
         for (const event of sortedEvents) {
             const eventLt = BigInt(event.lt);
 
             // Skip already processed events
             if (eventLt <= wallet.lastProcessedLt) {
-                skippedEventsCount++;
-                console.log(`[multi-wallet-monitor] Skipping already processed event: lt=${eventLt}`);
                 continue;
             }
 
@@ -219,7 +211,9 @@ async function pollWalletEvents(
             monitoredWallets.set(wallet.walletAddress, wallet);
         }
 
-        console.log(`[multi-wallet-monitor] Wallet ${wallet.walletAddress}: processed ${newEventsCount} new events, skipped ${skippedEventsCount} already processed`);
+        if (newEventsCount > 0) {
+            console.log(`[multi-wallet-monitor] Processed ${newEventsCount} new events for wallet ${wallet.walletAddress} (user ${wallet.userId})`);
+        }
     } catch (error: any) {
         // Log but don't throw - we don't want one wallet failure to stop monitoring
         console.error(`[multi-wallet-monitor] Error fetching events for ${wallet.walletAddress}:`, error?.message);
@@ -236,21 +230,12 @@ async function processEvent(
     exchange: string
 ) {
     try {
-        const actionCount = event.actions?.length || 0;
-        console.log(`[multi-wallet-monitor] Event has ${actionCount} actions`);
-
-        // Check for TON transfers
+        // Check for TON and Jetton transfers
         for (const action of event.actions || []) {
-            console.log(`[multi-wallet-monitor] Checking action type: ${action.type}`);
-
             if (action.type === "TonTransfer") {
-                console.log(`[multi-wallet-monitor] Found TonTransfer action, processing...`);
                 await processTonTransfer(action, event, wallet, channel, exchange);
             } else if (action.type === "JettonTransfer") {
-                console.log(`[multi-wallet-monitor] Found JettonTransfer action, processing...`);
                 await processJettonTransfer(action, event, wallet, channel, exchange);
-            } else {
-                console.log(`[multi-wallet-monitor] Skipping action type: ${action.type}`);
             }
         }
     } catch (error) {
@@ -277,10 +262,6 @@ async function processTonTransfer(
     const recipient = transfer.recipient?.address;
     const sender = transfer.sender?.address;
 
-    // Debug: check types
-    console.log(`[multi-wallet-monitor] TonTransfer recipient type: ${typeof recipient}, value:`, recipient);
-    console.log(`[multi-wallet-monitor] TonTransfer: from=${sender} to=${recipient}, monitoring=${wallet.walletAddress}`);
-
     // Only process incoming transfers - use Address.equals() for proper comparison
     try {
         // Ensure we have strings for Address.parse()
@@ -300,11 +281,10 @@ async function processTonTransfer(
     const amountNano = transfer.amount;
     const comment = transfer.comment || "";
 
-    console.log(`[multi-wallet-monitor] ✅ TON transfer to ${wallet.walletAddress} (user ${wallet.userId}): ${amountNano} nano`);
-
     // TonAPI event structure: event has 'event_id' or we can use 'account' + 'lt' as unique identifier
     const transactionHash = event.event_id || `${wallet.walletAddress}:${event.lt}`;
-    console.log(`[multi-wallet-monitor] Event details: event_id=${event.event_id}, lt=${event.lt}, using hash=${transactionHash}`);
+
+    console.log(`[multi-wallet-monitor] TON deposit: ${amountNano} nano to user ${wallet.userId}`);
 
     const message = {
         type: "wallet.transaction-detected",
@@ -321,16 +301,12 @@ async function processTonTransfer(
         }
     };
 
-    console.log(`[multi-wallet-monitor] Publishing message:`, JSON.stringify(message, null, 2));
-
     channel.publish(
         exchange,
         "wallet.transaction-detected",
         Buffer.from(JSON.stringify(message)),
         { persistent: true }
     );
-
-    console.log(`[multi-wallet-monitor] Published TON transaction for user ${wallet.userId}`);
 }
 
 /**
@@ -345,14 +321,11 @@ async function processJettonTransfer(
 ) {
     const transfer = action.JettonTransfer;
     if (!transfer) {
-        console.log(`[multi-wallet-monitor] JettonTransfer action has no transfer data`);
         return;
     }
 
     const recipient = transfer.recipient?.address;
     const sender = transfer.sender?.address;
-
-    console.log(`[multi-wallet-monitor] JettonTransfer: from=${sender} to=${recipient}, monitoring=${wallet.walletAddress}`);
 
     // Only process incoming transfers - use Address.equals() for proper comparison
     try {
@@ -362,7 +335,6 @@ async function processJettonTransfer(
         const walletAddr = Address.parse(wallet.walletAddress);
 
         if (!recipientAddr.equals(walletAddr)) {
-            console.log(`[multi-wallet-monitor] Skipping JettonTransfer: not incoming (recipient=${recipient}, expected=${wallet.walletAddress})`);
             return;
         }
     } catch (error) {
@@ -374,11 +346,10 @@ async function processJettonTransfer(
     const jetton = transfer.jetton;
     const comment = transfer.comment || "";
 
-    console.log(`[multi-wallet-monitor] ✅ Jetton transfer to ${wallet.walletAddress} (user ${wallet.userId}): ${amountNano} ${jetton?.symbol || 'tokens'}`);
-
     // TonAPI event structure: event has 'event_id' or we can use 'account' + 'lt' as unique identifier
     const transactionHash = event.event_id || `${wallet.walletAddress}:${event.lt}`;
-    console.log(`[multi-wallet-monitor] Event details: event_id=${event.event_id}, lt=${event.lt}, using hash=${transactionHash}`);
+
+    console.log(`[multi-wallet-monitor] ✅ Jetton deposit: ${amountNano} ${jetton?.symbol || 'tokens'} to user ${wallet.userId}`);
 
     const message = {
         type: "wallet.transaction-detected",
@@ -404,6 +375,4 @@ async function processJettonTransfer(
         Buffer.from(JSON.stringify(message)),
         { persistent: true }
     );
-
-    console.log(`[multi-wallet-monitor] Published Jetton transaction for user ${wallet.userId}`);
 }
