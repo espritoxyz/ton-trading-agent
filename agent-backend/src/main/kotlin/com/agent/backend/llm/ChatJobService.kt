@@ -41,6 +41,7 @@ class ChatJobService(
     private val confirmations: ConfirmationService,
     private val poolsCacheService: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val walletService: WalletService
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -107,7 +108,8 @@ class ChatJobService(
                 rabbitTemplate,
                 job.messageId,
                 poolsCacheService,
-                assetsCache
+                assetsCache,
+                walletService
             )
         )
 
