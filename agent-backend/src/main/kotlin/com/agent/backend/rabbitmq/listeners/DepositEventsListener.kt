@@ -14,7 +14,7 @@ class DepositEventsListener(
     private val depositService: DepositService
 ) {
 
-    @RabbitListener(queues = [RabbitConfig.QUEUE])
+    @RabbitListener(queues = [RabbitConfig.QUEUE_DEPOSIT])
     fun onDepositEvent(@Payload payload: Map<String, Any?>) {
         try {
             val type = payload["type"] as? String ?: return

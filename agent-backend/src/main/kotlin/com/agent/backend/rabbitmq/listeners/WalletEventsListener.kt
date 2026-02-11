@@ -2,7 +2,7 @@ package com.agent.backend.rabbitmq.listeners
 
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.WalletService
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Component
@@ -12,11 +12,18 @@ class WalletEventsListener(
     private val walletService: WalletService,
     private val rabbitTemplate: RabbitTemplate
 ) {
-    private val logger = LoggerFactory.getLogger(WalletEventsListener::class.java)
+    private val logger = KotlinLogging.logger {}
     private val exchange = "app.events"
 
-    @RabbitListener(queues = [RabbitConfig.QUEUE])
+    @RabbitListener(queues = [RabbitConfig.QUEUE_WALLET])
     fun handleWalletEvents(message: Map<String, Any>) {
+        logger.debug {
+            "Received rabbitmq event ${
+                message.entries.joinToString(prefix = "{", postfix = "}") {
+                    "${it.key}=${it.value}"
+                }
+            }"
+        }
         val type = message["type"] as? String ?: return
 
         when (type) {

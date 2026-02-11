@@ -16,7 +16,7 @@ class AgentEventsListener(
     private val jobService: ChatJobService
 ) {
 
-    @RabbitListener(queues = [RabbitConfig.QUEUE])
+    @RabbitListener(queues = [RabbitConfig.QUEUE_AGENT_LLM])
     fun onEvent(@Payload payload: Map<String, Any?>) {
         logger.debug {
             "Received rabbitmq event ${payload.entries.joinToString(prefix="{", postfix="}") { 
