@@ -7,16 +7,23 @@ import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.api.BlockchainAdapter
 import com.agent.llm.tool.api.ConfirmationRequired
 import com.explyt.ai.backend.http.ApiKeyParam
-import com.explyt.ai.dto.*
+import com.explyt.ai.dto.ChatRequest
+import com.explyt.ai.dto.ChatResponse
+import com.explyt.ai.dto.Message
+import com.explyt.ai.dto.MessageType
+import com.explyt.ai.dto.ModelConfig
+import com.explyt.ai.dto.Prompt
+import com.explyt.ai.dto.ToolCall
+import com.explyt.ai.dto.ToolResponse
 import com.explyt.ai.router.dto.RemoteProvider
 import com.explyt.ai.router.router.AiRouterLocal
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.util.*
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
-import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 
 private val logger = KotlinLogging.logger {}
 
@@ -68,7 +75,6 @@ class OpenAIChatter(
 
     data class RequestAnswer(
         val responseString: String?,
-        val containedToolsWithGeneratedSummaries: Boolean,
     )
 
     suspend fun processRequest(
@@ -82,7 +88,6 @@ class OpenAIChatter(
         var currentMessage = Message.user(userRequestContent)
         var chatResponse: ChatResponse? = null
         var inc = 0
-        var hadSendOrSwap = false
 
         @Suppress("UNCHECKED_CAST")
         suspend fun callTools(plannedToolCalls: List<PlannedToolCall>): List<ToolResponse> {
@@ -108,10 +113,6 @@ class OpenAIChatter(
 
             return approvedPlanned.map { plannedToolCall ->
                 val tc = plannedToolCall.call
-                if (tc.name.contains(Regex("send|swap"))) {
-                    logger.error { "Setting hadSendOrSwap=true" }
-                    hadSendOrSwap = true
-                }
 
                 val agentTool = allTools.firstOrNull { it.definition.name == tc.name }
                     ?: error("No agent tool named ${tc.name} found")
@@ -144,7 +145,6 @@ class OpenAIChatter(
                     logger.debug { "Finished request processing for messageId=$messageId " }
                     return RequestAnswer(
                         chatResponse?.response,
-                        hadSendOrSwap
                     )
                 }
                 error("Unreachable state with ${currentMessage.toolCalls.size} tools in assistant message")
@@ -158,7 +158,6 @@ class OpenAIChatter(
 
         return RequestAnswer(
             chatResponse?.response,
-            hadSendOrSwap
         )
 
     }
@@ -193,7 +192,13 @@ class OpenAIChatter(
 
                 val prompt = Prompt(chatEnv.chatHistory)
                 atomicStatus.set(ChatterStatus.PROCESSING)
-                val response = router.chat(ChatRequest(modelConfig, prompt))
+                var response = router.chat(ChatRequest(modelConfig, prompt))
+
+                // No further tool calls = summarize executed
+                if (response.toolCalls.isEmpty() && toolResponses.any { it.responseData.isNotBlank() }) {
+                    response = summarizeToolCalls(toolResponses)
+                }
+
                 return llmResponse(response, response.toolCalls)
             }
 
@@ -202,6 +207,22 @@ class OpenAIChatter(
             }
         }
     }
+
+    private suspend fun summarizeToolCalls(toolResponses: List<ToolResponse>): ChatResponse {
+        val enriched = bcAdapter.awaitExternalResults(toolResponses)
+        val requestContent = buildString {
+            appendLine(AgentPrompt.utilitySummarizeAnchor)
+            enriched.forEach {
+                appendLine(it.responseData)
+            }
+        }
+
+        val assistantMessage = Message.assistant("")
+        val utilityRequest = Message.user(requestContent)
+        val prompt = Prompt(chatEnv.chatHistory + assistantMessage + utilityRequest)
+        return router.chat(ChatRequest(modelConfig, prompt))
+    }
+
 
     private fun llmResponse(
         response: ChatResponse?,

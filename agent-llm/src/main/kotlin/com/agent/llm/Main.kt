@@ -1,6 +1,5 @@
 package com.agent.llm
 
-import com.agent.llm.tool.ToolDefinitions
 import com.explyt.ai.backend.http.ApiKeyParam
 import com.explyt.ai.dto.ChatRequest
 import com.explyt.ai.dto.Message

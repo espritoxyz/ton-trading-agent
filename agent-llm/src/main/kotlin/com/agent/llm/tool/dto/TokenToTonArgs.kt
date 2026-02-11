@@ -5,6 +5,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TokenToTonArgs(
-    val userId: Long,
     val jettonMaster: String
 ) : AgentToolArgs

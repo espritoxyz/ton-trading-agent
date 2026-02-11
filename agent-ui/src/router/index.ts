@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 import LandingApp from '../../landing/src/App.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import Dashboard from '../pages/Dashboard.vue'

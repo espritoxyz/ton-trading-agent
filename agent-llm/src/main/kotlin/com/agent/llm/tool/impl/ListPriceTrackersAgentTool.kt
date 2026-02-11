@@ -2,7 +2,7 @@ package com.agent.llm.tool.impl
 
 import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.api.BlockchainAdapter
-import com.agent.llm.tool.dto.GetTonToUSDTArgs
+import com.agent.llm.tool.dto.ListPriceTrackersArgs
 import com.explyt.ai.dto.ExplytJsonSchema
 import com.explyt.ai.dto.ToolDefinition
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -10,19 +10,20 @@ import kotlinx.serialization.serializer
 
 private val logger = KotlinLogging.logger {}
 
-class GetTonToUSDTAgentTool(
+class ListPriceTrackersAgentTool(
     private val bcAdapter: BlockchainAdapter
-) : AgentTool<GetTonToUSDTArgs>() {
+) : AgentTool<ListPriceTrackersArgs>() {
     override val definition = ToolDefinition(
-        name = "get_ton_to_usdt_exchange_rate",
-        description = "Get current TON to USDT exchange rate",
-        argumentsSchema = ExplytJsonSchema(GetTonToUSDTArgs::class)
+        name = "list_price_trackers",
+        description = "List existing jetton price trackers for specified user",
+        argumentsSchema = ExplytJsonSchema(ListPriceTrackersArgs::class)
     )
 
-    override val argsSerializer = serializer<GetTonToUSDTArgs>()
+    override val argsSerializer = serializer<ListPriceTrackersArgs>()
 
-    override fun payload(args: GetTonToUSDTArgs): String {
+    override fun payload(args: ListPriceTrackersArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        return bcAdapter.getTonToUSDT().toString()
+
+        return bcAdapter.listPriceTrackers()
     }
 }
