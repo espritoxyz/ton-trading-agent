@@ -7,16 +7,13 @@ const TONAPI_BASE_URL = process.env.TONAPI_BASE_URL;
 const TONAPI_KEY = process.env.TONAPI_KEY;
 const POLL_INTERVAL_MS = parseInt(process.env.MULTI_WALLET_POLL_INTERVAL_MS || "12000");
 const BATCH_SIZE = 100; // TonAPI supports up to 100 addresses per request
+const CLEANUP_INTERVAL_MS = 60000; // Clean up expired wallets every minute
 
 interface WalletMonitorState {
     userId: number;
     walletAddress: string;
     lastProcessedLt: bigint;
-}
-
-interface MonitoredWallet {
-    userId: number;
-    walletAddress: string;
+    expiresAt: Date;
 }
 
 const monitoredWallets = new Map<string, WalletMonitorState>();
@@ -39,22 +36,23 @@ export async function startMultiWalletMonitoring(rabbitChannel: Channel, rabbitE
         apiKey: TONAPI_KEY,
     });
 
-    console.log("[multi-wallet-monitor] Starting multi-wallet monitoring...");
+    console.log("[multi-wallet-monitor] Starting session-based multi-wallet monitoring...");
     console.log("[multi-wallet-monitor] TonAPI endpoint:", TONAPI_BASE_URL);
     console.log("[multi-wallet-monitor] Polling interval:", POLL_INTERVAL_MS, "ms");
+    console.log("[multi-wallet-monitor] Cleanup interval:", CLEANUP_INTERVAL_MS, "ms");
     console.log("[multi-wallet-monitor] Batch size:", BATCH_SIZE);
 
-    // Request initial list of active wallets
-    await requestActiveWallets(rabbitChannel, rabbitExchange);
-    await sleep(2000); // Give backend time to respond
+    // Start cleanup task
+    startCleanupTask();
 
     while (isMonitoring) {
         try {
             if (monitoredWallets.size > 0) {
+                console.log(`[multi-wallet-monitor] Polling ${monitoredWallets.size} active deposit sessions...`);
                 await pollAllWallets(client, rabbitChannel, rabbitExchange);
                 consecutiveErrors = 0;
             } else {
-                console.log("[multi-wallet-monitor] No wallets to monitor yet, waiting...");
+                console.log("[multi-wallet-monitor] No active deposit sessions, waiting...");
             }
         } catch (error: any) {
             consecutiveErrors++;
@@ -72,36 +70,57 @@ export async function startMultiWalletMonitoring(rabbitChannel: Channel, rabbitE
 }
 
 /**
- * Request list of active wallets from backend
+ * Start periodic cleanup of expired wallets
  */
-async function requestActiveWallets(channel: Channel, exchange: string) {
-    const message = {
-        type: "wallet.list-active-request",
-        occurredAt: new Date().toISOString(),
-        data: {}
-    };
-
-    channel.publish(
-        exchange,
-        "wallet.list-active-request",
-        Buffer.from(JSON.stringify(message)),
-        { persistent: true }
-    );
-
-    console.log("[multi-wallet-monitor] Requested active wallets list");
+async function startCleanupTask() {
+    while (isMonitoring) {
+        await sleep(CLEANUP_INTERVAL_MS);
+        cleanupExpiredWallets();
+    }
 }
 
 /**
- * Add wallet to monitoring
+ * Remove expired wallets from monitoring
  */
-export function addWalletToMonitor(walletAddress: string, userId: number) {
-    if (!monitoredWallets.has(walletAddress)) {
+function cleanupExpiredWallets() {
+    const now = new Date();
+    const expiredWallets: string[] = [];
+
+    for (const [address, state] of monitoredWallets.entries()) {
+        if (state.expiresAt < now) {
+            expiredWallets.push(address);
+        }
+    }
+
+    if (expiredWallets.length > 0) {
+        for (const address of expiredWallets) {
+            monitoredWallets.delete(address);
+        }
+        console.log(`[multi-wallet-monitor] Cleaned up ${expiredWallets.length} expired deposit sessions`);
+    }
+}
+
+/**
+ * Add wallet to monitoring with TTL
+ */
+export function addWalletToMonitor(walletAddress: string, userId: number, expiresAt: Date) {
+    const existing = monitoredWallets.get(walletAddress);
+
+    if (existing) {
+        // Update expiration if extending session
+        if (expiresAt > existing.expiresAt) {
+            existing.expiresAt = expiresAt;
+            monitoredWallets.set(walletAddress, existing);
+            console.log(`[multi-wallet-monitor] Extended monitoring session for ${walletAddress} until ${expiresAt.toISOString()}`);
+        }
+    } else {
         monitoredWallets.set(walletAddress, {
             userId,
             walletAddress,
-            lastProcessedLt: BigInt(0)
+            lastProcessedLt: BigInt(0),
+            expiresAt
         });
-        console.log(`[multi-wallet-monitor] Added wallet to monitoring: ${walletAddress} (user ${userId})`);
+        console.log(`[multi-wallet-monitor] Added wallet to monitoring: ${walletAddress} (user ${userId}) until ${expiresAt.toISOString()}`);
     }
 }
 
@@ -111,26 +130,6 @@ export function addWalletToMonitor(walletAddress: string, userId: number) {
 export function removeWalletFromMonitor(walletAddress: string) {
     if (monitoredWallets.delete(walletAddress)) {
         console.log(`[multi-wallet-monitor] Removed wallet from monitoring: ${walletAddress}`);
-    }
-}
-
-/**
- * Update monitored wallets list
- */
-export function updateMonitoredWallets(wallets: MonitoredWallet[]) {
-    console.log(`[multi-wallet-monitor] Updating monitored wallets list: ${wallets.length} wallets`);
-
-    // Add new wallets
-    for (const wallet of wallets) {
-        addWalletToMonitor(wallet.walletAddress, wallet.userId);
-    }
-
-    // Remove wallets that are no longer in the list
-    const activeAddresses = new Set(wallets.map(w => w.walletAddress));
-    for (const address of monitoredWallets.keys()) {
-        if (!activeAddresses.has(address)) {
-            removeWalletFromMonitor(address);
-        }
     }
 }
 

@@ -3,9 +3,8 @@ import {mockSendTon, sendTon} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
-import { startDepositMonitoring } from "./recipes/depositMonitor.js";
 import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
-import { startMultiWalletMonitoring, updateMonitoredWallets } from "./recipes/multiWalletMonitor.js";
+import { startMultiWalletMonitoring, addWalletToMonitor } from "./recipes/multiWalletMonitor.js";
 
 
 startPoolsUpdater();
@@ -13,14 +12,9 @@ startPoolsUpdater();
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
 
-const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#", "wallet.#"]);
+const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#", "wallet.#", "deposit.#"]);
 
-// Start deposit monitoring (legacy)
-startDepositMonitoring(ch, exchange).catch((err) => {
-    console.error("[recipe-processor-node] Failed to start deposit monitoring:", err);
-});
-
-// Start multi-wallet monitoring
+// Start multi-wallet monitoring (session-based)
 startMultiWalletMonitoring(ch, exchange).catch((err) => {
     console.error("[recipe-processor-node] Failed to start multi-wallet monitoring:", err);
 });
@@ -34,9 +28,20 @@ await startConsumer(ch, queue, async (_msg, body) => {
         if (type === "wallet.create-request") {
             await handleWalletCreationRequest(data, ch, exchange);
             return;
-        } else if (type === "wallet.list-active-response") {
-            const wallets = data?.wallets || [];
-            updateMonitoredWallets(wallets);
+        }
+
+        // Handle deposit session events
+        if (type === "deposit.session-started") {
+            const userId = data?.userId;
+            const walletAddress = data?.walletAddress;
+            const expiresAt = data?.expiresAt;
+
+            if (userId && walletAddress && expiresAt) {
+                addWalletToMonitor(walletAddress, userId, new Date(expiresAt));
+                console.log(`[${SERVICE}] Deposit session started: wallet=${walletAddress}, user=${userId}, expiresAt=${expiresAt}`);
+            } else {
+                console.error(`[${SERVICE}] Invalid deposit.session-started event:`, data);
+            }
             return;
         }
 
