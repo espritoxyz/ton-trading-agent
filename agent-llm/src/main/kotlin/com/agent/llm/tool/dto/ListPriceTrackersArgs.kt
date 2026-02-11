@@ -4,4 +4,4 @@ import com.agent.llm.tool.api.AgentToolArgs
 import kotlinx.serialization.Serializable
 
 @Serializable
-class ShowTopUpArgs : AgentToolArgs
+class ListPriceTrackersArgs : AgentToolArgs

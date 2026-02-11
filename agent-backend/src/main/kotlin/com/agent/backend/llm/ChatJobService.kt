@@ -4,12 +4,24 @@ import com.agent.backend.dto.ChatMessageRequest
 import com.agent.backend.dto.ChatMessageResponse
 import com.agent.backend.dto.ChatMessageStatusResponse
 import com.agent.backend.dto.DeliveryHint
-import com.agent.backend.service.*
+import com.agent.backend.service.ConfirmationItem
+import com.agent.backend.service.ConfirmationService
+import com.agent.backend.service.ConfirmationStatus
+import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.OrderService
+import com.agent.backend.service.PriceTrackerService
+import com.agent.backend.service.StonfiAssetsCacheService
+import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.llm.ChatterStatus
 import com.agent.llm.OpenAIChatter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PreDestroy
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -41,6 +53,9 @@ class ChatJobService(
     private val confirmations: ConfirmationService,
     private val poolsCacheService: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val priceTrackerService: PriceTrackerService,
+    private val orderService: OrderService,
+    private val externalToolResultService: ExternalToolResultService,
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -49,6 +64,7 @@ class ChatJobService(
 
     // Map of confirmationId -> deferred result (true=approved, false=declined)
     private val pendingConfirmations = ConcurrentHashMap<UUID, CompletableDeferred<Boolean>>()
+
     // Cache of chatters to preserve history between user requests
     private val userIdToChatter = ConcurrentHashMap<Long, OpenAIChatter>()
 
@@ -107,7 +123,10 @@ class ChatJobService(
                 rabbitTemplate,
                 job.messageId,
                 poolsCacheService,
-                assetsCache
+                assetsCache,
+                priceTrackerService,
+                orderService,
+                externalToolResultService
             )
         )
 
@@ -121,7 +140,7 @@ class ChatJobService(
         try {
             val chatter = makeChatter(job, userIdToChatter[job.userId])
             job.status = chatter.atomicStatus
-            val (stringResponse, isPreGenAnswer) = chatter.processRequest(
+            val (stringResponse) = chatter.processRequest(
                 messageId = job.messageId,
                 userRequestContent = job.request.content,
                 requestConfirmation = { msgId, plannedTc ->
@@ -143,27 +162,15 @@ class ChatJobService(
                 }
             )
 
-            if (!isPreGenAnswer && stringResponse != null) {
-                job.completedAt = Instant.now()
-                job.status = AtomicReference(ChatterStatus.COMPLETED)
-                job.reply = stringResponse
-            }
+            job.completedAt = Instant.now()
+            job.status = AtomicReference(ChatterStatus.COMPLETED)
+            job.reply = stringResponse
         } catch (e: Exception) {
             logger.error(e) {}
             job.reply = "Error while processing your request."
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.ERROR)
         }
-    }
-
-    suspend fun finalizeWithToolResult(messageId: UUID, userId: Long, toolName: String, toolResult: String) {
-        val job = jobs[messageId] ?: return
-        if (job.userId != userId) return
-        logger.debug { "Finalizing request for $toolName { userId: $userId, reply: $toolResult }" }
-        // Temporary working fix: set the final reply directly without invoking LLM summarization.
-        job.reply = toolResult
-        job.completedAt = Instant.now()
-        job.status = AtomicReference(ChatterStatus.COMPLETED)
     }
 
     // Called by ConfirmationController after approve/decline
@@ -188,7 +195,7 @@ class ChatJobService(
         return ChatMessageStatusResponse(
             messageId = job.messageId,
             userId = job.userId,
-            status = job.status.get().name.lowercase(), // "queued" | "processing" | ...
+            status = job.status.get().name.lowercase(),
             reply = job.reply,
             queuedAt = job.queuedAt,
             completedAt = job.completedAt

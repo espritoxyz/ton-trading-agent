@@ -15,7 +15,7 @@ class TokenToTonAgentTool(
 ) : AgentTool<TokenToTonArgs>() {
     override val definition = ToolDefinition(
         name = "get_token_to_ton_exchange_rate",
-        description = "Get token, specified by jetton master, to TON exchange rate (price)",
+        description = "Get token, specified by jetton master, to TON and to USD exchange rate (price) accordingly",
         argumentsSchema = ExplytJsonSchema(TokenToTonArgs::class)
     )
 
@@ -23,6 +23,7 @@ class TokenToTonAgentTool(
 
     override fun payload(args: TokenToTonArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        return bcAdapter.getTokenToTon(args.jettonMaster).toString()
+        val (tonPrice, usdPrice) = bcAdapter.getTokenToTon(args.jettonMaster)
+        return "[tonPrice=$tonPrice, usdPrice=$usdPrice]"
     }
 }
