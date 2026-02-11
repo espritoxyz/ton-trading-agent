@@ -44,8 +44,6 @@ open class UserProvisioningService(
         )
         val savedUser = users.save(u)
 
-        // Wallet will be created after email verification
-
         return savedUser
     }
 }
