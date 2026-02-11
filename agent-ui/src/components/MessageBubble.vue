@@ -110,6 +110,12 @@ async function handleOpenTopUp() {
 </template>
 
 <style scoped>
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .message-content :deep(a) {
   color: #6366f1;
   text-decoration: underline;
