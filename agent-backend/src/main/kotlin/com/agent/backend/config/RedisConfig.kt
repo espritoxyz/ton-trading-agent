@@ -11,7 +11,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 @Configuration
 class RedisConfig {
 
-    @Value("\${spring.data.redis.host:localhost}")
+    @Value("\${spring.data.redis.host:redis}")
     private lateinit var redisHost: String
 
     @Value("\${spring.data.redis.port:6379}")
