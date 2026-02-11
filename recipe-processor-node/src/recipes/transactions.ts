@@ -1,5 +1,5 @@
 import {internal, toNano, TonClient, WalletContractV5R1} from "@ton/ton";
-import https from "https";
+import https, {RequestOptions} from "https";
 import {mnemonicToPrivateKey} from "@ton/crypto";
 import {Address, SendMode, beginCell, Cell, toNano as coreToNano} from "@ton/core";
 import {randomBytes} from "crypto";
@@ -230,11 +230,11 @@ async function httpPostJson(url: URL, body: any): Promise<any> {
     return new Promise((resolve, reject) => {
         const data = JSON.stringify(body);
 
-        const options: https.RequestOptions = {
+        const options: RequestOptions = {
             method: "POST",
             hostname: url.hostname,
             path: url.pathname + (url.search || ""),
-            port: url.port || (url.protocol === "https:" ? 443 : 80),
+            port: url.port ? parseInt(url.port) : (url.protocol === "https:" ? 443 : 80),
             headers: {
                 "Content-Type": "application/json",
                 "Content-Length": Buffer.byteLength(data),
