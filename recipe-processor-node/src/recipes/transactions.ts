@@ -87,6 +87,7 @@ export async function sendToken(
     jettonMasterAddress: string,
     amountJetton: string | number,
     receiverAddress: string,
+    userMnemonic: string[],
     forwardTonAmount: number | string = 0.0,
 ): Promise<string> {
     if (!jettonMasterAddress) throw new Error("jettonMasterAddress is required");
@@ -94,7 +95,7 @@ export async function sendToken(
 
     const client = new TonClient({ endpoint, apiKey });
 
-    const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+    const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
 
     const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
     const provider = client.open(wallet);

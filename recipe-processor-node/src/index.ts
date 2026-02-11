@@ -110,10 +110,31 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const amountNano = data?.tokenAmountNano;
             const jettonMaster = data?.jettonMaster;
             const receiver = data?.receiverAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-token requested:`, { messageId, userId, amountHuman, amountNano, jettonMaster, receiver });
-            
+
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] send-token error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.send-token.result", {
+                    type: "agent-llm.send-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tokenAmount: amountHuman,
+                        tokenAmountNano: amountNano,
+                        jettonMaster,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
+
             try {
-                const txId = await sendToken(jettonMaster, amountNano, receiver);
+                const txId = await sendToken(jettonMaster, amountNano, receiver, mnemonic);
 
                 console.log(`[${SERVICE}] send-token done: txId=${txId}`);
                 publishJson(ch, exchange, "agent-llm.send-token.result", {
