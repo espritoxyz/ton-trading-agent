@@ -1,27 +1,32 @@
 <script setup lang="ts">
-import {computed, onMounted, ref, provide, watch} from 'vue'
+import {computed, inject, ref} from 'vue'
 import {accessToken, userId} from '../composables/useAuth.ts'
-import {useWalletState} from '../composables/useWalletState.ts'
 import {AlertTriangle, Loader, Lock, Plus, RefreshCw, Wallet} from 'lucide-vue-next'
 import TopUpModal from './TopUpModal.vue'
-import AssetsList from './AssetsList.vue'
-import TransactionHistory from './TransactionHistory.vue'
+
+interface Props {
+  compact?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  compact: false
+})
 
 const loggedIn = computed(() => !!accessToken.value)
 const showTopUpModal = ref(false)
 
-// Create single wallet state instance and provide to children
-const walletStateInstance = useWalletState()
+// Inject wallet state from parent (Dashboard)
+const walletState = inject<any>('walletState')
+if (!walletState) {
+  throw new Error('WalletState not provided')
+}
+
 const {
   balanceUsd,
   loadingWalletState,
   walletStateError,
-  loadWalletState,
   refreshWalletState
-} = walletStateInstance
-
-// Provide to child components
-provide('walletState', walletStateInstance)
+} = walletState
 
 const formattedBalance = computed(() => {
   if (!balanceUsd.value) return '0.00'
@@ -50,19 +55,6 @@ const formattedBalance = computed(() => {
   }
 
   return '0.00'
-})
-
-// Auto-load wallet state when userId becomes available
-watch(userId, async (newUserId) => {
-  if (newUserId && loggedIn.value) {
-    await loadWalletState(newUserId)
-  }
-}, { immediate: true })
-
-onMounted(async () => {
-  if (loggedIn.value && userId.value) {
-    await loadWalletState(userId.value)
-  }
 })
 
 async function handleDepositCompleted() {
@@ -156,19 +148,6 @@ async function handleRefresh() {
           <component :is="loadingWalletState ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingWalletState }"/>
           <span>{{ loadingWalletState ? 'Updating...' : 'Refresh' }}</span>
         </button>
-      </div>
-
-      <!-- Assets List Section -->
-      <div class="mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Your Assets</h3>
-        </div>
-        <AssetsList :display-limit="5" />
-      </div>
-
-      <!-- Transaction History Section -->
-      <div class="mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
-        <TransactionHistory />
       </div>
     </div>
 

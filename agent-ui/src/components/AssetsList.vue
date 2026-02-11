@@ -6,12 +6,12 @@
     </div>
 
     <!-- Error State -->
-    <div v-else-if="assetsError" class="text-red-400 text-sm p-4 bg-red-900/20 rounded-lg">
+    <div v-else-if="assetsError" class="text-red-600 dark:text-red-400 text-sm p-4 bg-red-100 dark:bg-red-900/20 rounded-lg">
       {{ assetsError }}
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="assets.length === 0" class="text-gray-400 text-sm text-center py-6">
+    <div v-else-if="assets.length === 0" class="text-gray-600 dark:text-gray-400 text-sm text-center py-6">
       No assets found. Make a deposit to get started!
     </div>
 
@@ -21,7 +21,7 @@
       <div
           v-for="asset in displayedAssets"
           :key="asset.id"
-          class="asset-item flex items-center gap-3 p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
+          class="asset-item flex items-center gap-3 p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
       >
         <!-- Asset Icon -->
         <div class="asset-icon flex-shrink-0">
@@ -43,12 +43,12 @@
         <!-- Asset Info -->
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2">
-            <span class="font-semibold text-white">{{ asset.symbol || 'Unknown' }}</span>
-            <span v-if="asset.name && asset.name !== asset.symbol" class="text-xs text-gray-400 truncate">
+            <span class="font-semibold text-gray-900 dark:text-white">{{ asset.symbol || 'Unknown' }}</span>
+            <span v-if="asset.name && asset.name !== asset.symbol" class="text-xs text-gray-600 dark:text-gray-400 truncate">
               {{ asset.name }}
             </span>
           </div>
-          <div class="flex items-center gap-1.5 text-xs text-gray-400">
+          <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
             <span
                 v-if="asset.address !== 'TON'"
                 @click="copyAddress(asset.address, asset.id)"
@@ -95,10 +95,10 @@
 
         <!-- Asset Amount -->
         <div class="text-right flex-shrink-0">
-          <div class="font-mono font-semibold text-white">
+          <div class="font-mono font-semibold text-gray-900 dark:text-white">
             {{ asset.readableAmount }} {{ asset.symbol }}
           </div>
-          <div v-if="asset.unitPrice" class="text-xs text-gray-400">
+          <div v-if="asset.unitPrice" class="text-xs text-gray-600 dark:text-gray-400">
             ${{ formatPrice(asset.unitPrice) }} / {{ asset.symbol }}
           </div>
         </div>
@@ -214,10 +214,18 @@ const getTonViewerUrl = (address: string) => {
 
 <style scoped>
 .asset-item {
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+:global(.dark) .asset-item {
+  border-color: rgba(99, 102, 241, 0.1);
 }
 
 .asset-item:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+:global(.dark) .asset-item:hover {
   border-color: rgba(99, 102, 241, 0.3);
 }
 

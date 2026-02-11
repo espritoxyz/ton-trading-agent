@@ -2,14 +2,14 @@
   <div class="transaction-history">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-white">Transaction History</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Transaction History</h3>
     </div>
 
     <!-- Filters -->
     <div class="filters flex flex-wrap gap-2 mb-4">
       <select
           v-model="filters.assetType"
-          class="px-3 py-1.5 text-sm bg-gray-800 text-white border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
       >
         <option value="ALL">All Assets</option>
         <option value="TON">TON</option>
@@ -18,7 +18,7 @@
 
       <select
           v-model="filters.direction"
-          class="px-3 py-1.5 text-sm bg-gray-800 text-white border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
       >
         <option value="ALL">All Directions</option>
         <option value="INCOMING">Incoming</option>
@@ -32,14 +32,14 @@
     </div>
 
     <!-- Error State -->
-    <div v-else-if="transactionsError" class="text-red-400 text-sm p-4 bg-red-900/20 rounded-lg">
+    <div v-else-if="transactionsError" class="text-red-600 dark:text-red-400 text-sm p-4 bg-red-100 dark:bg-red-900/20 rounded-lg">
       {{ transactionsError }}
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredTransactions.length === 0" class="text-gray-400 text-sm text-center py-8">
+    <div v-else-if="filteredTransactions.length === 0" class="text-gray-600 dark:text-gray-400 text-sm text-center py-8">
       <div class="flex flex-col items-center gap-2">
-        <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-12 h-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
         <p>No transactions found</p>
@@ -51,7 +51,7 @@
       <div
           v-for="tx in paginatedTransactions"
           :key="tx.id"
-          class="transaction-item p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
+          class="transaction-item p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
       >
         <div class="flex items-start gap-3">
           <!-- Direction Icon -->
@@ -75,16 +75,16 @@
           <div class="flex-1 min-w-0">
             <!-- Amount and Asset -->
             <div class="flex items-baseline gap-2 mb-1">
-              <span class="font-mono font-semibold text-white">
+              <span class="font-mono font-semibold text-gray-900 dark:text-white">
                 {{ tx.direction === 'INCOMING' ? '+' : '-' }}{{ formatAmount(tx.amountNano, tx.jettonDecimals || 9) }}
               </span>
-              <span class="text-sm text-gray-400">
+              <span class="text-sm text-gray-600 dark:text-gray-400">
                 {{ tx.assetType === 'TON' ? 'TON' : (tx.jettonSymbol || 'Token') }}
               </span>
             </div>
 
             <!-- Addresses -->
-            <div class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
               <span class="truncate">
                 {{ tx.direction === 'INCOMING' ? 'From:' : 'To:' }}
                 {{ formatAddress(tx.direction === 'INCOMING' ? tx.senderAddress : tx.recipientAddress) }}
@@ -92,13 +92,13 @@
             </div>
 
             <!-- Comment (if exists) -->
-            <div v-if="tx.comment" class="text-xs text-gray-500 italic mb-1 truncate">
+            <div v-if="tx.comment" class="text-xs text-gray-500 dark:text-gray-500 italic mb-1 truncate">
               "{{ tx.comment }}"
             </div>
 
             <!-- Date and Link -->
             <div class="flex items-center gap-3 text-xs">
-              <span class="text-gray-500">{{ formatDate(tx.createdAt) }}</span>
+              <span class="text-gray-500 dark:text-gray-500">{{ formatDate(tx.createdAt) }}</span>
               <a
                   :href="getTonViewerUrl(tx.transactionHash)"
                   target="_blank"
@@ -123,14 +123,14 @@
             :class="[
               'px-3 py-1.5 text-sm rounded-lg transition-colors',
               currentPage === 1
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-800 text-cyan-400 hover:bg-gray-700'
+                ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-gray-200 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400 hover:bg-gray-300 dark:hover:bg-gray-700'
             ]"
         >
           Previous
         </button>
 
-        <span class="text-sm text-gray-400">
+        <span class="text-sm text-gray-600 dark:text-gray-400">
           Page {{ currentPage }} of {{ totalPages }}
         </span>
 
@@ -140,8 +140,8 @@
             :class="[
               'px-3 py-1.5 text-sm rounded-lg transition-colors',
               currentPage === totalPages
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-800 text-cyan-400 hover:bg-gray-700'
+                ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-gray-200 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400 hover:bg-gray-300 dark:hover:bg-gray-700'
             ]"
         >
           Next
@@ -288,10 +288,18 @@ computed(() => {
 
 <style scoped>
 .transaction-item {
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+:global(.dark) .transaction-item {
+  border-color: rgba(99, 102, 241, 0.1);
 }
 
 .transaction-item:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+:global(.dark) .transaction-item:hover {
   border-color: rgba(99, 102, 241, 0.3);
 }
 </style>
