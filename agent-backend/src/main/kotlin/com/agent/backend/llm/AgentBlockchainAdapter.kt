@@ -41,7 +41,6 @@ class AgentBlockchainAdapter(
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
-    private val walletService: WalletService,
 ) : BlockchainAdapter(userId) {
 
     companion object {

@@ -126,10 +126,10 @@ class ChatJobService(
                 job.messageId,
                 poolsCacheService,
                 assetsCache,
+                walletService,
                 priceTrackerService,
                 orderService,
-                externalToolResultService,
-                walletService
+                externalToolResultService
             )
         )
 
