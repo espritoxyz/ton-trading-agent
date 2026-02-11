@@ -1,6 +1,7 @@
 import { mnemonicNew } from "@ton/crypto";
 import { WalletContractV5R1 } from "@ton/ton";
 import type { Channel } from "amqplib";
+import { publishJson } from "../rabbit.js";
 
 interface WalletCreationData {
     userId: number;
@@ -92,12 +93,7 @@ export async function handleWalletCreationRequest(
             }
         };
 
-        channel.publish(
-            exchange,
-            "wallet.create-response",
-            Buffer.from(JSON.stringify(response)),
-            { persistent: true }
-        );
+        publishJson(channel, exchange, "wallet.create-response", response);
 
         console.log(`[wallet-creation] Published response for user ${userId}`);
     } catch (error) {
@@ -113,11 +109,6 @@ export async function handleWalletCreationRequest(
             }
         };
 
-        channel.publish(
-            exchange,
-            "wallet.create-error",
-            Buffer.from(JSON.stringify(errorResponse)),
-            { persistent: true }
-        );
+        publishJson(channel, exchange, "wallet.create-error", errorResponse);
     }
 }

@@ -1,5 +1,6 @@
 package com.agent.backend.rabbitmq.listeners
 
+import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.WalletService
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.annotation.RabbitListener
@@ -14,7 +15,7 @@ class WalletEventsListener(
     private val logger = LoggerFactory.getLogger(WalletEventsListener::class.java)
     private val exchange = "app.events"
 
-    @RabbitListener(queues = ["agent-backend"])
+    @RabbitListener(queues = [RabbitConfig.QUEUE])
     fun handleWalletEvents(message: Map<String, Any>) {
         val type = message["type"] as? String ?: return
 
