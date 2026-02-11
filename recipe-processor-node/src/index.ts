@@ -50,10 +50,29 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const userId = data?.userId;
             const amount = data?.tonAmount;
             const receiver = data?.receiverAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] send-ton error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.send-ton.result", {
+                    type: "agent-llm.send-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tonAmount: amount,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
+
             try {
-                const txId = await sendTon(amount, receiver);
+                const txId = await sendTon(amount, receiver, mnemonic);
                 console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
                     type: "agent-llm.send-ton.result",
@@ -91,8 +110,24 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTokenAmount = data?.minimalTokenAmount;
             const swapTonAmount = data?.swapTonAmount;
             const poolAddress = data?.poolAddress as string;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-ton-to-token requested:`, { messageId, userId, jettonMaster, minimalTokenAmount, swapTonAmount, poolAddress });
 
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] swap-ton-to-token error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
+                    type: "agent-llm.swap-ton-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
 
             const swapAmtNum = Number(swapTonAmount);
             if (!Number.isFinite(swapAmtNum) || swapAmtNum <= 0) {
@@ -119,6 +154,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     Number(minimalTokenAmount),
                     swapAmtNum,
                     poolAddress,
+                    mnemonic,
                 );
 
                 if (res.ok) {
@@ -180,7 +216,24 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTonAmount = data?.minimalTonAmount;
             const swapTokenAmount = data?.swapTokenAmount;
             const poolAddress = data?.poolAddress as string;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-token-to-ton requested:`, { messageId, userId, jettonMaster, minimalTonAmount, swapTokenAmount, poolAddress });
+
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] swap-token-to-ton error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                    type: "agent-llm.swap-token-to-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
 
             const swapTokenAmtNum = Number(swapTokenAmount);
             if (!Number.isFinite(swapTokenAmtNum) || swapTokenAmtNum <= 0) {
@@ -207,6 +260,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     Number(minimalTonAmount),
                     swapTokenAmtNum,
                     poolAddress,
+                    mnemonic,
                 );
 
                 if (res.ok) {

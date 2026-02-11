@@ -3,7 +3,6 @@ import {Address, internal, SendMode, toNano} from "@ton/core";
 import {mnemonicToPrivateKey} from "@ton/crypto";
 import {dexFactory} from "@ston-fi/sdk";
 import {StonApiClient} from "@ston-fi/api";
-import {mnemonic_array} from "../mnemonics.js";
 import {bufToHex, waitSeqno} from "../utils.js";
 
 
@@ -36,6 +35,7 @@ export async function swapTokenToTon(
     minimalTonAmount: number,
     swapTokenAmount: number,
     preferredPoolAddress: string,
+    userMnemonic: string[],
 ): Promise<SuccessReport | ErrorReport> {
 
     console.log("[swap] swapTokenToTon called", {
@@ -49,7 +49,7 @@ export async function swapTokenToTon(
     try {
         const client = new TonClient({ endpoint, apiKey });
 
-        const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+        const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
         const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
@@ -158,6 +158,7 @@ export async function swapTonToToken(
     minimalTokenAmount: number,
     swapTonAmount: number,
     preferredPoolAddress: string,
+    userMnemonic: string[],
 ): Promise<SuccessReport | ErrorReport> {
 
     console.log("[swap] swapTonToToken called", {
@@ -171,7 +172,7 @@ export async function swapTonToToken(
     try {
         const client = new TonClient({ endpoint, apiKey });
 
-        const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+        const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
         const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 

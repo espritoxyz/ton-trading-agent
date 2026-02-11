@@ -1,7 +1,6 @@
 import {internal, toNano, TonClient, WalletContractV5R1} from "@ton/ton";
 import {mnemonicToPrivateKey} from "@ton/crypto";
 import {Address, SendMode} from "@ton/core";
-import {mnemonic_array} from "../mnemonics.js"; // Expected to be provided
 import {randomBytes} from "crypto";
 import {bufToHex, sleep, waitForSeqnoIncrement} from "../utils.js";
 
@@ -14,14 +13,15 @@ const apiKey = process.env.TONCENTER_API_KEY || "";
  * Sends specified TON amount to a given recipient address.
  * @param amountTon amount in TON (number or string), e.g. 0.3
  * @param receiverAddress TON address (raw or user-friendly)
+ * @param userMnemonic user's mnemonic phrase as array of words
  * @returns txId (hex) when located in recent transactions
  */
-export async function sendTon(amountTon: number | string, receiverAddress: string): Promise<string> {
+export async function sendTon(amountTon: number | string, receiverAddress: string, userMnemonic: string[]): Promise<string> {
     if (!receiverAddress) throw new Error("receiverAddress is required");
     const amountStr = String(amountTon);
 
     const client = new TonClient({ endpoint, apiKey });
-    const { publicKey, secretKey } = await mnemonicToPrivateKey(mnemonic_array);
+    const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
 
     const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
     const provider = client.open(wallet);

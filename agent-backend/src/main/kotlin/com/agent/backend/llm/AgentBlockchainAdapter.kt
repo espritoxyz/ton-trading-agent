@@ -3,6 +3,7 @@ package com.agent.backend.llm
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
+import com.agent.backend.service.WalletService
 import com.agent.llm.tool.api.BlockchainAdapter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -27,6 +28,7 @@ class AgentBlockchainAdapter(
     private var messageId: UUID,
     private val poolsCache: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val walletService: WalletService,
 ) : BlockchainAdapter(userId) {
 
 
@@ -39,6 +41,18 @@ class AgentBlockchainAdapter(
 
     override fun updateCurrentMessageId(messageId: UUID) {
         this.messageId = messageId
+    }
+
+    /**
+     * Get user's mnemonic as word array for blockchain operations
+     * @throws IllegalStateException if user has no wallet
+     */
+    private fun getUserMnemonicWords(): List<String> {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet. Cannot perform blockchain operations.")
+
+        val mnemonicPhrase = walletService.decryptMnemonic(wallet)
+        return mnemonicPhrase.split(" ").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     private data class TonToUsdtDto(
@@ -56,6 +70,8 @@ class AgentBlockchainAdapter(
     }
 
     override fun sendTonToAddress(amount: Double, receiverAddress: String) {
+        val mnemonicWords = getUserMnemonicWords()
+
         val payload = mapOf(
             "type" to "agent-llm.send-ton",
             "occurredAt" to Instant.now().toString(),
@@ -63,7 +79,8 @@ class AgentBlockchainAdapter(
                 "messageId" to messageId.toString(),
                 "userId" to userId,
                 "tonAmount" to amount,
-                "receiverAddress" to receiverAddress
+                "receiverAddress" to receiverAddress,
+                "mnemonic" to mnemonicWords
             )
         )
 
@@ -71,6 +88,8 @@ class AgentBlockchainAdapter(
     }
 
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
+        val mnemonicWords = getUserMnemonicWords()
+
         val tokenToTonRate = getTokenToTon(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
             // minimalTokenAmount tokens * (TON per token) = required TON (mid-price estimate)
@@ -90,6 +109,7 @@ class AgentBlockchainAdapter(
             "jettonMaster" to jettonMaster,
             "minimalTokenAmount" to minimalTokenAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords
         )
         if (swapTonAmount != null) data["swapTonAmount"] = swapTonAmount
 
@@ -104,6 +124,8 @@ class AgentBlockchainAdapter(
     }
 
     override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
+        val mnemonicWords = getUserMnemonicWords()
+
         val tokenToTonRate = getTokenToTon(jettonMaster)
 
         // Compute how many tokens are needed, then convert to smallest units (nanojettons)
@@ -132,6 +154,7 @@ class AgentBlockchainAdapter(
             "jettonMaster" to jettonMaster,
             "minimalTonAmount" to minimalTonAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords
         )
         if (swapTokenAmountNano != null) data["swapTokenAmount"] = swapTokenAmountNano
 
