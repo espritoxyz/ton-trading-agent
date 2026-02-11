@@ -1,11 +1,6 @@
 package com.agent.backend.rabbitmq.publishers
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.boot.CommandLineRunner
-import org.springframework.stereotype.Component
-import java.time.Instant
-import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 

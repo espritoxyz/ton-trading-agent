@@ -4,4 +4,7 @@ import com.agent.llm.tool.api.AgentToolArgs
 import kotlinx.serialization.Serializable
 
 @Serializable
-class ShowTopUpArgs : AgentToolArgs
+data class CreatePriceTrackerArgs(
+    val jettonMaster: String,
+    val targetPrice: Double,
+) : AgentToolArgs

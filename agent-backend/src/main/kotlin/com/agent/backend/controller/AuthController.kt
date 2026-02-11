@@ -1,16 +1,15 @@
 package com.agent.backend.controller
 
 import com.agent.backend.JwtUtils.parseClaims
+import com.agent.backend.db.rep.AgentUserRepository
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
 import com.agent.backend.dto.RegisterRequest
 import com.agent.backend.dto.ResendVerificationRequest
 import com.agent.backend.dto.ResendVerificationResponse
-import com.agent.backend.dto.TokenResponse
 import com.agent.backend.dto.VerifyEmailRequest
 import com.agent.backend.dto.VerifyEmailResponse
 import com.agent.backend.security.EncryptionService
-import com.agent.backend.db.rep.AgentUserRepository
 import com.agent.backend.service.AuthService
 import com.agent.backend.service.EmailVerificationService
 import com.agent.backend.service.OfflineTokenService

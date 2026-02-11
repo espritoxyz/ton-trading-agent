@@ -126,6 +126,8 @@ export function useChat(userId?: number) {
                 return
             }
 
+            let requestedConfirmations = false;
+
             // queued/processing: poll
             let delay = 600
             for (let i = 0; i < 20; i++) {
@@ -150,6 +152,10 @@ export function useChat(userId?: number) {
 
                 if (confs.length > 0 && confs.some(conf => conf.status !== 'APPROVED')) {
                     updateSystemMessage(messageId, 'Waiting for confirmations...')
+                    requestedConfirmations = true
+                } else if (requestedConfirmations) {
+                    updateSystemMessage(messageId, "Processing...")
+                    requestedConfirmations = false
                 }
 
                 for (const c of confs) {
