@@ -20,6 +20,7 @@ class AgentEventsListener(
 ) {
 
 
+
     @RabbitListener(queues = [RabbitConfig.QUEUE_AGENT_LLM])
     fun onEvent(@Payload payload: Map<String, Any?>) {
         logger.debug {
