@@ -35,14 +35,14 @@ class WalletEventsListener(
 
     private fun handleWalletCreateResponse(message: Map<String, Any>) {
         try {
-            val data = message["data"] as? Map<String, Any> ?: return
+            val data = message["data"] as? Map<*, *> ?: return
             val userId = (data["userId"] as? Number)?.toLong() ?: return
             val walletAddress = data["walletAddress"] as? String ?: return
             val mnemonicPhrase = data["mnemonicPhrase"] as? String ?: return
             val workchain = (data["workchain"] as? Number)?.toInt() ?: 0
             val walletVersion = data["walletVersion"] as? String ?: "V5R1"
 
-            logger.info("[wallet-events] Received wallet creation response for user $userId")
+            logger.info { "[wallet-events] Received wallet creation response for user $userId" }
 
             walletService.saveCreatedWallet(
                 userId = userId,
@@ -52,20 +52,50 @@ class WalletEventsListener(
                 walletVersion = walletVersion
             )
 
-            logger.info("[wallet-events] Successfully saved wallet for user $userId")
+            logger.info { "[wallet-events] Successfully saved wallet for user $userId" }
         } catch (e: Exception) {
-            logger.error("[wallet-events] Error handling wallet creation response", e)
+            logger.error(e) { "[wallet-events] Error handling wallet creation response" }
         }
     }
 
     private fun handleTransactionDetected(message: Map<String, Any>) {
         try {
-            val data = message["data"] as? Map<String, Any> ?: return
-            val userId = (data["userId"] as? Number)?.toLong() ?: return
-            val walletAddress = data["walletAddress"] as? String ?: return
-            val transactionHash = data["transactionHash"] as? String ?: return
-            val transactionLt = (data["transactionLt"] as? String)?.toLongOrNull() ?: return
-            val amountNano = (data["amountNano"] as? String)?.toLongOrNull() ?: return
+            val data = message["data"] as? Map<*, *>
+            if (data == null) {
+                logger.error { "[wallet-events] Missing 'data' field in transaction message" }
+                return
+            }
+
+            val userId = (data["userId"] as? Number)?.toLong()
+            if (userId == null) {
+                logger.error { "[wallet-events] Missing or invalid 'userId' in transaction message: ${data["userId"]}" }
+                return
+            }
+
+            val walletAddress = data["walletAddress"] as? String
+            if (walletAddress == null) {
+                logger.error { "[wallet-events] Missing 'walletAddress' for user $userId" }
+                return
+            }
+
+            val transactionHash = data["transactionHash"] as? String
+            if (transactionHash == null) {
+                logger.error { "[wallet-events] Missing 'transactionHash' for user $userId. Data: $data" }
+                return
+            }
+
+            val transactionLt = (data["transactionLt"] as? String)?.toLongOrNull()
+            if (transactionLt == null) {
+                logger.error { "[wallet-events] Missing or invalid 'transactionLt' for user $userId: ${data["transactionLt"]}" }
+                return
+            }
+
+            val amountNano = (data["amountNano"] as? String)?.toLongOrNull()
+            if (amountNano == null) {
+                logger.error { "[wallet-events] Missing or invalid 'amountNano' for user $userId: ${data["amountNano"]}" }
+                return
+            }
+
             val assetType = data["assetType"] as? String ?: "TON"
             val senderAddress = data["senderAddress"] as? String
             val jettonMasterAddress = data["jettonMasterAddress"] as? String
@@ -73,7 +103,7 @@ class WalletEventsListener(
             val jettonDecimals = (data["jettonDecimals"] as? Number)?.toInt()
             val comment = data["comment"] as? String
 
-            logger.info("[wallet-events] Transaction detected for user $userId: $transactionHash")
+            logger.info { "[wallet-events] Transaction detected for user $userId: $transactionHash" }
 
             walletService.processIncomingTransaction(
                 userId = userId,
@@ -89,15 +119,15 @@ class WalletEventsListener(
                 comment = comment
             )
 
-            logger.info("[wallet-events] Successfully processed transaction for user $userId")
+            logger.info { "[wallet-events] Successfully processed transaction for user $userId" }
         } catch (e: Exception) {
-            logger.error("[wallet-events] Error handling transaction detection", e)
+            logger.error(e) { "[wallet-events] Error handling transaction detection" }
         }
     }
 
     private fun handleListActiveRequest(message: Map<String, Any>) {
         try {
-            logger.info("[wallet-events] Received request for active wallets list")
+            logger.info { "[wallet-events] Received request for active wallets list" }
 
             val activeWallets = walletService.getAllActiveWallets()
             val walletsData = activeWallets.map { wallet ->
@@ -115,9 +145,9 @@ class WalletEventsListener(
             )
 
             rabbitTemplate.convertAndSend(exchange, "wallet.list-active-response", response)
-            logger.info("[wallet-events] Sent ${activeWallets.size} active wallets")
+            logger.info { "[wallet-events] Sent ${activeWallets.size} active wallets" }
         } catch (e: Exception) {
-            logger.error("[wallet-events] Error handling list active request", e)
+            logger.error(e) { "[wallet-events] Error handling list active request" }
         }
     }
 }
