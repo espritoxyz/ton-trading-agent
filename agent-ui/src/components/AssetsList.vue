@@ -126,11 +126,9 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
-import {useAssets} from '../composables/useAssets'
+import {computed, inject, ref} from 'vue'
 
 interface Props {
-  userId: number
   displayLimit?: number
 }
 
@@ -138,7 +136,13 @@ const props = withDefaults(defineProps<Props>(), {
   displayLimit: 5
 })
 
-const {assets, loadingAssets, assetsError, loadAssets} = useAssets()
+// Inject wallet state from parent
+const walletState = inject<any>('walletState')
+if (!walletState) {
+  throw new Error('WalletState not provided')
+}
+
+const { assets, loadingWalletState: loadingAssets, walletStateError: assetsError } = walletState
 const showAll = ref(false)
 const copiedAssetId = ref<number | null>(null)
 
@@ -206,15 +210,6 @@ const getTonViewerUrl = (address: string) => {
   }
   return `https://tonviewer.com/${address}`
 }
-
-onMounted(() => {
-  loadAssets(props.userId)
-})
-
-// Expose refresh method to parent
-defineExpose({
-  refresh: () => loadAssets(props.userId)
-})
 </script>
 
 <style scoped>

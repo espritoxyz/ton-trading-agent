@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, provide, watch} from 'vue'
 import {accessToken, userId} from '../composables/useAuth.ts'
-import {balanceError, balanceUsd, loadingBalance, refreshBalance} from '../composables/useBalance.ts'
+import {useWalletState} from '../composables/useWalletState.ts'
 import {AlertTriangle, Loader, Lock, Plus, RefreshCw, Wallet} from 'lucide-vue-next'
 import TopUpModal from './TopUpModal.vue'
 import AssetsList from './AssetsList.vue'
@@ -9,13 +9,24 @@ import TransactionHistory from './TransactionHistory.vue'
 
 const loggedIn = computed(() => !!accessToken.value)
 const showTopUpModal = ref(false)
-const assetsListRef = ref<InstanceType<typeof AssetsList>>()
-const transactionHistoryRef = ref<InstanceType<typeof TransactionHistory>>()
+
+// Create single wallet state instance and provide to children
+const walletStateInstance = useWalletState()
+const {
+  balanceUsd,
+  loadingWalletState,
+  walletStateError,
+  loadWalletState,
+  refreshWalletState
+} = walletStateInstance
+
+// Provide to child components
+provide('walletState', walletStateInstance)
 
 const formattedBalance = computed(() => {
   if (!balanceUsd.value) return '0.00'
 
-  const balance = parseFloat(balanceUsd.value)
+  const balance = balanceUsd.value
 
   if (isNaN(balance)) return '0.00'
 
@@ -41,22 +52,30 @@ const formattedBalance = computed(() => {
   return '0.00'
 })
 
+// Auto-load wallet state when userId becomes available
+watch(userId, async (newUserId) => {
+  if (newUserId && loggedIn.value) {
+    await loadWalletState(newUserId)
+  }
+}, { immediate: true })
+
 onMounted(async () => {
-  if (loggedIn.value) await refreshBalance()
+  if (loggedIn.value && userId.value) {
+    await loadWalletState(userId.value)
+  }
 })
 
-function handleDepositCompleted() {
+async function handleDepositCompleted() {
   showTopUpModal.value = false
-  refreshBalance()
-  // Refresh assets list and transaction history
-  assetsListRef.value?.refresh()
-  transactionHistoryRef.value?.refresh()
+  if (userId.value) {
+    await refreshWalletState(userId.value)
+  }
 }
 
-function handleRefresh() {
-  refreshBalance()
-  assetsListRef.value?.refresh()
-  transactionHistoryRef.value?.refresh()
+async function handleRefresh() {
+  if (userId.value) {
+    await refreshWalletState(userId.value)
+  }
 }
 </script>
 
@@ -87,7 +106,7 @@ function handleRefresh() {
           class="p-6 rounded-xl bg-gradient-to-br from-cosmic-100 to-purple-100 dark:from-cosmic-500/20 dark:to-purple-600/20 border border-cosmic-300 dark:border-cosmic-500/30">
         <div class="text-xs text-gray-600 dark:text-gray-400 mb-3">Available Balance</div>
         <div class="flex items-baseline gap-3">
-          <template v-if="loadingBalance">
+          <template v-if="loadingWalletState">
             <div class="flex items-center gap-2">
               <Loader :size="24" class="animate-spin text-cosmic-500"/>
               <span class="text-2xl text-gray-500 dark:text-gray-400">Loading...</span>
@@ -112,12 +131,12 @@ function handleRefresh() {
         </div>
       </div>
 
-      <div v-if="balanceError"
+      <div v-if="walletStateError"
            class="flex items-center gap-3 p-3 rounded-xl bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30">
         <AlertTriangle :size="20" class="text-red-600 dark:text-red-400"/>
         <div>
           <div class="text-xs font-medium text-red-700 dark:text-red-300">Error</div>
-          <p class="text-xs text-red-600 dark:text-red-400/80">{{ balanceError }}</p>
+          <p class="text-xs text-red-600 dark:text-red-400/80">{{ walletStateError }}</p>
         </div>
       </div>
 
@@ -132,10 +151,10 @@ function handleRefresh() {
         <button
             class="rounded-xl bg-gray-100 dark:bg-white/10 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2 group"
             @click="handleRefresh"
-            :disabled="loadingBalance"
+            :disabled="loadingWalletState"
         >
-          <component :is="loadingBalance ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingBalance }"/>
-          <span>{{ loadingBalance ? 'Updating...' : 'Refresh' }}</span>
+          <component :is="loadingWalletState ? Loader : RefreshCw" :size="16" :class="{ 'animate-spin': loadingWalletState }"/>
+          <span>{{ loadingWalletState ? 'Updating...' : 'Refresh' }}</span>
         </button>
       </div>
 
@@ -144,17 +163,12 @@ function handleRefresh() {
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Your Assets</h3>
         </div>
-        <AssetsList
-            v-if="userId"
-            :user-id="userId"
-            :display-limit="5"
-            ref="assetsListRef"
-        />
+        <AssetsList :display-limit="5" />
       </div>
 
       <!-- Transaction History Section -->
       <div class="mt-6 pt-6 border-t border-gray-200 dark:border-white/10">
-        <TransactionHistory ref="transactionHistoryRef" />
+        <TransactionHistory />
       </div>
     </div>
 

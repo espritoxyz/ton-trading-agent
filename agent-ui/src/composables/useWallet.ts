@@ -28,7 +28,6 @@ export interface Transaction {
 }
 
 export const walletInfo = ref<WalletInfo | null>(null)
-export const transactions = ref<Transaction[]>([])
 export const loadingWallet = ref(false)
 export const walletError = ref<string | null>(null)
 
@@ -47,20 +46,5 @@ export async function fetchWalletInfo() {
         throw e
     } finally {
         loadingWallet.value = false
-    }
-}
-
-export async function fetchTransactions() {
-    walletError.value = null
-    try {
-        const headers: Record<string, string> = {}
-        if (accessToken.value) headers.Authorization = `Bearer ${accessToken.value}`
-
-        const { data } = await api.get('/wallet/transactions', { headers })
-        transactions.value = data.transactions
-        return data.transactions as Transaction[]
-    } catch (e: any) {
-        walletError.value = e?.message ?? 'Failed to fetch transactions'
-        throw e
     }
 }

@@ -3,16 +3,6 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-semibold text-white">Transaction History</h3>
-      <button
-          v-if="!loadingTransactions"
-          @click="refreshTransactions"
-          class="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
-          title="Refresh transactions"
-      >
-        <svg class="w-4 h-4 text-gray-400 hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
     </div>
 
     <!-- Filters -->
@@ -162,21 +152,63 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
-import {useTransactions} from '../composables/useTransactions'
+import {computed, inject, ref} from 'vue'
 import type {Transaction} from '../types'
+
+// Inject wallet state from parent
+const walletState = inject<any>('walletState')
+if (!walletState) {
+  throw new Error('WalletState not provided')
+}
 
 const {
   transactions,
-  loadingTransactions,
-  transactionsError,
-  loadTransactions,
-  refreshTransactions,
-  formatAmount,
-  formatAddress,
-  getTonViewerUrl,
-  formatDate
-} = useTransactions()
+  loadingWalletState: loadingTransactions,
+  walletStateError: transactionsError
+} = walletState
+
+/**
+ * Format amount from nano to readable format
+ */
+const formatAmount = (amountNano: string | number, decimals: number = 9): string => {
+  const amount = Number(amountNano) / Math.pow(10, decimals)
+  if (decimals === 9) {
+    // TON - show 4 decimals
+    return amount.toFixed(4)
+  } else {
+    // Jetton - show 2 decimals
+    return amount.toFixed(2)
+  }
+}
+
+/**
+ * Format address to short form
+ */
+const formatAddress = (address?: string): string => {
+  if (!address) return 'Unknown'
+  if (address.length <= 12) return address
+  return `${address.substring(0, 6)}...${address.substring(address.length - 6)}`
+}
+
+/**
+ * Get TON Viewer URL for transaction
+ */
+const getTonViewerUrl = (hash: string): string => {
+  return `https://tonviewer.com/transaction/${hash}`
+}
+
+/**
+ * Format date to readable format
+ */
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 // Filters
 const filters = ref({
@@ -251,15 +283,6 @@ const checkFilters = () => {
 computed(() => {
   checkFilters()
   return null
-})
-
-onMounted(() => {
-  loadTransactions()
-})
-
-// Expose refresh method to parent
-defineExpose({
-  refresh: refreshTransactions
 })
 </script>
 

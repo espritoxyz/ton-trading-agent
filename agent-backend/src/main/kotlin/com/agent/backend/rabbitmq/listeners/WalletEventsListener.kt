@@ -2,6 +2,7 @@ package com.agent.backend.rabbitmq.listeners
 
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.WalletService
+import com.agent.backend.service.WalletStateService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component
 @Component
 class WalletEventsListener(
     private val walletService: WalletService,
+    private val walletStateService: WalletStateService,
     private val rabbitTemplate: RabbitTemplate
 ) {
     private val logger = KotlinLogging.logger {}
@@ -120,6 +122,9 @@ class WalletEventsListener(
                 comment = comment
             )
 
+            // Invalidate wallet state cache
+            walletStateService.invalidateCache(userId, "transaction-detected")
+
             logger.info { "[wallet-events] Successfully processed transaction for user $userId" }
         } catch (e: Exception) {
             logger.error(e) { "[wallet-events] Error handling transaction detection" }
@@ -196,6 +201,9 @@ class WalletEventsListener(
                     walletService.syncAssetBalance(userId, jettonMasterAddress, balance.toLong())
                 }
             }
+
+            // Invalidate wallet state cache
+            walletStateService.invalidateCache(userId, "balance-synced")
 
             logger.info { "[wallet-events] Successfully synced wallet balance for user $userId" }
         } catch (e: Exception) {

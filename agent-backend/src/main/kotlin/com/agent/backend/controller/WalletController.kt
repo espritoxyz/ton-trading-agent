@@ -19,26 +19,6 @@ data class WalletInfoResponse(
     val isActive: Boolean
 )
 
-data class TransactionHistoryResponse(
-    val transactions: List<TransactionItem>
-)
-
-data class TransactionItem(
-    val id: Long,
-    val transactionHash: String,
-    val transactionLt: Long,
-    val direction: String,
-    val amountNano: Long,
-    val assetType: String,
-    val jettonMasterAddress: String?,
-    val jettonSymbol: String?,
-    val jettonDecimals: Int?,
-    val senderAddress: String?,
-    val recipientAddress: String?,
-    val comment: String?,
-    val createdAt: Instant
-)
-
 @RestController
 @RequestMapping("/wallet")
 class WalletController(
@@ -69,33 +49,5 @@ class WalletController(
         )
 
         return ResponseEntity.ok(response)
-    }
-
-    @GetMapping("/transactions")
-    fun getTransactions(auth: JwtAuthenticationToken): ResponseEntity<TransactionHistoryResponse> {
-        val userId = currentUserId(auth)
-        val transactions = walletService.getUserTransactionHistory(userId)
-
-        walletLogger.debug { "Transaction history requested for user $userId, found ${transactions.size} transactions" }
-
-        val items = transactions.map { tx ->
-            TransactionItem(
-                id = tx.id ?: 0,
-                transactionHash = tx.transactionHash,
-                transactionLt = tx.transactionLt,
-                direction = tx.direction.name,
-                amountNano = tx.amountNano,
-                assetType = tx.assetType,
-                jettonMasterAddress = tx.jettonMasterAddress,
-                jettonSymbol = tx.jettonSymbol,
-                jettonDecimals = tx.jettonDecimals,
-                senderAddress = tx.senderAddress,
-                recipientAddress = tx.recipientAddress,
-                comment = tx.comment,
-                createdAt = tx.createdAt
-            )
-        }
-
-        return ResponseEntity.ok(TransactionHistoryResponse(transactions = items))
     }
 }
