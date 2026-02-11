@@ -2,6 +2,7 @@ import { TonApiClient } from '@ton-api/client';
 import { Address } from "@ton/core";
 import { sleep } from "../utils.js";
 import type { Channel } from "amqplib";
+import { syncWalletBalance } from "./walletBalanceSync.js";
 
 const TONAPI_BASE_URL = process.env.TONAPI_BASE_URL;
 const TONAPI_KEY = process.env.TONAPI_KEY;
@@ -307,6 +308,14 @@ async function processTonTransfer(
         Buffer.from(JSON.stringify(message)),
         { persistent: true }
     );
+
+    // Sync wallet balance after incoming jetton transaction
+    try {
+        await syncWalletBalance(wallet.walletAddress, wallet.userId, channel, exchange);
+    } catch (syncErr: any) {
+        console.error(`[multi-wallet-monitor] Failed to sync wallet balance after Jetton deposit:`, syncErr?.message);
+        // Don't fail the operation if sync fails
+    }
 }
 
 /**

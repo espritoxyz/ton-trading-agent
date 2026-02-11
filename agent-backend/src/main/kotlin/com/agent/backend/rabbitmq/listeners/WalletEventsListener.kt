@@ -30,6 +30,7 @@ class WalletEventsListener(
             "wallet.create-response" -> handleWalletCreateResponse(message)
             "wallet.transaction-detected" -> handleTransactionDetected(message)
             "wallet.list-active-request" -> handleListActiveRequest(message)
+            "wallet.balance-synced" -> handleBalanceSynced(message)
         }
     }
 
@@ -148,6 +149,57 @@ class WalletEventsListener(
             logger.info { "[wallet-events] Sent ${activeWallets.size} active wallets" }
         } catch (e: Exception) {
             logger.error(e) { "[wallet-events] Error handling list active request" }
+        }
+    }
+
+    private fun handleBalanceSynced(message: Map<String, Any>) {
+        try {
+            val data = message["data"] as? Map<*, *>
+            if (data == null) {
+                logger.error { "[wallet-events] Missing 'data' field in balance-synced message" }
+                return
+            }
+
+            val userId = (data["userId"] as? Number)?.toLong()
+            if (userId == null) {
+                logger.error { "[wallet-events] Missing or invalid 'userId' in balance-synced message" }
+                return
+            }
+
+            val walletAddress = data["walletAddress"] as? String
+            if (walletAddress == null) {
+                logger.error { "[wallet-events] Missing 'walletAddress' for user $userId" }
+                return
+            }
+
+            val tonBalance = data["tonBalance"] as? String
+            if (tonBalance == null) {
+                logger.error { "[wallet-events] Missing 'tonBalance' for user $userId" }
+                return
+            }
+
+            val jettons = data["jettons"] as? List<*> ?: emptyList<Any>()
+
+            logger.info { "[wallet-events] Balance synced for user $userId: TON=$tonBalance, Jettons=${jettons.size}" }
+
+            // Sync TON balance
+            walletService.syncAssetBalance(userId, "TON", tonBalance.toLong())
+
+            // Sync jetton balances
+            for (jetton in jettons) {
+                if (jetton !is Map<*, *>) continue
+
+                val jettonMasterAddress = jetton["jettonMasterAddress"] as? String
+                val balance = jetton["balance"] as? String
+
+                if (jettonMasterAddress != null && balance != null) {
+                    walletService.syncAssetBalance(userId, jettonMasterAddress, balance.toLong())
+                }
+            }
+
+            logger.info { "[wallet-events] Successfully synced wallet balance for user $userId" }
+        } catch (e: Exception) {
+            logger.error(e) { "[wallet-events] Error handling balance sync" }
         }
     }
 }

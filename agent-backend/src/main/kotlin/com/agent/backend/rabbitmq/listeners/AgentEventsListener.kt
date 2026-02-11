@@ -3,6 +3,7 @@ package com.agent.backend.rabbitmq.listeners
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.messaging.handler.annotation.Payload
@@ -15,6 +16,7 @@ private val logger = KotlinLogging.logger {}
 class AgentEventsListener(
     private val jobService: ChatJobService,
     private val externalToolResultService: ExternalToolResultService,
+    private val walletService: WalletService,
 ) {
 
 
@@ -39,6 +41,26 @@ class AgentEventsListener(
                     val txId = data["txId"] as? String
                     val error = data["error"] as? String
 
+                    // Record outgoing transaction if successful
+                    if (success && txId != null && receiver != null) {
+                        val amountNano = when (amount) {
+                            is Number -> (amount.toDouble() * 1_000_000_000).toLong()
+                            is String -> (amount.toDoubleOrNull() ?: 0.0 * 1_000_000_000).toLong()
+                            else -> 0L
+                        }
+
+                        try {
+                            walletService.processOutgoingTonTransaction(
+                                userId = userId,
+                                transactionHash = txId,
+                                amountNano = amountNano,
+                                recipientAddress = receiver
+                            )
+                        } catch (e: Exception) {
+                            logger.error(e) { "Failed to record outgoing TON transaction" }
+                        }
+                    }
+
                     val report = if (success) {
                         val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
                         if (txLink != null) {
@@ -62,10 +84,26 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val amount = data["tokenAmount"]
+                    val amountNano = (data["tokenAmountNano"] as? Number)?.toLong()
                     val jettonMaster = data["jettonMaster"] as? String
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
                     val error = data["error"] as? String
+
+                    // Record outgoing token transaction if successful
+                    if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
+                        try {
+                            walletService.processOutgoingTokenTransaction(
+                                userId = userId,
+                                transactionHash = txId,
+                                amountNano = amountNano,
+                                jettonMasterAddress = jettonMaster,
+                                recipientAddress = receiver
+                            )
+                        } catch (e: Exception) {
+                            logger.error(e) { "Failed to record outgoing token transaction" }
+                        }
+                    }
 
                     val report = if (success) {
                         val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }

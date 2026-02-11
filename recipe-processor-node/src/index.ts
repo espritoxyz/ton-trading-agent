@@ -5,6 +5,7 @@ import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
 import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
 import { startMultiWalletMonitoring, addWalletToMonitor } from "./recipes/multiWalletMonitor.js";
+import { syncWalletBalance } from "./recipes/walletBalanceSync.js";
 
 
 startPoolsUpdater();
@@ -50,6 +51,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const userId = data?.userId;
             const amount = data?.tonAmount;
             const receiver = data?.receiverAddress;
+            const walletAddress = data?.walletAddress;
             const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
@@ -74,6 +76,17 @@ await startConsumer(ch, queue, async (_msg, body) => {
             try {
                 const txId = await sendTon(amount, receiver, mnemonic);
                 console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
+
+                // Sync wallet balance after successful transaction
+                if (walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after send-ton:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
+                }
+
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
                     type: "agent-llm.send-ton.result",
                     occurredAt: new Date().toISOString(),
@@ -110,6 +123,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const amountNano = data?.tokenAmountNano;
             const jettonMaster = data?.jettonMaster;
             const receiver = data?.receiverAddress;
+            const walletAddress = data?.walletAddress;
             const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-token requested:`, { messageId, userId, amountHuman, amountNano, jettonMaster, receiver });
 
@@ -137,6 +151,17 @@ await startConsumer(ch, queue, async (_msg, body) => {
                 const txId = await sendToken(jettonMaster, amountNano, receiver, mnemonic);
 
                 console.log(`[${SERVICE}] send-token done: txId=${txId}`);
+
+                // Sync wallet balance after successful transaction
+                if (walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after send-token:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
+                }
+
                 publishJson(ch, exchange, "agent-llm.send-token.result", {
                     type: "agent-llm.send-token.result",
                     occurredAt: new Date().toISOString(),
@@ -179,6 +204,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTokenAmount = data?.minimalTokenAmount;
             const swapTonAmount = data?.swapTonAmount;
             const poolAddress = data?.poolAddress as string;
+            const walletAddress = data?.walletAddress;
             const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-ton-to-token requested:`, { messageId, userId, jettonMaster, minimalTokenAmount, swapTonAmount, poolAddress });
 
@@ -227,6 +253,16 @@ await startConsumer(ch, queue, async (_msg, body) => {
                 );
 
                 if (res.ok) {
+                    // Sync wallet balance after successful swap
+                    if (walletAddress && userId) {
+                        try {
+                            await syncWalletBalance(walletAddress, userId, ch, exchange);
+                        } catch (syncErr: any) {
+                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-ton-to-token:`, syncErr?.message);
+                            // Don't fail the operation if sync fails
+                        }
+                    }
+
                     publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
                         type: "agent-llm.swap-ton-to-token.result",
                         occurredAt: new Date().toISOString(),
@@ -285,6 +321,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTonAmount = data?.minimalTonAmount;
             const swapTokenAmount = data?.swapTokenAmount;
             const poolAddress = data?.poolAddress as string;
+            const walletAddress = data?.walletAddress;
             const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-token-to-ton requested:`, { messageId, userId, jettonMaster, minimalTonAmount, swapTokenAmount, poolAddress });
 
@@ -333,6 +370,16 @@ await startConsumer(ch, queue, async (_msg, body) => {
                 );
 
                 if (res.ok) {
+                    // Sync wallet balance after successful swap
+                    if (walletAddress && userId) {
+                        try {
+                            await syncWalletBalance(walletAddress, userId, ch, exchange);
+                        } catch (syncErr: any) {
+                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-ton:`, syncErr?.message);
+                            // Don't fail the operation if sync fails
+                        }
+                    }
+
                     publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
                         type: "agent-llm.swap-token-to-ton.result",
                         occurredAt: new Date().toISOString(),

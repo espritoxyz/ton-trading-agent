@@ -175,4 +175,114 @@ class WalletService(
     fun getUserTransactionHistory(userId: Long): List<WalletTransaction> {
         return walletTransactionRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
     }
+
+    /**
+     * Sync asset balance (replace, not add)
+     * Used when fetching actual balance from blockchain
+     */
+    @Transactional
+    fun syncAssetBalance(userId: Long, assetAddress: String, amountNano: Long) {
+        logger.info("[wallet-service] Syncing balance for user $userId, asset $assetAddress: $amountNano nano")
+        assetService.upsertByAddress(userId, assetAddress, amountNano)
+    }
+
+    /**
+     * Process outgoing TON transaction
+     */
+    @Transactional
+    fun processOutgoingTonTransaction(
+        userId: Long,
+        transactionHash: String,
+        amountNano: Long,
+        recipientAddress: String,
+        comment: String? = null
+    ) {
+        val wallet = userWalletRepository.findByUserId(userId).orElse(null)
+        if (wallet == null) {
+            logger.warn("[wallet-service] Cannot record outgoing transaction: user $userId has no wallet")
+            return
+        }
+
+        // Check for duplicates
+        val exists = walletTransactionRepository.existsByTransactionHashAndDirection(
+            transactionHash,
+            TransactionDirection.OUTGOING
+        )
+
+        if (exists) {
+            logger.debug("[wallet-service] Outgoing transaction $transactionHash already recorded, skipping")
+            return
+        }
+
+        // Save transaction
+        val transaction = WalletTransaction(
+            userId = userId,
+            walletAddress = wallet.walletAddress,
+            transactionHash = transactionHash,
+            transactionLt = 0L, // We don't have LT for outgoing transactions yet
+            direction = TransactionDirection.OUTGOING,
+            amountNano = amountNano,
+            assetType = "TON",
+            senderAddress = wallet.walletAddress,
+            recipientAddress = recipientAddress,
+            comment = comment,
+            createdAt = Instant.now()
+        )
+
+        walletTransactionRepository.save(transaction)
+        logger.info("[wallet-service] Saved outgoing TON transaction for user $userId: $transactionHash")
+    }
+
+    /**
+     * Process outgoing token transaction
+     */
+    @Transactional
+    fun processOutgoingTokenTransaction(
+        userId: Long,
+        transactionHash: String,
+        amountNano: Long,
+        jettonMasterAddress: String,
+        recipientAddress: String,
+        jettonSymbol: String? = null,
+        jettonDecimals: Int? = null,
+        comment: String? = null
+    ) {
+        val wallet = userWalletRepository.findByUserId(userId).orElse(null)
+        if (wallet == null) {
+            logger.warn("[wallet-service] Cannot record outgoing token transaction: user $userId has no wallet")
+            return
+        }
+
+        // Check for duplicates
+        val exists = walletTransactionRepository.existsByTransactionHashAndDirection(
+            transactionHash,
+            TransactionDirection.OUTGOING
+        )
+
+        if (exists) {
+            logger.debug("[wallet-service] Outgoing token transaction $transactionHash already recorded, skipping")
+            return
+        }
+
+        // Save transaction
+        val transaction = WalletTransaction(
+            userId = userId,
+            walletAddress = wallet.walletAddress,
+            transactionHash = transactionHash,
+            transactionLt = 0L, // We don't have LT for outgoing transactions yet
+            direction = TransactionDirection.OUTGOING,
+            amountNano = amountNano,
+            assetType = "JETTON",
+            jettonMasterAddress = jettonMasterAddress,
+            jettonSymbol = jettonSymbol,
+            jettonDecimals = jettonDecimals,
+            senderAddress = wallet.walletAddress,
+            recipientAddress = recipientAddress,
+            comment = comment,
+            createdAt = Instant.now()
+        )
+
+        walletTransactionRepository.save(transaction)
+        logger.info("[wallet-service] Saved outgoing token transaction for user $userId: $transactionHash")
+    }
 }
