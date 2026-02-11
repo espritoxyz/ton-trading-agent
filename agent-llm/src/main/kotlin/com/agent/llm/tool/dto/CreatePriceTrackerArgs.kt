@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CreatePriceTrackerArgs(
-    val userId: Long,
     val jettonMaster: String,
     val targetPrice: Double,
 ) : AgentToolArgs

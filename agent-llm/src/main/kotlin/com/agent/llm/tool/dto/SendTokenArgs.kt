@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class SendTokenArgs(
-    val userId: Long,
     val tokenAmount: Double,
     val jettonMaster: String,
     val receiverAddress: String,

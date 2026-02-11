@@ -1,7 +1,9 @@
 package com.agent.backend.service
 
+import com.agent.backend.db.entity.Direction
 import com.agent.backend.db.entity.Order
 import com.agent.backend.db.entity.PriceTracker
+
 import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -33,13 +35,17 @@ class PriceTrackerService(
         val currentPrice = stonfiAssetsCacheService.getDexUsdPrice(jettonMaster)
         val direction = when {
             currentPrice == null -> {
-                logger.warn { "[price-tracker] No current price for $jettonMaster, defaulting direction to 'up'" }
-                "up"
+                logger.warn { "[price-tracker] No current price for $jettonMaster, defaulting direction to UP" }
+                Direction.UP
             }
-            isGreaterOrEqual(currentPrice, targetPrice) -> "down"
-            isLessOrEqual(currentPrice, targetPrice) -> "up"
-            else -> "up" // fallback, should not really happen
+            isGreaterOrEqual(currentPrice, targetPrice) -> Direction.DOWN
+            isLessOrEqual(currentPrice, targetPrice) -> Direction.UP
+            else -> {
+                logger.warn { "Unreachable state for currentPrice=$currentPrice, targetPrice=$targetPrice" }
+                Direction.UP
+            }
         }
+
 
         val tracker = PriceTracker(
             userId = userId,
@@ -95,10 +101,10 @@ class PriceTrackerService(
             }
 
             val triggeredNow = when (t.direction) {
-                "down" -> isLessOrEqual(price, t.targetPrice)
-                "up" -> isGreaterOrEqual(price, t.targetPrice)
-                else -> false
+                Direction.DOWN -> isLessOrEqual(price, t.targetPrice)
+                Direction.UP -> isGreaterOrEqual(price, t.targetPrice)
             }
+
             
             if (triggeredNow) {
                 t.triggered = true

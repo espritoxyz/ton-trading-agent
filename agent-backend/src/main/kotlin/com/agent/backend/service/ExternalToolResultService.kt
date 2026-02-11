@@ -20,6 +20,7 @@ class ExternalToolResultService {
     private val waiters = ConcurrentHashMap<Key, MutableList<CompletableDeferred<String>>>()
 
     // Results that arrived before any waiter was registered
+    // TODO: add cleanup mechanism
     private val buffered = ConcurrentHashMap<Key, MutableList<String>>()
 
     fun registerWait(messageId: UUID, toolName: String): CompletableDeferred<String> {

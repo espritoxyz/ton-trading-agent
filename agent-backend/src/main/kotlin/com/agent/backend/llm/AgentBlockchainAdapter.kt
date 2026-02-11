@@ -12,6 +12,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
+
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
@@ -287,11 +289,14 @@ class AgentBlockchainAdapter(
                     tr.name.contains("swap", ignoreCase = true)
                 ) {
                     async {
-                        val finalReport = externalToolResultService
-                            .registerWait(messageId, tr.name)
-                            .await()
+                        val finalReport = withTimeout(60_000L) {
+                            externalToolResultService
+                                .registerWait(messageId, tr.name)
+                                .await()
+                        }
                         tr.copy(responseData = finalReport)
                     }
+
                 } else {
                     async { tr }
                 }
