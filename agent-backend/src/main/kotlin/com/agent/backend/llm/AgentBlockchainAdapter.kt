@@ -37,6 +37,7 @@ class AgentBlockchainAdapter(
     private var messageId: UUID,
     private val poolsCache: StonfiPoolsCacheService,
     private val assetsCache: StonfiAssetsCacheService,
+    private val walletService: WalletService,
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
