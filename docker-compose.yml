@@ -51,6 +51,21 @@ services:
       - ./ops/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks: [ agent-net ]
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [ agent-net ]
+
   agent-backend:
     build:
       context: .
@@ -75,18 +90,20 @@ services:
       GITHUB_USERNAME: ${GITHUB_USERNAME}
       GITHUB_PAT: ${GITHUB_PAT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      DEPOSIT_WALLET_ADDRESS: ${DEPOSIT_WALLET_ADDRESS}
-      DEPOSIT_POLL_INTERVAL_MS: ${DEPOSIT_POLL_INTERVAL_MS:-8000}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
       APP_BASE_URL: ${APP_BASE_URL}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
       app-db:
         condition: service_started
       keycloak:
         condition: service_started
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -139,7 +156,7 @@ services:
       TONCENTER_API_KEY: ${TONCENTER_API_KEY}
       TONAPI_BASE_URL: ${TONAPI_BASE_URL}
       TONAPI_KEY: ${TONAPI_KEY}
-      DEPOSIT_POLL_INTERVAL_MS: ${DEPOSIT_POLL_INTERVAL_MS:-8000}
+      MULTI_WALLET_POLL_INTERVAL_MS: ${MULTI_WALLET_POLL_INTERVAL_MS:-12000}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -167,3 +184,4 @@ volumes:
   keycloak_pg_data:
   rabbitmq_data:
   rabbitmq_log:
+  redis_data:

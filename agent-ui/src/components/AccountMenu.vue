@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail } from '../composables/useAuth.ts'
-import { refreshBalance } from '../composables/useBalance.ts'
+import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId } from '../composables/useAuth.ts'
+import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
 import RegisterModal from './RegisterModal.vue'
 import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle } from 'lucide-vue-next'
+
+const { refreshWalletState, clearWalletState } = useWalletState()
 
 const username = ref('')
 const password = ref('')
@@ -21,18 +23,24 @@ async function onLogin() {
   await login(username.value, password.value)
   password.value = ''
   if (accessToken.value) {
-    await Promise.all([refreshProfile(), refreshBalance()])
+    await refreshProfile() // Wait for profile to get userId
+    if (userId.value) {
+      await refreshWalletState(userId.value)
+    }
     showDropdown.value = false
   }
 }
 
 function onLogout() {
   logout()
+  clearWalletState()
   showDropdown.value = false
 }
 
 async function onRefresh() {
-  await Promise.all([refreshProfile(), refreshBalance()])
+  if (userId.value) {
+    await Promise.all([refreshProfile(), refreshWalletState(userId.value)])
+  }
 }
 
 function openRegister() {
@@ -101,10 +109,13 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   if (accessToken.value) {
-    Promise.all([refreshProfile(), refreshBalance()])
+    await refreshProfile()
+    if (userId.value) {
+      await refreshWalletState(userId.value)
+    }
   }
 })
 

@@ -3,7 +3,9 @@ import {mockSendTon, sendTon, sendToken} from "./recipes/transactions.js";
 import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
-import { startDepositMonitoring } from "./recipes/depositMonitor.js";
+import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
+import { startMultiWalletMonitoring, addWalletToMonitor } from "./recipes/multiWalletMonitor.js";
+import { syncWalletBalance } from "./recipes/walletBalanceSync.js";
 
 
 startPoolsUpdater();
@@ -11,27 +13,80 @@ startPoolsUpdater();
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
 
-const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#"]);
+const { conn, ch, exchange, queue } = await setupRabbit(RABBIT_URL, SERVICE, ["agent-llm.#", "wallet.#", "deposit.#"]);
 
-// Start deposit monitoring
-startDepositMonitoring(ch, exchange).catch((err) => {
-    console.error("[recipe-processor-node] Failed to start deposit monitoring:", err);
+// Start multi-wallet monitoring (session-based)
+startMultiWalletMonitoring(ch, exchange).catch((err) => {
+    console.error("[recipe-processor-node] Failed to start multi-wallet monitoring:", err);
 });
 
 await startConsumer(ch, queue, async (_msg, body) => {
     try {
         if (!body || typeof body !== "object") return;
         const { type, data, occurredAt } = body;
+
+        // Handle wallet events
+        if (type === "wallet.create-request") {
+            await handleWalletCreationRequest(data, ch, exchange);
+            return;
+        }
+
+        // Handle deposit session events
+        if (type === "deposit.session-started") {
+            const userId = data?.userId;
+            const walletAddress = data?.walletAddress;
+            const expiresAt = data?.expiresAt;
+
+            if (userId && walletAddress && expiresAt) {
+                addWalletToMonitor(walletAddress, userId, new Date(expiresAt));
+                console.log(`[${SERVICE}] Deposit session started: wallet=${walletAddress}, user=${userId}, expiresAt=${expiresAt}`);
+            } else {
+                console.error(`[${SERVICE}] Invalid deposit.session-started event:`, data);
+            }
+            return;
+        }
+
         if (type === "agent-llm.send-ton") {
             const messageId = data?.messageId;
             const userId = data?.userId;
             const amount = data?.tonAmount;
             const receiver = data?.receiverAddress;
+            const walletAddress = data?.walletAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-ton requested:`, { messageId, userId, amount, receiver });
 
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] send-ton error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.send-ton.result", {
+                    type: "agent-llm.send-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tonAmount: amount,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
+
             try {
-                const txId = await sendTon(amount, receiver);
+                const txId = await sendTon(amount, receiver, mnemonic);
                 console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
+
+                // Sync wallet balance after successful transaction
+                if (walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after send-ton:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
+                }
+
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
                     type: "agent-llm.send-ton.result",
                     occurredAt: new Date().toISOString(),
@@ -68,12 +123,45 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const amountNano = data?.tokenAmountNano;
             const jettonMaster = data?.jettonMaster;
             const receiver = data?.receiverAddress;
+            const walletAddress = data?.walletAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] send-token requested:`, { messageId, userId, amountHuman, amountNano, jettonMaster, receiver });
-            
+
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] send-token error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.send-token.result", {
+                    type: "agent-llm.send-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        tokenAmount: amountHuman,
+                        tokenAmountNano: amountNano,
+                        jettonMaster,
+                        receiverAddress: receiver,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
+
             try {
-                const txId = await sendToken(jettonMaster, amountNano, receiver);
+                const txId = await sendToken(jettonMaster, amountNano, receiver, mnemonic);
 
                 console.log(`[${SERVICE}] send-token done: txId=${txId}`);
+
+                // Sync wallet balance after successful transaction
+                if (walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after send-token:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
+                }
+
                 publishJson(ch, exchange, "agent-llm.send-token.result", {
                     type: "agent-llm.send-token.result",
                     occurredAt: new Date().toISOString(),
@@ -116,8 +204,25 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTokenAmount = data?.minimalTokenAmount;
             const swapTonAmount = data?.swapTonAmount;
             const poolAddress = data?.poolAddress as string;
+            const walletAddress = data?.walletAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-ton-to-token requested:`, { messageId, userId, jettonMaster, minimalTokenAmount, swapTonAmount, poolAddress });
 
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] swap-ton-to-token error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
+                    type: "agent-llm.swap-ton-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
 
             const swapAmtNum = Number(swapTonAmount);
             if (!Number.isFinite(swapAmtNum) || swapAmtNum <= 0) {
@@ -144,9 +249,20 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     Number(minimalTokenAmount),
                     swapAmtNum,
                     poolAddress,
+                    mnemonic,
                 );
 
                 if (res.ok) {
+                    // Sync wallet balance after successful swap
+                    if (walletAddress && userId) {
+                        try {
+                            await syncWalletBalance(walletAddress, userId, ch, exchange);
+                        } catch (syncErr: any) {
+                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-ton-to-token:`, syncErr?.message);
+                            // Don't fail the operation if sync fails
+                        }
+                    }
+
                     publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
                         type: "agent-llm.swap-ton-to-token.result",
                         occurredAt: new Date().toISOString(),
@@ -205,7 +321,25 @@ await startConsumer(ch, queue, async (_msg, body) => {
             const minimalTonAmount = data?.minimalTonAmount;
             const swapTokenAmount = data?.swapTokenAmount;
             const poolAddress = data?.poolAddress as string;
+            const walletAddress = data?.walletAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
             console.log(`[${SERVICE}] swap-token-to-ton requested:`, { messageId, userId, jettonMaster, minimalTonAmount, swapTokenAmount, poolAddress });
+
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] swap-token-to-ton error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                    type: "agent-llm.swap-token-to-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
 
             const swapTokenAmtNum = Number(swapTokenAmount);
             if (!Number.isFinite(swapTokenAmtNum) || swapTokenAmtNum <= 0) {
@@ -232,9 +366,20 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     Number(minimalTonAmount),
                     swapTokenAmtNum,
                     poolAddress,
+                    mnemonic,
                 );
 
                 if (res.ok) {
+                    // Sync wallet balance after successful swap
+                    if (walletAddress && userId) {
+                        try {
+                            await syncWalletBalance(walletAddress, userId, ch, exchange);
+                        } catch (syncErr: any) {
+                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-ton:`, syncErr?.message);
+                            // Don't fail the operation if sync fails
+                        }
+                    }
+
                     publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
                         type: "agent-llm.swap-token-to-ton.result",
                         occurredAt: new Date().toISOString(),

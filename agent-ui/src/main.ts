@@ -8,8 +8,18 @@ import VueYandexMetrika from 'vue3-yandex-metrika'
 
 // Ensure theme class is set before we mount so styles render correctly
 if (typeof window !== 'undefined') {
-  const t = loadTheme()
-  applyTheme(t)
+  // Landing page always uses dark theme (it doesn't support light theme)
+  const currentPath = window.location.pathname
+  const isLandingPage = currentPath === '/' || currentPath === '/roadmap' || currentPath === '/privacy' || currentPath === '/blog' || currentPath === '/terms'
+
+  if (isLandingPage) {
+    // Force dark theme for landing pages
+    applyTheme('dark')
+  } else {
+    // Load saved theme for app pages
+    const t = loadTheme()
+    applyTheme(t)
+  }
 }
 
 async function bootstrap() {

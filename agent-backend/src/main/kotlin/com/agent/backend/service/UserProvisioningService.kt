@@ -42,6 +42,8 @@ open class UserProvisioningService(
             createdAt = Instant.now(),
             lastLoginAt = Instant.now()
         )
-        return users.save(u)
+        val savedUser = users.save(u)
+
+        return savedUser
     }
 }

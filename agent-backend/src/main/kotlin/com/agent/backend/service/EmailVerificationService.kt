@@ -28,6 +28,7 @@ class EmailVerificationService(
     private val agentUserRepository: AgentUserRepository,
     private val emailService: EmailService,
     private val authService: AuthService,
+    private val walletService: WalletService,
     @Value("\${email.verification.token-ttl-hours}") private val tokenTtlHours: Int,
     @Value("\${email.rate-limit.max-requests-per-hour}") private val maxRequestsPerHour: Int,
     @Value("\${email.rate-limit.max-resends-per-token}") private val maxResendsPerToken: Int
@@ -195,6 +196,15 @@ class EmailVerificationService(
         } catch (e: Exception) {
             logger.error(e) { "Failed to update Keycloak emailVerified for user ${user.id}" }
             // Don't fail the verification if Keycloak update fails
+        }
+
+        // Create wallet for verified user
+        try {
+            walletService.createWalletForUser(user.id!!)
+            logger.info { "Wallet creation initiated for user ${user.id}" }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to initiate wallet creation for user ${user.id}" }
+            // Don't fail the verification if wallet creation fails
         }
 
         logger.info { "Email verified successfully for user ${user.id} (${user.email})" }
