@@ -28,6 +28,11 @@ spring:
   rabbitmq:
     host: rabbitmq
 
+  data:
+    redis:
+      host: redis
+      port: 6379
+
 keycloak:
   base-url: ${KC_BASE_URL:http://keycloak:8080}
   realm: ${KC_REALM:agent}
