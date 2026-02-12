@@ -75,6 +75,7 @@ export interface WalletStateResponse {
     balance: BalanceData
     assets: AssetData[]
     transactions: TransactionData[]
+    orders: OrderData[]
     metadata: WalletStateMetadata
 }
 
@@ -112,9 +113,23 @@ export interface TransactionData {
     createdAt: string
 }
 
+export type OrderAction = 'buy' | 'sell'
+
+export interface OrderData {
+    id: number
+    jettonMaster: string
+    action: OrderAction
+    amount: number
+    createdAt: string
+    fulfilled: boolean
+    symbol?: string
+}
+
 export interface WalletStateMetadata {
     fromCache: boolean
     cacheAge: number | null
     transactionCount: number
     transactionsLimit: number
+    activeOrdersCount: number
+    fulfilledOrdersCount: number
 }

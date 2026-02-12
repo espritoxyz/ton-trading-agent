@@ -24,6 +24,9 @@ class OrderService(
     fun listUnfulfilledOrdersByUser(userId: Long): List<Order> =
         orders.findAllByUserId(userId).filter { !it.fulfilled }
 
+    fun listAllOrdersByUser(userId: Long): List<Order> =
+        orders.findAllByUserId(userId)
+
     fun executeOrderSwap(order: Order) {
 
         if (order.action.equals("sell", ignoreCase = true)) {

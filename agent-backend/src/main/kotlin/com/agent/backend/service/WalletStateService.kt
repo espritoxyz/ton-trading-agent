@@ -2,7 +2,12 @@ package com.agent.backend.service
 
 import com.agent.backend.db.entity.Asset
 import com.agent.backend.db.entity.WalletTransaction
-import com.agent.backend.dto.*
+import com.agent.backend.dto.AssetData
+import com.agent.backend.dto.BalanceData
+import com.agent.backend.dto.OrderData
+import com.agent.backend.dto.TransactionData
+import com.agent.backend.dto.WalletStateMetadata
+import com.agent.backend.dto.WalletStateResponse
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -30,6 +35,7 @@ class WalletStateService(
     private val assetService: AssetService,
     private val walletService: WalletService,
     private val priceDataCache: PriceDataCacheService,
+    private val orderService: OrderService,
     private val redisTemplate: StringRedisTemplate,
     private val objectMapper: ObjectMapper
 ) {
@@ -156,6 +162,9 @@ class WalletStateService(
         val transactions = walletService.getUserTransactionHistory(userId)
             .take(transactionsLimit)
 
+        // Fetch all orders for the user
+        val allOrders = orderService.listAllOrdersByUser(userId)
+
         // Compute balance and enrich assets with prices (sequential due to rate limiting)
         val enrichedAssets = mutableListOf<AssetData>()
         for (asset in assets) {
@@ -165,6 +174,9 @@ class WalletStateService(
 
         // Map transactions to DTOs
         val transactionDtos = transactions.map { mapTransactionToDto(it) }
+
+        // Map orders to DTOs and enrich with symbols
+        val orderDtos = allOrders.map { mapOrderToDto(it) }
 
         val fetchTime = System.currentTimeMillis() - startTime
         logger.debug { "[wallet-state] Fetched wallet state for user $userId in ${fetchTime}ms" }
@@ -177,11 +189,14 @@ class WalletStateService(
             ),
             assets = enrichedAssets,
             transactions = transactionDtos,
+            orders = orderDtos,
             metadata = WalletStateMetadata(
                 fromCache = false,
                 cacheAge = null,
                 transactionCount = transactionDtos.size,
-                transactionsLimit = transactionsLimit
+                transactionsLimit = transactionsLimit,
+                activeOrdersCount = orderDtos.count { !it.fulfilled },
+                fulfilledOrdersCount = orderDtos.count { it.fulfilled }
             )
         )
     }
@@ -250,6 +265,29 @@ class WalletStateService(
     }
 
     /**
+     * Map Order entity to OrderData DTO.
+     */
+    private suspend fun mapOrderToDto(order: com.agent.backend.db.entity.Order): OrderData {
+        // Try to get symbol from cache
+        val symbol = try {
+            priceDataCache.getSymbol(order.jettonMaster)
+        } catch (e: Exception) {
+            logger.debug(e) { "[wallet-state] Failed to get symbol for jetton ${order.jettonMaster}" }
+            null
+        }
+
+        return OrderData(
+            id = order.id!!,
+            jettonMaster = order.jettonMaster,
+            action = order.action,
+            amount = order.amount,
+            createdAt = order.createdAt,
+            fulfilled = order.fulfilled,
+            symbol = symbol
+        )
+    }
+
+    /**
      * Format amount with appropriate precision based on value magnitude.
      *
      * Copied from BalanceService for consistency.
@@ -260,9 +298,11 @@ class WalletStateService(
             amount >= 1.0 -> {
                 BigDecimal(amount).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
             }
+
             amount >= 0.01 -> {
                 BigDecimal(amount).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
             }
+
             else -> {
                 BigDecimal(amount).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
             }
