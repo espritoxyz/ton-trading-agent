@@ -60,9 +60,8 @@ class AgentEventsListener(
                     }
 
                     val report = if (success) {
-                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
-                        if (txLink != null) {
-                            "TON transfer succeeded. Sent $amount TON to $receiver. $txLink"
+                        if (txId != null) {
+                            "TON transfer succeeded. Sent $amount TON to $receiver. https://tonviewer.com/transaction/$txId"
                         } else {
                             "TON transfer succeeded. Sent $amount TON to $receiver. (Transaction id unavailable)"
                         }
@@ -108,9 +107,8 @@ class AgentEventsListener(
                     }
 
                     val report = if (success) {
-                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
-                        if (txLink != null) {
-                            "Token transfer succeeded. Sent $amount of $jettonMaster to $receiver. $txLink"
+                        if (txId != null) {
+                            "Token transfer succeeded. Sent $amount of $jettonMaster to $receiver. https://tonviewer.com/transaction/$txId"
                         } else {
                             "Token transfer succeeded. Sent $amount of $jettonMaster to $receiver. (Transaction id unavailable)"
                         }
@@ -143,9 +141,8 @@ class AgentEventsListener(
                     logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
 
                     val report = if (success) {
-                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
-                        if (txLink != null) {
-                            "Swap TON->Token succeeded. $txLink"
+                        if (txId != null) {
+                            "Swap TON->Token succeeded. https://tonviewer.com/transaction/$txId"
                         } else {
                             "Swap TON->Token succeeded. (Transaction id unavailable)"
                         }
@@ -178,9 +175,8 @@ class AgentEventsListener(
                     logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
 
                     val report = if (success) {
-                        val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
-                        if (txLink != null) {
-                            "Swap Token->TON succeeded. $txLink"
+                        if (txId != null) {
+                            "Swap Token->TON succeeded. https://tonviewer.com/transaction/$txId"
                         } else {
                             "Swap Token->TON succeeded. (Transaction id unavailable)"
                         }
