@@ -69,96 +69,142 @@
       <div
           v-for="order in paginatedOrders"
           :key="order.id"
-          class="order-item p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
+          class="order-item p-4 rounded-xl bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
       >
-        <div class="flex items-start gap-3">
-          <!-- Action Icon -->
-          <div class="flex-shrink-0 mt-1">
-            <div
-                :class="[
-                  'w-8 h-8 rounded-full flex items-center justify-center',
-                  order.action === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
-                ]"
-            >
-              <svg v-if="order.action === 'buy'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-              </svg>
+        <div class="flex items-center gap-4 justify-between">
+          <!-- Left Section: Action Icon and Details -->
+          <div class="flex items-center gap-4 flex-1 min-w-0">
+            <!-- Action Icon -->
+            <div class="flex-shrink-0">
+              <div
+                  :class="[
+                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                    order.action === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                  ]"
+              >
+                <svg v-if="order.action === 'buy'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Order Details -->
+            <div class="flex-1 min-w-0 space-y-1.5">
+              <!-- Action and Amount -->
+              <div class="flex items-baseline gap-2.5">
+                <span class="font-bold text-lg text-gray-900 dark:text-white uppercase">
+                  {{ order.action }}
+                </span>
+                <span class="font-mono text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ formatAmount(order.amount) }}
+                </span>
+                <span class="text-base text-gray-600 dark:text-gray-400 font-medium">
+                  {{ order.symbol || 'Token' }}
+                </span>
+              </div>
+
+              <!-- Jetton Master Address -->
+              <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <span
+                    @click="copyAddress(order.jettonMaster, order.id)"
+                    class="truncate cursor-pointer hover:text-cyan-400 transition-colors"
+                    title="Click to copy jetton master address"
+                >
+                  {{ formatAddress(order.jettonMaster) }}
+                </span>
+                <button
+                    @click="copyAddress(order.jettonMaster, order.id)"
+                    :class="{'copied': copiedOrderId === order.id}"
+                    class="copy-btn p-0.5 hover:text-cyan-400 transition-all duration-200"
+                    title="Copy address"
+                >
+                  <svg v-if="copiedOrderId !== order.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                       viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                  <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Date and Status -->
+              <div class="flex items-center gap-3 text-xs">
+                <span class="text-gray-500 dark:text-gray-500">{{ formatDate(order.createdAt) }}</span>
+                <span
+                    :class="[
+                      'px-2 py-0.5 rounded-full font-medium',
+                      order.fulfilled
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-yellow-500/20 text-yellow-400'
+                    ]"
+                >
+                  {{ order.fulfilled ? 'Fulfilled' : 'Active' }}
+                </span>
+              </div>
             </div>
           </div>
 
-          <!-- Order Details -->
-          <div class="flex-1 min-w-0">
-            <!-- Action and Amount -->
-            <div class="flex items-baseline gap-2 mb-1">
-              <span class="font-semibold text-gray-900 dark:text-white uppercase">
-                {{ order.action }}
-              </span>
-              <span class="font-mono text-gray-900 dark:text-white">
-                {{ formatAmount(order.amount) }}
-              </span>
-              <span class="text-sm text-gray-600 dark:text-gray-400">
-                {{ order.symbol || 'Token' }}
-              </span>
-            </div>
+          <!-- Right Section: Trigger Price Info -->
+          <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
+            <div
+                :class="[
+                  'trigger-card px-4 py-3 rounded-xl border-2',
+                  order.direction === 'UP'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
+                    : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
+                ]"
+            >
+              <div class="flex flex-col items-center gap-2">
+                <!-- Bell Icon with Direction Arrow -->
+                <div class="flex items-center gap-2">
+                  <!-- Bell Icon (lucide) -->
+                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  </svg>
 
-            <!-- Jetton Master Address -->
-            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
-              <span
-                  @click="copyAddress(order.jettonMaster, order.id)"
-                  class="truncate cursor-pointer hover:text-cyan-400 transition-colors"
-                  title="Click to copy jetton master address"
-              >
-                {{ formatAddress(order.jettonMaster) }}
-              </span>
-              <button
-                  @click="copyAddress(order.jettonMaster, order.id)"
-                  :class="{'copied': copiedOrderId === order.id}"
-                  class="copy-btn p-0.5 hover:text-cyan-400 transition-all duration-200"
-                  title="Copy address"
-              >
-                <svg v-if="copiedOrderId !== order.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                     viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-              </button>
-            </div>
+                  <!-- Direction Arrow (lucide) -->
+                  <svg
+                      :class="[
+                        'w-5 h-5',
+                        order.direction === 'UP' ? 'text-emerald-400' : 'text-orange-400'
+                      ]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                  >
+                    <path
+                        v-if="order.direction === 'UP'"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M5 10l7-7m0 0l7 7m-7-7v18"
+                    />
+                    <path
+                        v-else
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                    />
+                  </svg>
+                </div>
 
-            <!-- Target Price Info (if available) -->
-            <div v-if="order.targetPrice && order.direction" class="flex items-center gap-1.5 text-xs mb-1">
-              <span class="text-gray-500 dark:text-gray-500">Triggers at:</span>
-              <span class="font-mono text-cyan-600 dark:text-cyan-400">${{ formatTargetPrice(order.targetPrice) }}</span>
-              <span
-                  :class="[
-                    'px-1.5 py-0.5 rounded text-xs font-medium',
-                    order.direction === 'UP'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  ]"
-              >
-                {{ order.direction }}
-              </span>
-            </div>
+                <!-- Trigger Text -->
+                <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  Price {{ order.direction === 'UP' ? 'above' : 'below' }}
+                </div>
 
-            <!-- Date and Status -->
-            <div class="flex items-center gap-3 text-xs">
-              <span class="text-gray-500 dark:text-gray-500">{{ formatDate(order.createdAt) }}</span>
-              <span
-                  :class="[
-                    'px-2 py-0.5 rounded-full font-medium',
-                    order.fulfilled
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-yellow-500/20 text-yellow-400'
-                  ]"
-              >
-                {{ order.fulfilled ? 'Fulfilled' : 'Active' }}
-              </span>
+                <!-- Target Price -->
+                <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
+                  ${{ formatTargetPrice(order.targetPrice) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -348,6 +394,20 @@ computed(() => {
 
 :global(.dark) .order-item:hover {
   border-color: rgba(99, 102, 241, 0.3);
+}
+
+.trigger-card {
+  transition: all 0.2s ease-in-out;
+  min-width: 120px;
+}
+
+.trigger-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:global(.dark) .trigger-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .copy-btn.copied {
