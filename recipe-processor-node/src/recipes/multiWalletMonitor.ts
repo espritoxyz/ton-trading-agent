@@ -282,10 +282,11 @@ async function processTonTransfer(
     const amountNano = transfer.amount;
     const comment = transfer.comment || "";
 
-    // TonAPI event structure: event has 'event_id' or we can use 'account' + 'lt' as unique identifier
-    const transactionHash = event.event_id || `${wallet.walletAddress}:${event.lt}`;
+    // Use baseTransactions to get unique transaction hash for this specific action
+    // baseTransactions is an array of transaction hashes involved in this action
+    const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
 
-    console.log(`[multi-wallet-monitor] TON deposit: ${amountNano} nano to user ${wallet.userId}`);
+    console.log(`[multi-wallet-monitor] TON deposit: ${amountNano} nano to user ${wallet.userId}, txHash: ${transactionHash}`);
 
     const message = {
         type: "wallet.transaction-detected",
@@ -355,10 +356,11 @@ async function processJettonTransfer(
     const jetton = transfer.jetton;
     const comment = transfer.comment || "";
 
-    // TonAPI event structure: event has 'event_id' or we can use 'account' + 'lt' as unique identifier
-    const transactionHash = event.event_id || `${wallet.walletAddress}:${event.lt}`;
+    // Use baseTransactions to get unique transaction hash for this specific action
+    // baseTransactions is an array of transaction hashes involved in this action
+    const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
 
-    console.log(`[multi-wallet-monitor] ✅ Jetton deposit: ${amountNano} ${jetton?.symbol || 'tokens'} to user ${wallet.userId}`);
+    console.log(`[multi-wallet-monitor] ✅ Jetton deposit: ${amountNano} ${jetton?.symbol || 'tokens'} to user ${wallet.userId}, txHash: ${transactionHash}`);
 
     const message = {
         type: "wallet.transaction-detected",
@@ -384,4 +386,12 @@ async function processJettonTransfer(
         Buffer.from(JSON.stringify(message)),
         { persistent: true }
     );
+
+    // Sync wallet balance after incoming jetton transaction
+    try {
+        await syncWalletBalance(wallet.walletAddress, wallet.userId, channel, exchange);
+    } catch (syncErr: any) {
+        console.error(`[multi-wallet-monitor] Failed to sync wallet balance after Jetton deposit:`, syncErr?.message);
+        // Don't fail the operation if sync fails
+    }
 }
