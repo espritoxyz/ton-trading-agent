@@ -115,6 +115,8 @@ export interface TransactionData {
 
 export type OrderAction = 'buy' | 'sell'
 
+export type PriceDirection = 'UP' | 'DOWN'
+
 export interface OrderData {
     id: number
     jettonMaster: string
@@ -123,6 +125,8 @@ export interface OrderData {
     createdAt: string
     fulfilled: boolean
     symbol?: string
+    targetPrice?: number
+    direction?: PriceDirection
 }
 
 export interface WalletStateMetadata {

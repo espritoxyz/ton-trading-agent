@@ -50,7 +50,9 @@ data class OrderData(
     val amount: Double,
     val createdAt: Instant,
     val fulfilled: Boolean,
-    val symbol: String?
+    val symbol: String?,
+    val targetPrice: Double?,
+    val direction: String? // UP or DOWN
 )
 
 data class WalletStateMetadata(

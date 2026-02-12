@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 interface PriceTrackerRepository : JpaRepository<PriceTracker, Long> {
     fun findAllByUserId(userId: Long): List<PriceTracker>
     fun findAllByTriggeredFalse(): List<PriceTracker>
+    fun findByOrderId(orderId: Long): PriceTracker?
 }

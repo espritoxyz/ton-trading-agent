@@ -2,6 +2,7 @@ package com.agent.backend.service
 
 import com.agent.backend.db.entity.Asset
 import com.agent.backend.db.entity.WalletTransaction
+import com.agent.backend.db.rep.PriceTrackerRepository
 import com.agent.backend.dto.AssetData
 import com.agent.backend.dto.BalanceData
 import com.agent.backend.dto.OrderData
@@ -36,6 +37,7 @@ class WalletStateService(
     private val walletService: WalletService,
     private val priceDataCache: PriceDataCacheService,
     private val orderService: OrderService,
+    private val priceTrackerRepository: PriceTrackerRepository,
     private val redisTemplate: StringRedisTemplate,
     private val objectMapper: ObjectMapper
 ) {
@@ -165,6 +167,10 @@ class WalletStateService(
         // Fetch all orders for the user
         val allOrders = orderService.listAllOrdersByUser(userId)
 
+        // Fetch all price trackers for the user (to avoid N+1 queries)
+        val priceTrackers = priceTrackerRepository.findAllByUserId(userId)
+            .associateBy { it.orderId }
+
         // Compute balance and enrich assets with prices (sequential due to rate limiting)
         val enrichedAssets = mutableListOf<AssetData>()
         for (asset in assets) {
@@ -176,7 +182,7 @@ class WalletStateService(
         val transactionDtos = transactions.map { mapTransactionToDto(it) }
 
         // Map orders to DTOs and enrich with symbols
-        val orderDtos = allOrders.map { mapOrderToDto(it) }
+        val orderDtos = allOrders.map { mapOrderToDto(it, priceTrackers) }
 
         val fetchTime = System.currentTimeMillis() - startTime
         logger.debug { "[wallet-state] Fetched wallet state for user $userId in ${fetchTime}ms" }
@@ -267,7 +273,10 @@ class WalletStateService(
     /**
      * Map Order entity to OrderData DTO.
      */
-    private suspend fun mapOrderToDto(order: com.agent.backend.db.entity.Order): OrderData {
+    private suspend fun mapOrderToDto(
+        order: com.agent.backend.db.entity.Order,
+        priceTrackers: Map<Long?, com.agent.backend.db.entity.PriceTracker>
+    ): OrderData {
         // Try to get symbol from cache
         val symbol = try {
             priceDataCache.getSymbol(order.jettonMaster)
@@ -276,6 +285,9 @@ class WalletStateService(
             null
         }
 
+        // Get price tracker from pre-loaded map
+        val priceTracker = priceTrackers[order.id]
+
         return OrderData(
             id = order.id!!,
             jettonMaster = order.jettonMaster,
@@ -283,7 +295,9 @@ class WalletStateService(
             amount = order.amount,
             createdAt = order.createdAt,
             fulfilled = order.fulfilled,
-            symbol = symbol
+            symbol = symbol,
+            targetPrice = priceTracker?.targetPrice,
+            direction = priceTracker?.direction?.name
         )
     }
 

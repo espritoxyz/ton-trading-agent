@@ -130,6 +130,22 @@
               </button>
             </div>
 
+            <!-- Target Price Info (if available) -->
+            <div v-if="order.targetPrice && order.direction" class="flex items-center gap-1.5 text-xs mb-1">
+              <span class="text-gray-500 dark:text-gray-500">Triggers at:</span>
+              <span class="font-mono text-cyan-600 dark:text-cyan-400">${{ formatTargetPrice(order.targetPrice) }}</span>
+              <span
+                  :class="[
+                    'px-1.5 py-0.5 rounded text-xs font-medium',
+                    order.direction === 'UP'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-orange-500/20 text-orange-400'
+                  ]"
+              >
+                {{ order.direction }}
+              </span>
+            </div>
+
             <!-- Date and Status -->
             <div class="flex items-center gap-3 text-xs">
               <span class="text-gray-500 dark:text-gray-500">{{ formatDate(order.createdAt) }}</span>
@@ -276,6 +292,16 @@ const formatDate = (dateString: string): string => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const formatTargetPrice = (price: number): string => {
+  if (price >= 1) {
+    return price.toFixed(2)
+  } else if (price >= 0.001) {
+    return price.toFixed(4)
+  } else {
+    return price.toFixed(8).replace(/\.?0+$/, '')
+  }
 }
 
 const copyAddress = async (address: string, orderId: number) => {
