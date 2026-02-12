@@ -23,11 +23,6 @@ class AgentEventsListener(
 
     @RabbitListener(queues = [RabbitConfig.QUEUE_AGENT_LLM])
     fun onEvent(@Payload payload: Map<String, Any?>) {
-        logger.debug {
-            "Received rabbitmq event ${payload.entries.joinToString(prefix="{", postfix="}") { 
-                "${it.key}=${it.value.toString()}" 
-            }}"
-        }
         try {
             val type = payload["type"] as? String ?: return
             val data = (payload["data"] as? Map<*, *>) ?: return
@@ -41,6 +36,8 @@ class AgentEventsListener(
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
                     val error = data["error"] as? String
+
+                    logger.info { "[agent-events] Processing send-ton result for user $userId: success=$success" }
 
                     // Record outgoing transaction if successful
                     if (success && txId != null && receiver != null) {
@@ -58,7 +55,7 @@ class AgentEventsListener(
                                 recipientAddress = receiver
                             )
                         } catch (e: Exception) {
-                            logger.error(e) { "Failed to record outgoing TON transaction" }
+                            logger.error(e) { "[agent-events] Failed to record outgoing TON transaction" }
                         }
                     }
 
@@ -79,6 +76,8 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    logger.info { "[agent-events] Successfully completed send-ton result for user $userId" }
+
                 }
                 "agent-llm.send-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
@@ -91,6 +90,8 @@ class AgentEventsListener(
                     val txId = data["txId"] as? String
                     val error = data["error"] as? String
 
+                    logger.info { "[agent-events] Processing send-token result for user $userId: success=$success" }
+
                     // Record outgoing token transaction if successful
                     if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
                         try {
@@ -102,7 +103,7 @@ class AgentEventsListener(
                                 recipientAddress = receiver
                             )
                         } catch (e: Exception) {
-                            logger.error(e) { "Failed to record outgoing token transaction" }
+                            logger.error(e) { "[agent-events] Failed to record outgoing token transaction" }
                         }
                     }
 
@@ -123,6 +124,8 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    logger.info { "[agent-events] Successfully completed send-token result for user $userId" }
+
                 }
                 "agent-llm.swap-ton-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
@@ -136,6 +139,8 @@ class AgentEventsListener(
 //                    val pool = data["pool"] as? String
 //                    val pTon = data["pTon"] as? String
                     val error = data["error"] as? String
+
+                    logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
 
                     val report = if (success) {
                         val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
@@ -154,6 +159,8 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    logger.info { "[agent-events] Successfully completed swap-ton-to-token result for user $userId" }
+
                 }
                 "agent-llm.swap-token-to-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
@@ -167,6 +174,8 @@ class AgentEventsListener(
 //                    val pool = data["pool"] as? String
 //                    val pTon = data["pTon"] as? String
                     val error = data["error"] as? String
+
+                    logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
 
                     val report = if (success) {
                         val txLink = txId?.let { "<a href=\"https://tonviewer.com/transaction/$it\" target=\"_blank\" rel=\"noopener noreferrer\">View transaction</a>" }
@@ -184,12 +193,14 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    logger.info { "[agent-events] Successfully completed swap-token-to-ton result for user $userId" }
+
                 }
                 else -> return
 
             }
         } catch (e: Exception) {
-            logger.error(e) { "Failed to handle agent event: $payload" }
+            logger.error(e) { "[agent-events] Failed to handle agent event" }
         }
     }
 }
