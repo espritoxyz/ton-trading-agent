@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, computed} from 'vue'
 import type {ChatRole, ChatUtilityKind} from "../types.ts";
 import { Zap, Check, X, CheckCircle, XCircle, Wallet } from 'lucide-vue-next'
+import { linkify } from '../utils/linkify'
 
 const props = defineProps<{
   role: ChatRole;
@@ -10,6 +11,8 @@ const props = defineProps<{
   utilityMeta?: Record<string, any>
   localId?: string;
 }>()
+
+const linkedText = computed(() => linkify(props.text))
 
 const emit = defineEmits<{
   (e: 'dismiss', id: string | undefined): void
@@ -104,7 +107,7 @@ async function handleOpenTopUp() {
     </template>
     <template v-else>
       <pre v-if="role==='USER'" class="whitespace-pre-wrap font-sans">{{ text }}</pre>
-      <div v-else class="prose prose-sm dark:prose-invert max-w-none message-content" v-html="text"></div>
+      <div v-else class="prose prose-sm dark:prose-invert max-w-none message-content" v-html="linkedText"></div>
     </template>
   </div>
 </template>
