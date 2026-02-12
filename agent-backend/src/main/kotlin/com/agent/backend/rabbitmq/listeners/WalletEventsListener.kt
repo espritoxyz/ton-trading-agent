@@ -19,13 +19,6 @@ class WalletEventsListener(
 
     @RabbitListener(queues = [RabbitConfig.QUEUE_WALLET])
     fun handleWalletEvents(message: Map<String, Any>) {
-        logger.debug {
-            "Received rabbitmq event ${
-                message.entries.joinToString(prefix = "{", postfix = "}") {
-                    "${it.key}=${it.value}"
-                }
-            }"
-        }
         val type = message["type"] as? String ?: return
 
         when (type) {
