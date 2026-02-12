@@ -7,6 +7,7 @@ data class WalletStateResponse(
     val balance: BalanceData,
     val assets: List<AssetData>,
     val transactions: List<TransactionData>,
+    val orders: List<OrderData>,
     val metadata: WalletStateMetadata
 )
 
@@ -42,9 +43,21 @@ data class TransactionData(
     val createdAt: Instant
 )
 
+data class OrderData(
+    val id: Long,
+    val jettonMaster: String,
+    val action: String, // buy/sell
+    val amount: Double,
+    val createdAt: Instant,
+    val fulfilled: Boolean,
+    val symbol: String?
+)
+
 data class WalletStateMetadata(
     val fromCache: Boolean,
     val cacheAge: Long?, // milliseconds since cached
     val transactionCount: Int,
-    val transactionsLimit: Int?
+    val transactionsLimit: Int?,
+    val activeOrdersCount: Int,
+    val fulfilledOrdersCount: Int
 )

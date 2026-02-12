@@ -1,7 +1,7 @@
-import {ref, computed} from 'vue'
+import {computed, ref} from 'vue'
 import {api} from './useApi'
 import {accessToken} from './useAuth'
-import type {WalletStateResponse, AssetData, TransactionData, WalletStateMetadata} from '../types'
+import type {AssetData, WalletStateResponse} from '../types'
 
 const TONAPI_BASE_URL = 'https://tonapi.io/v2'
 
@@ -28,7 +28,7 @@ async function fetchJettonImage(address: string): Promise<string | null> {
         const data = await response.json()
         const image = data.metadata?.image || data.preview || ''
 
-        jettonMetadataCache.set(address, { image })
+        jettonMetadataCache.set(address, {image})
         return image
     } catch (error) {
         console.error(`Error fetching jetton metadata for ${address}:`, error)
@@ -54,7 +54,7 @@ async function enrichAssetsWithImages(assets: AssetData[]): Promise<AssetData[]>
             if (!asset.imageUrl) {
                 const image = await fetchJettonImage(asset.address)
                 if (image) {
-                    return { ...asset, imageUrl: image }
+                    return {...asset, imageUrl: image}
                 }
             }
 
@@ -69,6 +69,7 @@ async function enrichAssetsWithImages(assets: AssetData[]): Promise<AssetData[]>
 export const balanceUsd = computed(() => walletState.value?.balance.totalUsd ?? null)
 export const assets = computed(() => walletState.value?.assets ?? [])
 export const transactions = computed(() => walletState.value?.transactions ?? [])
+export const orders = computed(() => walletState.value?.orders ?? [])
 export const metadata = computed(() => walletState.value?.metadata ?? null)
 
 // Sorted assets (TON first, then by USD value)
@@ -111,7 +112,7 @@ export function useWalletState() {
 
             const response = await api.get<WalletStateResponse>(
                 `/user/${userId}/wallet-state?transactionsLimit=${transactionsLimit}`,
-                { headers }
+                {headers}
             )
 
             // Enrich assets with images
@@ -145,6 +146,7 @@ export function useWalletState() {
         balanceUsd,
         assets: sortedAssets,
         transactions,
+        orders,
         metadata,
         loadWalletState,
         refreshWalletState,
