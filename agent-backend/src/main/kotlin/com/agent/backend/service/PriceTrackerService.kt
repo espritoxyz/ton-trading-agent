@@ -138,8 +138,7 @@ class PriceTrackerService(
 
     private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
         val diff = abs(a - b)
-        val scale = max(1.0, min(abs(a), abs(b)))
-        return diff <= max(absTol, relTol * scale)
+        return diff <= absTol
     }
 
     private fun isGreaterOrEqual(a: Double, b: Double): Boolean = a > b || nearlyEquals(a, b)
