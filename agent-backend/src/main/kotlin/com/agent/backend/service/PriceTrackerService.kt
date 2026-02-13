@@ -20,6 +20,7 @@ class PriceTrackerService(
     private val orders: OrderRepository,
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
     private val orderService: OrderService,
+    private val notificationEventPublisher: NotificationEventPublisher,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -124,6 +125,26 @@ class PriceTrackerService(
                             logger.info {
                                 "[price-tracker] Order ${order.id} fulfilled for user=${order.userId}: " +
                                     "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
+                            }
+
+                            // Emit notification event for order fill
+                            try {
+                                notificationEventPublisher.publishNotificationEvent(
+                                    userId = order.userId,
+                                    type = "ORDER_FILLED",
+                                    title = "Order Filled",
+                                    message = "Your ${order.action} order for ${order.amount} ${order.jettonMaster} has been filled at target price ${t.targetPrice}",
+                                    metadata = mapOf(
+                                        "orderId" to (order.id ?: 0L),
+                                        "jettonMaster" to order.jettonMaster,
+                                        "action" to order.action,
+                                        "amount" to order.amount,
+                                        "targetPrice" to t.targetPrice,
+                                        "fillType" to "full"
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                logger.warn(e) { "[price-tracker] Failed to publish ORDER_FILLED notification for order ${order.id}" }
                             }
 
                         } catch (e: Exception) {

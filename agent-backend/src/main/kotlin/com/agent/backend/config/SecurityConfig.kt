@@ -29,6 +29,8 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/auth/verify-email").permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth/resend-verification").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
+                    // WebSocket endpoints (authentication handled at STOMP level)
+                    .requestMatchers("/ws/**").permitAll()
                     // Everything else requires a valid JWT
                     .anyRequest().authenticated()           }
             .oauth2ResourceServer { it.jwt(Customizer.withDefaults()) }

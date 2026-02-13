@@ -3,6 +3,7 @@ package com.agent.backend.rabbitmq.listeners
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.NotificationEventPublisher
 import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
@@ -10,14 +11,16 @@ import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Component
 import java.util.*
 
-private val logger = KotlinLogging.logger {}
-
 @Component
 class AgentEventsListener(
     private val jobService: ChatJobService,
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
+    private val notificationEventPublisher: NotificationEventPublisher,
 ) {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
 
 
@@ -130,12 +133,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-//                    val jettonMinter = data["jettonMinter"] as? String
-//                    val offerNanotons = data["offerNanotons"] as? String
-//                    val minAskNano = data["minAskNano"] as? String
-//                    val router = data["router"] as? String
-//                    val pool = data["pool"] as? String
-//                    val pTon = data["pTon"] as? String
+                    val jettonMaster = data["jettonMaster"] as? String
+                    val swapTonAmount = data["swapTonAmount"] as? Number
+                    val minimalTokenAmount = data["minimalTokenAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
@@ -156,6 +156,27 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    // Emit notification event for successful swap
+                    if (success) {
+                        try {
+                            notificationEventPublisher.publishNotificationEvent(
+                                userId = userId,
+                                type = "SWAP_EXECUTED",
+                                title = "Swap Executed",
+                                message = "Swapped ${swapTonAmount ?: "unknown"} TON for ${minimalTokenAmount ?: "unknown"} tokens",
+                                metadata = mapOf(
+                                    "fromAsset" to "TON",
+                                    "toAsset" to (jettonMaster ?: "unknown"),
+                                    "fromAmount" to (swapTonAmount?.toDouble() ?: 0.0),
+                                    "toAmount" to (minimalTokenAmount?.toDouble() ?: 0.0),
+                                    "transactionId" to (txId ?: "")
+                                )
+                            )
+                        } catch (e: Exception) {
+                            logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }
+                        }
+                    }
+
                     logger.info { "[agent-events] Successfully completed swap-ton-to-token result for user $userId" }
 
                 }
@@ -164,12 +185,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-//                    val jettonMinter = data["jettonMinter"] as? String
-//                    val offerNanotons = data["offerNanotons"] as? String
-//                    val minAskNano = data["minAskNano"] as? String
-//                    val router = data["router"] as? String
-//                    val pool = data["pool"] as? String
-//                    val pTon = data["pTon"] as? String
+                    val jettonMaster = data["jettonMaster"] as? String
+                    val swapTokenAmount = data["swapTokenAmount"] as? Number
+                    val minimalTonAmount = data["minimalTonAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
@@ -188,6 +206,27 @@ class AgentEventsListener(
                         toolName = "swap_token_to_ton",
                         result = report,
                     )
+
+                    // Emit notification event for successful swap
+                    if (success) {
+                        try {
+                            notificationEventPublisher.publishNotificationEvent(
+                                userId = userId,
+                                type = "SWAP_EXECUTED",
+                                title = "Swap Executed",
+                                message = "Swapped ${swapTokenAmount ?: "unknown"} tokens for ${minimalTonAmount ?: "unknown"} TON",
+                                metadata = mapOf(
+                                    "fromAsset" to (jettonMaster ?: "unknown"),
+                                    "toAsset" to "TON",
+                                    "fromAmount" to (swapTokenAmount?.toDouble() ?: 0.0),
+                                    "toAmount" to (minimalTonAmount?.toDouble() ?: 0.0),
+                                    "transactionId" to (txId ?: "")
+                                )
+                            )
+                        } catch (e: Exception) {
+                            logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }
+                        }
+                    }
 
                     logger.info { "[agent-events] Successfully completed swap-token-to-ton result for user $userId" }
 

@@ -19,6 +19,7 @@ class OrderService(
     private val stonfiPoolsCacheService: StonfiPoolsCacheService,
     private val rabbitTemplate: RabbitTemplate,
     private val walletService: WalletService,
+    private val notificationEventPublisher: NotificationEventPublisher
 ) {
     private val logger = KotlinLogging.logger {}
 

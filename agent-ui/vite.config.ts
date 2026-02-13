@@ -6,6 +6,9 @@ const proxyTarget = process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:8
 
 const config = {
   plugins: [vue()],
+  define: {
+    global: 'window',
+  },
   server: {
     proxy: {
       '/api': {
