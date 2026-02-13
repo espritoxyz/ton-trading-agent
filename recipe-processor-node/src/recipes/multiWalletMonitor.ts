@@ -230,12 +230,12 @@ async function pollWalletEvents(
 
             // Skip events that are still being processed (incomplete transactions)
             if (event.inProgress) {
-                console.log(`[multi-wallet-monitor] Skipping in-progress event: lt=${eventLt}, event_id=${event.event_id}`);
+                console.log(`[multi-wallet-monitor] Skipping in-progress event: lt=${eventLt}, event_id=${event.eventId}`);
                 continue;
             }
 
             newEventsCount++;
-            console.log(`[multi-wallet-monitor] Processing new event: lt=${eventLt}, event_id=${event.event_id}, actions=${event.actions?.length || 0}`);
+            console.log(`[multi-wallet-monitor] Processing new event: lt=${eventLt}, event_id=${event.eventId}, actions=${event.actions?.length || 0}`);
 
             // Process different event types
             await processEvent(event, wallet, channel, exchange);
@@ -317,7 +317,7 @@ async function processTonTransfer(
 
     // Use baseTransactions to get unique transaction hash for this specific action
     // baseTransactions is an array of transaction hashes involved in this action
-    const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
+    const transactionHash = action.baseTransactions?.[0] || event.eventId || `${wallet.walletAddress}:${event.lt}`;
 
     // Check if we already processed this transaction hash
     if (wallet.processedTxHashes.has(transactionHash)) {
@@ -401,7 +401,7 @@ async function processJettonTransfer(
 
     // Use baseTransactions to get unique transaction hash for this specific action
     // baseTransactions is an array of transaction hashes involved in this action
-    const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
+    const transactionHash = action.baseTransactions?.[0] || event.eventId || `${wallet.walletAddress}:${event.lt}`;
 
     // Check if we already processed this transaction hash
     if (wallet.processedTxHashes.has(transactionHash)) {
