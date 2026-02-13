@@ -5,6 +5,8 @@ import { useTheme } from '../composables/useTheme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import AccountMenu from '../components/AccountMenu.vue'
+import NotificationBell from '../components/NotificationBell.vue'
+import NotificationToast from '../components/NotificationToast.vue'
 
 const navigationTabs = ref<any[]>([])
 const activeTab = ref<any>(null)
@@ -89,6 +91,7 @@ provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
         </div>
 
         <div class="flex items-center gap-3">
+          <NotificationBell />
           <AccountMenu />
           <ThemeToggle />
         </div>
@@ -98,5 +101,8 @@ provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
         <slot />
       </div>
     </div>
+
+    <!-- Notification Toast Container -->
+    <NotificationToast />
   </div>
 </template>
