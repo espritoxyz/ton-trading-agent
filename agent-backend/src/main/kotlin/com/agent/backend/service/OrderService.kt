@@ -18,6 +18,7 @@ class OrderService(
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
     private val stonfiPoolsCacheService: StonfiPoolsCacheService,
     private val rabbitTemplate: RabbitTemplate,
+    private val walletService: WalletService,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -77,6 +78,10 @@ class OrderService(
         }
 
     private fun swapTonToTokenInternal(userId: Long, jettonMaster: String, minimalTokenAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
             val slippageSafetyFactor = 1.1
@@ -92,9 +97,11 @@ class OrderService(
         val data = mutableMapOf<String, Any?>(
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTokenAmount" to minimalTokenAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords,
         )
         if (swapTonAmount != null) data["swapTonAmount"] = swapTonAmount
 
@@ -108,6 +115,10 @@ class OrderService(
     }
 
     private fun swapTokenToTonInternal(userId: Long, jettonMaster: String, minimalTonAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
 
         val swapTokenAmountNano: Long? = tokenToTonRate?.let { rate ->
@@ -128,9 +139,11 @@ class OrderService(
         val data = mutableMapOf<String, Any?>(
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTonAmount" to minimalTonAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords,
         )
         if (swapTokenAmountNano != null) data["swapTokenAmount"] = swapTokenAmountNano
 
