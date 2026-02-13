@@ -62,7 +62,7 @@ const milestones = [
     completed: false,
     features: [
       'Ethereum blockchain support',
-      'Uniswap & Jupiter integration',
+      'Uniswap & Sushiswap integration',
       'AI Trading Advisor (buy/sell signals)',
       'Advanced chart analysis',
       'TON staking support',
@@ -72,17 +72,16 @@ const milestones = [
   {
     id: 3,
     quarter: 'Q3 2026',
-    title: 'High-Speed Trading',
+    title: 'Solana expansion',
     planetImage: 'jupiter.png',
     color: 'from-orange-500 to-yellow-500',
     completed: false,
     features: [
-      'Solana blockchain integration',
-      'Raydium & Orca DEX support',
-      'Trend Trading Strategies',
-      'Automated trading bots',
-      'Copy trading features',
-      'Social trading analytics'
+      'Solana blockchain support',
+      'Raydium & Jupiter DEX integration',
+      'New AI-trading strategies',
+      'New automated trading features',
+      'Blockchain analytics features'
     ]
   },
   {
@@ -96,9 +95,8 @@ const milestones = [
       'BSC (Binance Smart Chain)',
       'PancakeSwap integration',
       'Tokenized Assets Support',
-      'Trade stocks & bonds on-chain',
-      'Real-world asset (RWA) trading',
-      'Fiat on/off ramps'
+      'Cross-chain swaps',
+      'Multi-chain portfolio view'
     ]
   },
   {
@@ -112,25 +110,23 @@ const milestones = [
       'Lending & borrowing protocols',
       'Yield farming automation',
       'Liquidity provision strategies',
-      'Staking management',
-      'Portfolio rebalancing',
+      'Cross-chain staking management',
       'Risk assessment tools'
     ]
   },
   {
     id: 6,
     quarter: 'Q2 2027',
-    title: 'Cross-Chain Bridge',
+    title: 'AI Intelligence',
     planetImage: 'neptune.png',
     color: 'from-blue-600 to-indigo-600',
     completed: false,
     features: [
-      'Cross-chain swaps',
-      'Bridge aggregator',
-      'Multi-chain portfolio view',
-      'Arbitrage opportunities',
-      'Layer 2 solutions (Optimism, Arbitrum)',
-      'ZK-rollups integration'
+      'AI risk management advisory',
+      'Whale tracking & alerts',
+      'New tokenized assets support',
+      'AI risk management advisory',
+      'Extra security tools'
     ]
   },
   {
@@ -143,26 +139,24 @@ const milestones = [
     features: [
       'Advanced AI market predictions',
       'Sentiment analysis from social media',
-      'Whale tracking & alerts',
       'Smart contract audit AI',
-      'Rug pull detection',
+      'Rug pull alerts',
       'Portfolio optimization AI'
     ]
   },
   {
     id: 8,
     quarter: 'Q4 2027',
-    title: 'Institutional Grade',
+    title: 'Institutional grade trading',
     planetImage: 'star.png',
     color: 'from-pink-500 to-rose-600',
     completed: false,
     features: [
       'Institutional trading features',
-      'OTC (Over-the-counter) desk',
+      'CEX integrations',
       'Advanced compliance tools',
-      'Multi-signature wallets',
-      'API for algorithmic trading',
-      'White-label solutions'
+      'Advanced AI-trading strategies',
+      'API for algorithmic trading'
     ]
   }
 ]
