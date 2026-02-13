@@ -102,4 +102,12 @@ class NotificationController(
             ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         }
     }
+
+    @DeleteMapping
+    fun deleteAllNotifications(auth: JwtAuthenticationToken): ResponseEntity<Map<String, Int>> {
+        val userId = currentUserId(auth)
+        val deletedCount = notificationService.deleteAllNotifications(userId)
+        logger.info { "Deleted $deletedCount notifications for user $userId" }
+        return ResponseEntity.ok(mapOf("deletedCount" to deletedCount))
+    }
 }

@@ -108,6 +108,13 @@ class NotificationService(
         notificationRepository.delete(notification)
     }
 
+    @Transactional
+    fun deleteAllNotifications(userId: Long): Int {
+        val deletedCount = notificationRepository.deleteByUser_Id(userId)
+        logger.info { "Deleted $deletedCount notifications for user $userId" }
+        return deletedCount
+    }
+
     /**
      * Generate human-readable notification title and message based on type and metadata.
      * Returns Pair<title, message>
