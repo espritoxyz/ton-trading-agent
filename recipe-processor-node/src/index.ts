@@ -1,14 +1,11 @@
 import {publishJson, setupRabbit, shutdown, startConsumer} from "./rabbit.js";
 import {mockSendTon, sendTon, sendToken} from "./recipes/transactions.js";
-import {startPoolsUpdater} from "./stonfi/poolsCache.js";
 import { Address } from "@ton/core";
 import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
 import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
 import { startMultiWalletMonitoring, addWalletToMonitor } from "./recipes/multiWalletMonitor.js";
 import { syncWalletBalance } from "./recipes/walletBalanceSync.js";
 
-
-startPoolsUpdater();
 
 const RABBIT_URL = process.env.RABBIT_URL || "amqp://guest:guest@localhost:5672/";
 const SERVICE = "recipe-processor-node";
@@ -226,6 +223,10 @@ await startConsumer(ch, queue, async (_msg, body) => {
 
             const swapAmtNum = Number(swapTonAmount);
             if (!Number.isFinite(swapAmtNum) || swapAmtNum <= 0) {
+                console.error(`[${SERVICE}] swap-ton-to-token error: invalid swapTonAmount`, {
+                    swapTonAmount,
+                    parsed: swapAmtNum,
+                });
                 publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
                     type: "agent-llm.swap-ton-to-token.result",
                     occurredAt: new Date().toISOString(),
@@ -238,9 +239,8 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     },
                 });
                 return;
-            } else {
-                console.error("Swap TON amount failed checks, value is " + swapAmtNum)
             }
+
 
             try {
                 const res = await doSwapTonToToken(
@@ -343,6 +343,10 @@ await startConsumer(ch, queue, async (_msg, body) => {
 
             const swapTokenAmtNum = Number(swapTokenAmount);
             if (!Number.isFinite(swapTokenAmtNum) || swapTokenAmtNum <= 0) {
+                console.error(`[${SERVICE}] swap-token-to-ton error: invalid swapTokenAmount`, {
+                    swapTokenAmount,
+                    parsed: swapTokenAmtNum,
+                });
                 publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
                     type: "agent-llm.swap-token-to-ton.result",
                     occurredAt: new Date().toISOString(),
@@ -355,9 +359,8 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     },
                 });
                 return;
-            } else {
-                console.error("Swap token amount failed checks, value is " + swapTokenAmtNum)
             }
+
 
             try {
                 const res = await doSwapTokenToTon(
