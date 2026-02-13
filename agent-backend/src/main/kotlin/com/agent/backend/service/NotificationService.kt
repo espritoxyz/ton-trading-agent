@@ -115,6 +115,14 @@ class NotificationService(
         return deletedCount
     }
 
+    @Transactional
+    fun markAllAsRead(userId: Long): Int {
+        val now = java.time.Instant.now()
+        val updatedCount = notificationRepository.markAllAsReadByUserId(userId, now)
+        logger.info { "Marked $updatedCount notifications as read for user $userId" }
+        return updatedCount
+    }
+
     /**
      * Generate human-readable notification title and message based on type and metadata.
      * Returns Pair<title, message>
