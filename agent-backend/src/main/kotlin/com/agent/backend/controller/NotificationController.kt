@@ -84,6 +84,14 @@ class NotificationController(
         }
     }
 
+    @PatchMapping("/mark-all-read")
+    fun markAllAsRead(auth: JwtAuthenticationToken): ResponseEntity<Map<String, Int>> {
+        val userId = currentUserId(auth)
+        val updatedCount = notificationService.markAllAsRead(userId)
+        logger.info { "Marked $updatedCount notifications as read for user $userId" }
+        return ResponseEntity.ok(mapOf("updatedCount" to updatedCount))
+    }
+
     @DeleteMapping("/{id}")
     fun deleteNotification(
         auth: JwtAuthenticationToken,

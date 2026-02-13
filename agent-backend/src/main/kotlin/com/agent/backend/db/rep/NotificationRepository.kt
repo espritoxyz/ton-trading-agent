@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.time.Instant
 
@@ -19,4 +20,8 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     @Modifying
     fun deleteByUser_Id(userId: Long): Int
+
+    @Modifying
+    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :readAt WHERE n.user.id = :userId AND n.isRead = false")
+    fun markAllAsReadByUserId(userId: Long, readAt: Instant): Int
 }
