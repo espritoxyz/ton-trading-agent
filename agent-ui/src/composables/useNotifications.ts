@@ -292,14 +292,25 @@ export function useNotifications() {
      */
     async function markAllAsRead() {
         try {
-            const unreadNotifications = notifications.value.filter(n => !n.isRead)
+            const response = await api.patch('/api/notifications/mark-all-read')
+            const updatedCount = response.data.updatedCount || 0
 
-            // Mark each unread notification as read
-            await Promise.all(
-                unreadNotifications.map(n => markAsRead(n.id))
-            )
+            console.log(`[Notifications] Marked ${updatedCount} notifications as read`)
+
+            // Update local state
+            const now = new Date().toISOString()
+            notifications.value.forEach(n => {
+                if (!n.isRead) {
+                    n.isRead = true
+                    n.readAt = now
+                }
+            })
+            unreadCount.value = 0
+
+            return updatedCount
         } catch (e) {
             console.error('[Notifications] Failed to mark all as read:', e)
+            throw e
         }
     }
 

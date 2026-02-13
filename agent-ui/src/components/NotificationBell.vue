@@ -200,6 +200,20 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
                             Notifications
                         </h3>
                         <div class="flex items-center gap-2">
+                            <!-- Mark All as Read Button -->
+                            <button
+                                v-if="hasUnread"
+                                @click="handleMarkAllAsRead"
+                                class="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-150 group"
+                                title="Mark all as read"
+                            >
+                                <CheckCheck
+                                    :size="14"
+                                    class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                                    :strokeWidth="2.5"
+                                />
+                            </button>
+
                             <!-- Clear All Button -->
                             <button
                                 v-if="hasNotifications"
@@ -243,16 +257,6 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
                             Enable Notifications
                         </button>
                     </div>
-
-                    <!-- Mark All as Read -->
-                    <button
-                        v-if="hasUnread"
-                        @click="handleMarkAllAsRead"
-                        class="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1.5 font-medium transition-colors duration-150 group"
-                    >
-                        <CheckCheck :size="14" class="group-hover:scale-110 transition-transform duration-150" />
-                        Mark all as read
-                    </button>
                 </div>
 
                 <!-- Notifications List -->
@@ -274,15 +278,30 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
                         <div
                             v-for="(notification, index) in displayNotifications"
                             :key="notification.id"
-                            class="mb-1.5 p-2.5 rounded-xl transition-all duration-200 cursor-pointer notification-item group relative"
+                            @click="!notification.isRead && handleMarkAsRead(notification.id, $event)"
+                            class="mb-1.5 p-2.5 rounded-xl transition-all duration-200 notification-item group relative"
                             :class="[
                                 !notification.isRead
-                                    ? 'bg-gradient-to-br from-blue-50/80 to-indigo-50/60 dark:from-blue-900/20 dark:to-indigo-900/15 border border-blue-200/50 dark:border-blue-700/40 shadow-sm hover:shadow-md'
+                                    ? 'bg-gradient-to-br from-blue-50/80 to-indigo-50/60 dark:from-blue-900/20 dark:to-indigo-900/15 border border-blue-200/50 dark:border-blue-700/40 shadow-sm hover:shadow-md cursor-pointer'
                                     : 'bg-white/40 dark:bg-gray-800/30 border border-gray-200/40 dark:border-gray-700/40 hover:bg-white/60 dark:hover:bg-gray-800/50 hover:shadow-sm',
                                 'hover:scale-[1.01] hover:border-gray-300/60 dark:hover:border-gray-600/60'
                             ]"
                             :style="{ animationDelay: `${index * 30}ms` }"
                         >
+                            <!-- Mark as Read Indicator (Top Left for Unread) -->
+                            <button
+                                v-if="!notification.isRead"
+                                @click="handleMarkAsRead(notification.id, $event)"
+                                class="absolute top-1.5 left-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-150 hover:scale-110 z-10"
+                                title="Mark as read"
+                            >
+                                <Check
+                                    :size="12"
+                                    class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                    :strokeWidth="2.5"
+                                />
+                            </button>
+
                             <!-- Delete Button (Top Right) -->
                             <button
                                 @click="handleDelete(notification.id, $event)"
@@ -328,17 +347,6 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
                                     <p class="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug">
                                         {{ notification.message }}
                                     </p>
-
-                                    <!-- Mark as Read Action -->
-                                    <div v-if="!notification.isRead" class="mt-1.5">
-                                        <button
-                                            @click="handleMarkAsRead(notification.id, $event)"
-                                            class="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-0.5 font-semibold transition-all duration-150 hover:gap-1"
-                                        >
-                                            <Check :size="10" :strokeWidth="2.5" />
-                                            Mark as read
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
