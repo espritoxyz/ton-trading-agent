@@ -50,7 +50,7 @@ const milestones = [
       'Leading TON DEX support (STON.fi)',
       'Real-time market data',
       'Portfolio tracking',
-      'Wallet connection'
+      'Trading strategy support (buy/sell when)'
     ]
   },
   {
@@ -62,11 +62,11 @@ const milestones = [
     completed: false,
     features: [
       'Ethereum blockchain support',
-      'Uniswap & SushiSwap integration',
+      'Uniswap & Jupiter integration',
       'AI Trading Advisor (buy/sell signals)',
       'Advanced chart analysis',
-      'Gas optimization strategies',
-      'MEV protection'
+      'TON staking support',
+      'Trading notifications'
     ]
   },
   {
