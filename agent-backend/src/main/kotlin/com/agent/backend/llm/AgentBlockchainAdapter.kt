@@ -82,11 +82,6 @@ class AgentBlockchainAdapter(
         return mnemonicPhrase.split(" ").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
-    private data class TonToUsdtDto(
-        val symbol: String,
-        val price: Float,
-    )
-
     override fun getTonToUSDT(): Double? {
         return getTonToUSDTStatic()
     }
