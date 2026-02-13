@@ -94,7 +94,7 @@ class AgentBlockchainAdapter(
     override fun sendTonToAddress(amount: Double, receiverAddress: String) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val payload = mapOf(
             "type" to "agent-llm.send-ton",
@@ -124,7 +124,7 @@ class AgentBlockchainAdapter(
             .setScale(0, RoundingMode.CEILING)
             .toLong()
 
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val payload = mapOf(
             "type" to "agent-llm.send-token",
@@ -150,7 +150,7 @@ class AgentBlockchainAdapter(
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
@@ -189,7 +189,7 @@ class AgentBlockchainAdapter(
     override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
 
