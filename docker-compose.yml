@@ -144,10 +144,6 @@ services:
       context: ./recipe-processor-node
       dockerfile: ./Dockerfile
     restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
     environment:
       RABBIT_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fapp
       TONCENTER_ENDPOINT: ${TONCENTER_ENDPOINT}
