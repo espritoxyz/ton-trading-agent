@@ -18,7 +18,8 @@ class WalletService(
     private val walletTransactionRepository: WalletTransactionRepository,
     private val encryptionService: EncryptionService,
     private val assetService: AssetService,
-    private val rabbitTemplate: RabbitTemplate
+    private val rabbitTemplate: RabbitTemplate,
+    private val notificationEventPublisher: NotificationEventPublisher
 ) {
     private val logger = LoggerFactory.getLogger(WalletService::class.java)
     private val exchange = "app.events"
@@ -167,6 +168,31 @@ class WalletService(
             wallet.lastUsedAt = Instant.now()
             userWalletRepository.save(wallet)
         }
+
+        // Publish notification event for incoming transaction
+        val amountDisplay = if (jettonSymbol != null && jettonDecimals != null) {
+            val divisor = Math.pow(10.0, jettonDecimals.toDouble())
+            val amount = amountNano.toDouble() / divisor
+            "$amount $jettonSymbol"
+        } else {
+            val tonAmount = amountNano.toDouble() / 1_000_000_000.0
+            "$tonAmount TON"
+        }
+
+        notificationEventPublisher.publishNotificationEvent(
+            userId = userId,
+            type = "TRANSACTION_COMPLETE",
+            title = "Transaction Received",
+            message = "Received $amountDisplay",
+            metadata = mapOf(
+                "transactionId" to transactionHash,
+                "status" to "success",
+                "amount" to amountNano,
+                "currency" to (jettonSymbol ?: "TON"),
+                "direction" to "incoming",
+                "senderAddress" to (senderAddress ?: "")
+            )
+        )
     }
 
     /**
@@ -231,6 +257,23 @@ class WalletService(
 
         walletTransactionRepository.save(transaction)
         logger.info("[wallet-service] Saved outgoing TON transaction for user $userId: $transactionHash")
+
+        // Publish notification event for outgoing transaction
+        val tonAmount = amountNano.toDouble() / 1_000_000_000.0
+        notificationEventPublisher.publishNotificationEvent(
+            userId = userId,
+            type = "TRANSACTION_COMPLETE",
+            title = "Transaction Sent",
+            message = "Successfully sent $tonAmount TON",
+            metadata = mapOf(
+                "transactionId" to transactionHash,
+                "status" to "success",
+                "amount" to amountNano,
+                "currency" to "TON",
+                "direction" to "outgoing",
+                "recipientAddress" to recipientAddress
+            )
+        )
     }
 
     /**
@@ -284,5 +327,29 @@ class WalletService(
 
         walletTransactionRepository.save(transaction)
         logger.info("[wallet-service] Saved outgoing token transaction for user $userId: $transactionHash")
+
+        // Publish notification event for outgoing token transaction
+        val amountDisplay = if (jettonSymbol != null && jettonDecimals != null) {
+            val divisor = Math.pow(10.0, jettonDecimals.toDouble())
+            val amount = amountNano.toDouble() / divisor
+            "$amount $jettonSymbol"
+        } else {
+            "$amountNano units"
+        }
+
+        notificationEventPublisher.publishNotificationEvent(
+            userId = userId,
+            type = "TRANSACTION_COMPLETE",
+            title = "Transaction Sent",
+            message = "Successfully sent $amountDisplay",
+            metadata = mapOf(
+                "transactionId" to transactionHash,
+                "status" to "success",
+                "amount" to amountNano,
+                "currency" to (jettonSymbol ?: "JETTON"),
+                "direction" to "outgoing",
+                "recipientAddress" to recipientAddress
+            )
+        )
     }
 }
