@@ -15,6 +15,7 @@ interface WalletMonitorState {
     walletAddress: string;
     lastProcessedLt: bigint;
     expiresAt: Date;
+    processedTxHashes: Set<string>; // Track processed transaction hashes to prevent duplicates
 }
 
 const monitoredWallets = new Map<string, WalletMonitorState>();
@@ -77,6 +78,7 @@ async function startCleanupTask() {
     while (isMonitoring) {
         await sleep(CLEANUP_INTERVAL_MS);
         cleanupExpiredWallets();
+        cleanupOldTransactionHashes();
     }
 }
 
@@ -102,6 +104,30 @@ function cleanupExpiredWallets() {
 }
 
 /**
+ * Clean up old transaction hashes to prevent memory bloat
+ * Keep only the most recent 1000 hashes per wallet
+ */
+function cleanupOldTransactionHashes() {
+    const MAX_TX_HASHES = 1000;
+    let totalCleaned = 0;
+
+    for (const [address, state] of monitoredWallets.entries()) {
+        if (state.processedTxHashes.size > MAX_TX_HASHES) {
+            const oldSize = state.processedTxHashes.size;
+            // Clear the entire set if it grows too large
+            // This is safe because duplicates within a short time window are already prevented by lt tracking
+            state.processedTxHashes.clear();
+            totalCleaned += oldSize;
+            console.log(`[multi-wallet-monitor] Cleared ${oldSize} old transaction hashes for wallet ${address}`);
+        }
+    }
+
+    if (totalCleaned > 0) {
+        console.log(`[multi-wallet-monitor] Total transaction hashes cleaned: ${totalCleaned}`);
+    }
+}
+
+/**
  * Add wallet to monitoring with TTL
  */
 export function addWalletToMonitor(walletAddress: string, userId: number, expiresAt: Date) {
@@ -119,7 +145,8 @@ export function addWalletToMonitor(walletAddress: string, userId: number, expire
             userId,
             walletAddress,
             lastProcessedLt: BigInt(0),
-            expiresAt
+            expiresAt,
+            processedTxHashes: new Set<string>()
         });
         console.log(`[multi-wallet-monitor] Added wallet to monitoring: ${walletAddress} (user ${userId}) until ${expiresAt.toISOString()}`);
     }
@@ -201,8 +228,14 @@ async function pollWalletEvents(
                 continue;
             }
 
+            // Skip events that are still being processed (incomplete transactions)
+            if (event.inProgress) {
+                console.log(`[multi-wallet-monitor] Skipping in-progress event: lt=${eventLt}, event_id=${event.event_id}`);
+                continue;
+            }
+
             newEventsCount++;
-            console.log(`[multi-wallet-monitor] Processing new event: lt=${eventLt}, actions=${event.actions?.length || 0}`);
+            console.log(`[multi-wallet-monitor] Processing new event: lt=${eventLt}, event_id=${event.event_id}, actions=${event.actions?.length || 0}`);
 
             // Process different event types
             await processEvent(event, wallet, channel, exchange);
@@ -286,6 +319,12 @@ async function processTonTransfer(
     // baseTransactions is an array of transaction hashes involved in this action
     const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
 
+    // Check if we already processed this transaction hash
+    if (wallet.processedTxHashes.has(transactionHash)) {
+        console.log(`[multi-wallet-monitor] ⏭️ Skipping duplicate TON transaction: ${transactionHash} (already processed)`);
+        return;
+    }
+
     console.log(`[multi-wallet-monitor] TON deposit: ${amountNano} nano to user ${wallet.userId}, txHash: ${transactionHash}`);
 
     const message = {
@@ -310,11 +349,15 @@ async function processTonTransfer(
         { persistent: true }
     );
 
-    // Sync wallet balance after incoming jetton transaction
+    // Mark transaction as processed to prevent duplicates
+    wallet.processedTxHashes.add(transactionHash);
+    monitoredWallets.set(wallet.walletAddress, wallet);
+
+    // Sync wallet balance after incoming TON transaction
     try {
         await syncWalletBalance(wallet.walletAddress, wallet.userId, channel, exchange);
     } catch (syncErr: any) {
-        console.error(`[multi-wallet-monitor] Failed to sync wallet balance after Jetton deposit:`, syncErr?.message);
+        console.error(`[multi-wallet-monitor] Failed to sync wallet balance after TON deposit:`, syncErr?.message);
         // Don't fail the operation if sync fails
     }
 }
@@ -360,6 +403,12 @@ async function processJettonTransfer(
     // baseTransactions is an array of transaction hashes involved in this action
     const transactionHash = action.baseTransactions?.[0] || event.event_id || `${wallet.walletAddress}:${event.lt}`;
 
+    // Check if we already processed this transaction hash
+    if (wallet.processedTxHashes.has(transactionHash)) {
+        console.log(`[multi-wallet-monitor] ⏭️ Skipping duplicate Jetton transaction: ${transactionHash} (already processed)`);
+        return;
+    }
+
     console.log(`[multi-wallet-monitor] ✅ Jetton deposit: ${amountNano} ${jetton?.symbol || 'tokens'} to user ${wallet.userId}, txHash: ${transactionHash}`);
 
     const message = {
@@ -387,7 +436,11 @@ async function processJettonTransfer(
         { persistent: true }
     );
 
-    // Sync wallet balance after incoming jetton transaction
+    // Mark transaction as processed to prevent duplicates
+    wallet.processedTxHashes.add(transactionHash);
+    monitoredWallets.set(wallet.walletAddress, wallet);
+
+    // Sync wallet balance after incoming Jetton transaction
     try {
         await syncWalletBalance(wallet.walletAddress, wallet.userId, channel, exchange);
     } catch (syncErr: any) {
