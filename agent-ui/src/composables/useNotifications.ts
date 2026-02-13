@@ -325,6 +325,28 @@ export function useNotifications() {
         }
     }
 
+    /**
+     * Delete all notifications
+     */
+    async function deleteAllNotifications() {
+        try {
+            const response = await api.delete('/api/notifications')
+            const deletedCount = response.data.deletedCount || 0
+
+            console.log(`[Notifications] Deleted ${deletedCount} notifications`)
+
+            // Clear local state
+            const unreadCountBeforeClear = notifications.value.filter(n => !n.isRead).length
+            notifications.value = []
+            unreadCount.value = 0
+
+            return deletedCount
+        } catch (e) {
+            console.error('[Notifications] Failed to delete all notifications:', e)
+            throw e
+        }
+    }
+
     const notificationPermission = computed(() => {
         if (typeof Notification === 'undefined') {
             return 'unsupported' as const
@@ -347,6 +369,7 @@ export function useNotifications() {
         markAsRead,
         markAllAsRead,
         deleteNotification,
+        deleteAllNotifications,
         requestNotificationPermission
     }
 }

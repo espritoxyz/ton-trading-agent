@@ -16,4 +16,7 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     @Modifying
     fun deleteByCreatedAtBefore(cutoffDate: Instant): Int
+
+    @Modifying
+    fun deleteByUser_Id(userId: Long): Int
 }
