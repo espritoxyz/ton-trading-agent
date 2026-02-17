@@ -18,7 +18,9 @@ const {
     deleteAllNotifications,
     requestNotificationPermission,
     connect,
-    disconnect
+    disconnect,
+    initListeners,
+    destroyListeners
 } = useNotifications()
 
 const showDropdown = ref(false)
@@ -47,11 +49,12 @@ onMounted(async () => {
         showPermissionPrompt.value = true
     }
 
+    initListeners()
     document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
-    disconnect()
+    destroyListeners()
     document.removeEventListener('click', handleClickOutside)
 })
 
