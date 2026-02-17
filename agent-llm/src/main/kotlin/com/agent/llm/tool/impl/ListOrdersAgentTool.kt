@@ -13,13 +13,14 @@ class ListOrdersAgentTool(
 
     override val definition = ToolDefinition(
         name = "list_orders",
-        description = "List unfulfilled swap orders for the current user.",
+        description = "List swap orders for the current user, aggregating them based on user requesting either only active" +
+                "orders or all orders",
         argumentsSchema = ExplytJsonSchema(ListOrdersArgs::class)
     )
 
     override val argsSerializer = serializer<ListOrdersArgs>()
 
     override fun payload(args: ListOrdersArgs): String {
-        return bcAdapter.listUnfulfilledOrders()
+        return bcAdapter.listOrders(args.showOnlyActiveOrders)
     }
 }

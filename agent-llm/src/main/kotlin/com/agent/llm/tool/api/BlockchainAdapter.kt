@@ -28,7 +28,10 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double)
 
-    abstract fun listUnfulfilledOrders(): String
+    abstract fun listOrders(activeOnly: Boolean): String
+
+    abstract fun deleteOrders(ids: List<Long>)
+
 
     open suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> = toolResponses
 }

@@ -4,8 +4,10 @@ import com.agent.llm.tool.api.AgentTool
 import com.agent.llm.tool.api.BlockchainAdapter
 import com.agent.llm.tool.impl.CreateOrderAgentTool
 import com.agent.llm.tool.impl.CreatePriceTrackerAgentTool
+import com.agent.llm.tool.impl.DeleteOrdersAgentTool
 import com.agent.llm.tool.impl.DeletePriceTrackersAgentTool
 import com.agent.llm.tool.impl.GetCandidateAssetsAgentTool
+
 import com.agent.llm.tool.impl.GetTonToUSDTAgentTool
 import com.agent.llm.tool.impl.ListOrdersAgentTool
 import com.agent.llm.tool.impl.ListPriceTrackersAgentTool
@@ -31,6 +33,8 @@ class ToolDefinitions(
         ListPriceTrackersAgentTool(bcAdapter),
         DeletePriceTrackersAgentTool(bcAdapter),
         CreateOrderAgentTool(bcAdapter),
+        DeleteOrdersAgentTool(bcAdapter),
+
         ListOrdersAgentTool(bcAdapter),
         ShowTopUpAgentTool(bcAdapter),
     )

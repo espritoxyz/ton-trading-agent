@@ -286,8 +286,13 @@ class AgentBlockchainAdapter(
         }
     }
 
-    override fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double) {
+    override fun deleteOrders(ids: List<Long>) {
+        ids.forEach {
+            orderService.deleteByIdForUser(userId, it)
+        }
+    }
 
+    override fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double) {
         priceTrackerService.createOrderWithTracker(
             userId = userId,
             jettonMaster = jettonMaster,
@@ -297,8 +302,12 @@ class AgentBlockchainAdapter(
         )
     }
 
-    override fun listUnfulfilledOrders(): String {
-        val orders = orderService.listUnfulfilledOrdersByUser(userId)
+    override fun listOrders(activeOnly: Boolean): String {
+        val orders = if (activeOnly)
+            orderService.listUnfulfilledOrdersByUser(userId)
+        else
+            orderService.listAllOrdersByUser(userId)
+
         if (orders.isEmpty()) return ""
 
         val trackersByOrderId = priceTrackerService.listByUser(userId)
@@ -310,7 +319,7 @@ class AgentBlockchainAdapter(
             val targetPrice = tracker?.targetPrice
             val asset = assetsCache.getAssetByContractAddress(o.jettonMaster)
             val ticker = asset?.symbol
-            "[ticker=${ticker}, action=${o.action}, amount=${o.amount}, " +
+            "[ticker=${ticker}, action=${o.action}, amount=${o.amount}, isActive=${!o.fulfilled}," +
                 "targetPrice=${targetPrice}, createdAt=${o.createdAt}, id=${o.id}]"
         }
     }

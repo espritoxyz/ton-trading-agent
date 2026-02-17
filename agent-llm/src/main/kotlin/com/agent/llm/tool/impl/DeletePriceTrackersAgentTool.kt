@@ -25,6 +25,6 @@ class DeletePriceTrackersAgentTool(
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.deletePriceTrackers(args.trackerIds)
 
-        return "Tracks for ids deleted: ${args.trackerIds.joinToString(",")}"
+        return "Tracks deleted successfully"
     }
 }

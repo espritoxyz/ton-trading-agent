@@ -28,7 +28,24 @@ class OrderService(
     fun listAllOrdersByUser(userId: Long): List<Order> =
         orders.findAllByUserId(userId)
 
+    fun deleteByIdForUser(userId: Long, id: Long) {
+        val order = orders.findById(id).orElse(null)
+        if (order == null) {
+            logger.warn { "Attempt to delete missing order id=$id by userId=$userId" }
+            return
+        }
+
+        if (order.userId != userId) {
+            logger.warn { "Attempt to delete order id=$id that belongs to userId=${order.userId} by userId=$userId" }
+            return
+        }
+
+        logger.debug { "Deleting order id=$id for userId=$userId" }
+        orders.deleteById(id)
+    }
+
     fun executeOrderSwap(order: Order) {
+
 
         if (order.action.equals("sell", ignoreCase = true)) {
             val tokenToTonRate = getTokenToTonInternal(order.jettonMaster)
