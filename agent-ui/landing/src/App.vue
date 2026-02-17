@@ -374,7 +374,7 @@ onMounted(() => {
           </div>
 
           <div class="flex justify-center gap-6 flex-wrap">
-            <a href="https://twitter.com/espritoai" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
+            <a href="https://x.com/espritoxyz" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center group-hover:scale-110 transition">
                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -385,7 +385,7 @@ onMounted(() => {
               </div>
             </a>
 
-            <a href="https://t.me/espritoai" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
+            <a href="https://t.me/espritoxyz" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-600 flex items-center justify-center group-hover:scale-110 transition">
                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -452,10 +452,10 @@ onMounted(() => {
             <div>
               <h4 class="font-semibold mb-4">Company</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                <li><a href="/about" class="hover:text-white transition">About Us</a></li>
                 <li><a href="/blog" class="hover:text-white transition">Blog</a></li>
-                <li><a href="#" class="hover:text-white transition">Careers</a></li>
-                <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                <li><a href="/careers" class="hover:text-white transition">Careers</a></li>
+                <li><a href="mailto:support@esprito.app" class="hover:text-white transition">Contact</a></li>
               </ul>
             </div>
 
@@ -464,8 +464,6 @@ onMounted(() => {
               <ul class="space-y-2 text-gray-400 text-sm">
                 <li><a href="/terms" class="hover:text-white transition">Terms of Service</a></li>
                 <li><a href="/privacy" class="hover:text-white transition">Privacy Policy</a></li>
-                <li><a href="/privacy" class="hover:text-white transition">Cookie Policy</a></li>
-                <li><a href="/terms" class="hover:text-white transition">Disclaimer</a></li>
               </ul>
             </div>
           </div>
