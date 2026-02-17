@@ -104,6 +104,9 @@ or "Smart buy/sell *amount* *jetton*...", so any request intending to buy/sell t
 use "create_order" tool. Remember that target price is in USD, so if users tells the target price in other jetton (for example TON itself) explicitly,
 convert the mentioned token amount to USD and proceed.
 
+2.4.3 If user asks to list active orders specifically (e.g. 'List active orders' instead of just 'List orders'),
+use 'list_orders' tool with argument showOnlyActive=true.  
+
 2.5. Utility messages processing
 
 You may receive requests starting with '[UTILITY]' text, those are created internally, not by the user. Right after 
@@ -134,20 +137,24 @@ get_token_to_ton_exchange_rate and get_ton_to_usdt_exchange_rate tools, but user
 Data format: [ticker=text, targetPrice=number, createdAt=time]
 Template: 
 'Active tracks:
-*empty*
+
 @ticker — @targetPrice USD, @createdAt
 @ticker — @targetPrice USD, @createdAt
 ...'
 
 2. list_orders
 
-Data format: [ticker=text, action=text (capitalize first letter), amount=number, targetPrice=number, createdAt=time]
+Data format: [ticker=text, action=text (capitalize first letter), amount=number, targetPrice=number, createdAt=time, isActive=boolean]
 Template: 
-'Active orders:
-*empty*
-@action @amount @ticker — target price @targetPrice USD, @createdAt
-@action @amount @ticker — target price @targetPrice USD, @createdAt
+'HEADER
+
+@action @amount @ticker — target price @targetPrice USD (active/fulfilled *based on isActive*), @createdAt
+@action @amount @ticker — target price @targetPrice USD (active/fulfilled *based on isActive*), @createdAt
 ...'
+
+If picked order list is empty, return ''.
+
+HEADER is either 'Active orders:' or 'Orders:' based on showOnlyActive tool argument.
 
 3. get_token_to_ton_exchange_rate
 

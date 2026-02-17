@@ -4,6 +4,7 @@ import com.agent.llm.tool.api.AgentToolArgs
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ListOrdersArgs(
-    val showOnlyActiveOrders: Boolean,
+data class DeleteOrdersArgs(
+    val orderIds: List<Long>,
 ) : AgentToolArgs
+

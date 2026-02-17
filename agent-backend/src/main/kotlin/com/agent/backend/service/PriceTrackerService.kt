@@ -3,16 +3,13 @@ package com.agent.backend.service
 import com.agent.backend.db.entity.Direction
 import com.agent.backend.db.entity.Order
 import com.agent.backend.db.entity.PriceTracker
-
 import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlin.math.abs
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 
 @Service
 class PriceTrackerService(
@@ -35,7 +32,7 @@ class PriceTrackerService(
         val currentPrice = stonfiAssetsCacheService.getDexUsdPrice(jettonMaster)
         val direction = when {
             currentPrice == null -> {
-                logger.warn { "[price-tracker] No current price for $jettonMaster, defaulting direction to UP" }
+                logger.warn { "No current price for $jettonMaster, defaulting direction to UP" }
                 Direction.UP
             }
             isGreaterOrEqual(currentPrice, targetPrice) -> Direction.DOWN
