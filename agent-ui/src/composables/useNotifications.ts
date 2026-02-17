@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { Client, StompSubscription } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import type { Notification } from '../types'
-import { accessToken, userId } from './useAuth'
+import { accessToken, userId, refreshAccessToken } from './useAuth'
 import { api } from './useApi'
 
 const notifications = ref<Notification[]>([])
@@ -15,6 +15,16 @@ let reconnectTimer: number | null = null
 
 const MAX_RECONNECT_DELAY = 30000 // 30 seconds
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000] // Exponential backoff
+const HEALTH_CHECK_INTERVAL = 30_000
+
+let listenerRefCount = 0
+let isConnecting = false
+let isNetworkOnline = navigator.onLine
+let healthCheckTimer: number | null = null
+let handleVisibilityChange: (() => void) | null = null
+let handleOnline: (() => void) | null = null
+let handleOffline: (() => void) | null = null
+let handlePageShow: ((e: PageTransitionEvent) => void) | null = null
 
 export function useNotifications() {
 
@@ -63,6 +73,10 @@ export function useNotifications() {
                 console.log('[Notifications] WebSocket disconnected')
                 connected.value = false
                 subscription = null
+                // stompClient.value === null means intentional disconnect()
+                if (stompClient.value && isNetworkOnline) {
+                    scheduleReconnect()
+                }
             },
             onStompError: (frame) => {
                 console.error('[Notifications] STOMP error:', frame)
@@ -99,10 +113,12 @@ export function useNotifications() {
         }
 
         if (stompClient.value) {
-            stompClient.value.deactivate()
-            stompClient.value = null
+            const client = stompClient.value
+            stompClient.value = null  // null BEFORE deactivate so onDisconnect won't scheduleReconnect
+            client.deactivate()
         }
 
+        stopHealthCheck()
         connected.value = false
         reconnectAttempt = 0
     }
@@ -145,6 +161,111 @@ export function useNotifications() {
             reconnectAttempt++
             connect()
         }, delay)
+    }
+
+    /**
+     * Periodic health check — triggers reconnect if connection silently died
+     */
+    function startHealthCheck(): void {
+        stopHealthCheck()
+        healthCheckTimer = window.setInterval(() => {
+            if (!accessToken.value || !userId.value) return
+            if (stompClient.value?.connected) return
+            if (reconnectTimer || isConnecting) return
+            console.warn('[Notifications] Health check: connection lost, scheduling reconnect')
+            scheduleReconnect()
+        }, HEALTH_CHECK_INTERVAL)
+    }
+
+    function stopHealthCheck(): void {
+        if (healthCheckTimer) {
+            clearInterval(healthCheckTimer)
+            healthCheckTimer = null
+        }
+    }
+
+    /**
+     * Refresh token then (re)connect. Used by visibility/online/pageshow handlers.
+     */
+    async function connectWithFreshToken(resetBackoff = false): Promise<void> {
+        if (isConnecting) return
+        if (!accessToken.value || !userId.value) return
+
+        isConnecting = true
+        try {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer)
+                reconnectTimer = null
+            }
+            if (resetBackoff) reconnectAttempt = 0
+
+            // WebSocket doesn't go through axios interceptor, refresh token explicitly
+            const refreshed = await refreshAccessToken()
+            if (!refreshed) return  // refreshAccessToken calls logout() itself
+
+            // Null before deactivate so onDisconnect won't trigger reconnect
+            if (stompClient.value?.active) {
+                const old = stompClient.value
+                stompClient.value = null
+                await old.deactivate()
+            }
+
+            connect()
+        } finally {
+            isConnecting = false
+        }
+    }
+
+    /**
+     * Register document/window event listeners for connection resilience.
+     * Uses ref-counting so multiple component instances don't duplicate listeners.
+     */
+    function initListeners(): void {
+        listenerRefCount++
+        if (listenerRefCount > 1) return
+
+        handleVisibilityChange = async () => {
+            if (document.visibilityState !== 'visible') return
+            if (!accessToken.value || !userId.value) return
+            if (!stompClient.value?.connected) {
+                await connectWithFreshToken(true)
+            }
+        }
+
+        handleOnline = async () => {
+            isNetworkOnline = true
+            if (!accessToken.value || !userId.value) return
+            if (!stompClient.value?.connected) {
+                await connectWithFreshToken(true)
+            }
+        }
+
+        handleOffline = () => { isNetworkOnline = false }
+
+        handlePageShow = async (e: PageTransitionEvent) => {
+            if (!e.persisted) return  // BFCache restore only
+            if (!accessToken.value || !userId.value) return
+            await connectWithFreshToken(true)
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('online', handleOnline)
+        window.addEventListener('offline', handleOffline)
+        window.addEventListener('pageshow', handlePageShow)
+
+        startHealthCheck()
+    }
+
+    function destroyListeners(): void {
+        listenerRefCount = Math.max(0, listenerRefCount - 1)
+        if (listenerRefCount > 0) return
+
+        if (handleVisibilityChange) { document.removeEventListener('visibilitychange', handleVisibilityChange); handleVisibilityChange = null }
+        if (handleOnline) { window.removeEventListener('online', handleOnline); handleOnline = null }
+        if (handleOffline) { window.removeEventListener('offline', handleOffline); handleOffline = null }
+        if (handlePageShow) { window.removeEventListener('pageshow', handlePageShow); handlePageShow = null }
+
+        stopHealthCheck()
     }
 
     /**
@@ -347,7 +468,6 @@ export function useNotifications() {
             console.log(`[Notifications] Deleted ${deletedCount} notifications`)
 
             // Clear local state
-            const unreadCountBeforeClear = notifications.value.filter(n => !n.isRead).length
             notifications.value = []
             unreadCount.value = 0
 
@@ -375,6 +495,8 @@ export function useNotifications() {
         // Actions
         connect,
         disconnect,
+        initListeners,
+        destroyListeners,
         fetchNotifications,
         fetchUnreadCount,
         markAsRead,
