@@ -10,6 +10,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
+import java.math.MathContext
+import java.math.RoundingMode
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -135,7 +138,7 @@ class PriceTrackerService(
                                     userId = order.userId,
                                     type = "ORDER_FILLED",
                                     title = "Order Conditions Met",
-                                    message = "Target price ${t.targetPrice} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
+                                    message = "Target price ${t.targetPrice.toPlainString()} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
                                     metadata = mapOf(
                                         "orderId" to (order.id ?: 0L),
                                         "jettonMaster" to order.jettonMaster,
@@ -157,6 +160,12 @@ class PriceTrackerService(
             }
         }
     }
+
+    private fun Double.toPlainString(): String =
+        BigDecimal.valueOf(this)
+            .round(MathContext(6, RoundingMode.HALF_UP))
+            .stripTrailingZeros()
+            .toPlainString()
 
     private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
         val diff = abs(a - b)
