@@ -6,10 +6,13 @@ import com.agent.backend.db.entity.PriceTracker
 import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlin.math.abs
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
+import java.math.MathContext
+import java.math.RoundingMode
+import kotlin.math.abs
 
 @Service
 class PriceTrackerService(
@@ -36,6 +39,7 @@ class PriceTrackerService(
                 logger.warn { "No current price for $jettonMaster, defaulting direction to UP" }
                 Direction.UP
             }
+
             isGreaterOrEqual(currentPrice, targetPrice) -> Direction.DOWN
             isLessOrEqual(currentPrice, targetPrice) -> Direction.UP
             else -> {
@@ -78,7 +82,7 @@ class PriceTrackerService(
 
         return saved
     }
-    
+
     @Transactional
     fun deleteById(id: Long) {
         logger.info { "[price-tracker] Deleting tracker id=$id" }
@@ -103,7 +107,7 @@ class PriceTrackerService(
                 Direction.UP -> isGreaterOrEqual(price, t.targetPrice)
             }
 
-            
+
             if (triggeredNow) {
                 t.triggered = true
                 logger.debug { "Triggered tracker $t" }
@@ -116,14 +120,15 @@ class PriceTrackerService(
                         logger.warn { "[price-tracker] Triggered tracker ${t.id} references missing order $orderId" }
                     } else if (!order.fulfilled) {
                         try {
-                            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol ?: order.jettonMaster
+                            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol
+                                ?: order.jettonMaster
 
                             executeOrderSwap(order)
                             order.fulfilled = true
                             orders.save(order)
                             logger.info {
                                 "[price-tracker] Order ${order.id} fulfilled for user=${order.userId}: " +
-                                    "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
+                                        "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
                             }
 
                             // Notify user that order conditions are met and swap is being initiated
@@ -132,7 +137,7 @@ class PriceTrackerService(
                                     userId = order.userId,
                                     type = "ORDER_FILLED",
                                     title = "Order Conditions Met",
-                                    message = "Target price ${t.targetPrice} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
+                                    message = "Target price ${t.targetPrice.toPlainString()} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
                                     metadata = mapOf(
                                         "orderId" to (order.id ?: 0L),
                                         "jettonMaster" to order.jettonMaster,
@@ -155,6 +160,12 @@ class PriceTrackerService(
         }
     }
 
+    private fun Double.toPlainString(): String =
+        BigDecimal.valueOf(this)
+            .round(MathContext(6, RoundingMode.HALF_UP))
+            .stripTrailingZeros()
+            .toPlainString()
+
     private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
         val diff = abs(a - b)
         return diff <= absTol
@@ -171,7 +182,7 @@ class PriceTrackerService(
     private fun notifyUser(userId: Long, tracker: PriceTracker) {
         logger.info {
             "[price-tracker] Triggered for user=$userId jetton=${tracker.jettonMaster} direction=${tracker.direction} " +
-                "target=${tracker.targetPrice}"
+                    "target=${tracker.targetPrice}"
         }
     }
 }
