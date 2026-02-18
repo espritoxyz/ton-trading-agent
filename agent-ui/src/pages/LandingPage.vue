@@ -1,5 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import {
+  MessageSquare,
+  Zap,
+  ShieldCheck,
+  CheckCircle2,
+  Link2,
+  ClipboardList,
+  TrendingUp,
+  TrendingDown,
+  Hexagon,
+  Sun,
+  Network
+} from 'lucide-vue-next'
 
 const email = ref('')
 const subscribed = ref(false)
@@ -169,7 +182,9 @@ onMounted(() => {
           <div class="grid md:grid-cols-3 gap-8">
             <div class="feature-card glass-card p-8 transition group">
               <div class="mb-6 group-hover:scale-110 transition">
-                <span class="text-4xl">🛸</span>
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cosmic-500/30 to-purple-600/30 flex items-center justify-center border border-cosmic-500/30">
+                  <MessageSquare class="w-7 h-7 text-cosmic-400" />
+                </div>
               </div>
               <h3 class="text-2xl font-bold mb-4 group-hover:text-cosmic-400 transition">Natural Conversations</h3>
               <p class="text-gray-300 leading-relaxed">
@@ -180,7 +195,9 @@ onMounted(() => {
 
             <div class="feature-card glass-card p-8 transition group">
               <div class="mb-6 group-hover:scale-110 transition">
-                <span class="text-4xl">🌠</span>
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-orange-600/30 flex items-center justify-center border border-yellow-500/30">
+                  <Zap class="w-7 h-7 text-yellow-400" />
+                </div>
               </div>
               <h3 class="text-2xl font-bold mb-4 group-hover:text-cosmic-400 transition">Lightning Fast</h3>
               <p class="text-gray-300 leading-relaxed">
@@ -191,12 +208,92 @@ onMounted(() => {
 
             <div class="feature-card glass-card p-8 transition group">
               <div class="mb-6 group-hover:scale-110 transition">
-                <span class="text-4xl">🛡️</span>
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center border border-green-500/30">
+                  <ShieldCheck class="w-7 h-7 text-green-400" />
+                </div>
               </div>
               <h3 class="text-2xl font-bold mb-4 group-hover:text-cosmic-400 transition">Secure & Private</h3>
               <p class="text-gray-300 leading-relaxed">
                 Your keys, your crypto. We never have access to your funds.
                 All trades execute directly from your wallet on-chain.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Smart Orders Section -->
+      <section class="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-cosmic-500/10 to-purple-600/10" />
+
+        <div class="max-w-6xl mx-auto relative z-10">
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div class="inline-block mb-6 px-6 py-2 glass-card cosmic-glow">
+                <span class="text-sm font-semibold gradient-text">⚡ Automated Trading</span>
+              </div>
+
+              <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                Smart <span class="gradient-text">Orders</span>
+              </h2>
+
+              <p class="text-xl text-gray-300 mb-8 leading-relaxed">
+                Set your conditions once and let the AI execute trades automatically.
+                Buy the dip, take profits—all without watching charts 24/7.
+              </p>
+
+              <!-- Smart Buy -->
+              <div class="smart-order-card glass-card p-6 mb-4 group hover:bg-white/10 transition">
+                <div class="flex items-start gap-4">
+                  <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center border border-green-500/30 flex-shrink-0 group-hover:scale-110 transition">
+                    <TrendingUp class="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold mb-2 text-green-400">Smart Buy</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                      Automatically purchase tokens when the price drops to your target.
+                      Set a limit price, choose your amount, and let the AI handle the rest.
+                    </p>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      <span class="px-3 py-1 glass-card text-xs text-green-300 border border-green-500/20 rounded-full">Limit Orders</span>
+                      <span class="px-3 py-1 glass-card text-xs text-green-300 border border-green-500/20 rounded-full">DCA Support</span>
+                      <span class="px-3 py-1 glass-card text-xs text-green-300 border border-green-500/20 rounded-full">Auto-Execute</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Smart Sell -->
+              <div class="smart-order-card glass-card p-6 group hover:bg-white/10 transition">
+                <div class="flex items-start gap-4">
+                  <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500/30 to-orange-600/30 flex items-center justify-center border border-red-500/30 flex-shrink-0 group-hover:scale-110 transition">
+                    <TrendingDown class="w-6 h-6 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold mb-2 text-red-400">Smart Sell</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                      Lock in profits or cut losses automatically. Set take-profit and stop-loss
+                      targets and the AI will execute when conditions are met.
+                    </p>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      <span class="px-3 py-1 glass-card text-xs text-red-300 border border-red-500/20 rounded-full">Take Profit</span>
+                      <span class="px-3 py-1 glass-card text-xs text-red-300 border border-red-500/20 rounded-full">Stop Loss</span>
+                      <span class="px-3 py-1 glass-card text-xs text-red-300 border border-red-500/20 rounded-full">Trailing Stop</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 cosmic-glow">
+              <img
+                src="/images/orders-demo.png"
+                alt="Smart Orders - Automated buy and sell on TON DEX"
+                class="rounded-xl w-full shadow-2xl"
+                @error="handleImageError"
+              />
+              <p class="text-center text-sm text-gray-400 mt-4">
+                Smart Orders panel — set conditions and trade automatically
               </p>
             </div>
           </div>
@@ -226,21 +323,27 @@ onMounted(() => {
 
               <ul class="space-y-4 mb-8">
                 <li class="flex items-start gap-3">
-                  <span class="text-2xl">✅</span>
+                  <div class="mt-0.5 w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 class="w-4 h-4 text-green-400" />
+                  </div>
                   <div>
                     <p class="font-semibold mb-1">User Approval Required</p>
                     <p class="text-gray-400 text-sm">Every trade requires your explicit confirmation before execution</p>
                   </div>
                 </li>
                 <li class="flex items-start gap-3">
-                  <span class="text-2xl">🔗</span>
+                  <div class="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                    <Link2 class="w-4 h-4 text-blue-400" />
+                  </div>
                   <div>
                     <p class="font-semibold mb-1">On-Chain Verification</p>
                     <p class="text-gray-400 text-sm">View transaction details on Tonviewer instantly after execution</p>
                   </div>
                 </li>
                 <li class="flex items-start gap-3">
-                  <span class="text-2xl">📋</span>
+                  <div class="mt-0.5 w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                    <ClipboardList class="w-4 h-4 text-purple-400" />
+                  </div>
                   <div>
                     <p class="font-semibold mb-1">Complete Transaction History</p>
                     <p class="text-gray-400 text-sm">Track all your trades with full blockchain transparency</p>
@@ -291,23 +394,35 @@ onMounted(() => {
             </p>
 
             <div class="glass-card p-6 mb-8 max-w-2xl mx-auto">
-              <h3 class="text-2xl font-bold mb-4">🚀 Multi-Chain Roadmap</h3>
+              <h3 class="text-2xl font-bold mb-4">Multi-Chain Roadmap</h3>
               <p class="text-gray-300 mb-4">
                 We're expanding to support more blockchains throughout 2026:
               </p>
               <div class="grid sm:grid-cols-3 gap-4 text-sm">
                 <div class="glass-card p-4 rounded-xl hover:bg-white/10 transition">
-                  <div class="text-2xl mb-2">🪐</div>
+                  <div class="mb-2 flex justify-center">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-600/30 flex items-center justify-center border border-indigo-500/30">
+                      <Hexagon class="w-5 h-5 text-indigo-400" />
+                    </div>
+                  </div>
                   <div class="font-semibold">Ethereum</div>
                   <div class="text-gray-400">Q2 2026</div>
                 </div>
                 <div class="glass-card p-4 rounded-xl hover:bg-white/10 transition">
-                  <div class="text-2xl mb-2">🌙</div>
+                  <div class="mb-2 flex justify-center">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/30 to-cyan-600/30 flex items-center justify-center border border-teal-500/30">
+                      <Sun class="w-5 h-5 text-teal-400" />
+                    </div>
+                  </div>
                   <div class="font-semibold">Solana</div>
                   <div class="text-gray-400">Q3 2026</div>
                 </div>
                 <div class="glass-card p-4 rounded-xl hover:bg-white/10 transition">
-                  <div class="text-2xl mb-2">⭐</div>
+                  <div class="mb-2 flex justify-center">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/30 to-orange-600/30 flex items-center justify-center border border-yellow-500/30">
+                      <Network class="w-5 h-5 text-yellow-400" />
+                    </div>
+                  </div>
                   <div class="font-semibold">BSC & More</div>
                   <div class="text-gray-400">Q4 2026</div>
                 </div>
@@ -374,7 +489,7 @@ onMounted(() => {
           </div>
 
           <div class="flex justify-center gap-6 flex-wrap">
-            <a href="https://twitter.com/espritoai" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
+            <a href="https://x.com/espritoxyz" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center group-hover:scale-110 transition">
                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -385,7 +500,7 @@ onMounted(() => {
               </div>
             </a>
 
-            <a href="https://t.me/espritoai" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
+            <a href="https://t.me/espritoxyz" target="_blank" class="glass-card p-4 hover:bg-white/10 transition group rounded-xl">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-600 flex items-center justify-center group-hover:scale-110 transition">
                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -435,7 +550,7 @@ onMounted(() => {
                 <span class="text-xl font-bold">Esprito App</span>
               </div>
               <p class="text-gray-400 text-sm">
-                The future of decentralized trading powered by AI.
+                The future of decentralized crypto trading powered by AI.
               </p>
             </div>
 
@@ -452,10 +567,10 @@ onMounted(() => {
             <div>
               <h4 class="font-semibold mb-4">Company</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                <li><a href="/about" class="hover:text-white transition">About Us</a></li>
                 <li><a href="/blog" class="hover:text-white transition">Blog</a></li>
-                <li><a href="#" class="hover:text-white transition">Careers</a></li>
-                <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                <li><a href="/careers" class="hover:text-white transition">Careers</a></li>
+                <li><a href="mailto:support@esprito.app" class="hover:text-white transition">Contact</a></li>
               </ul>
             </div>
 
@@ -464,8 +579,6 @@ onMounted(() => {
               <ul class="space-y-2 text-gray-400 text-sm">
                 <li><a href="/terms" class="hover:text-white transition">Terms of Service</a></li>
                 <li><a href="/privacy" class="hover:text-white transition">Privacy Policy</a></li>
-                <li><a href="/privacy" class="hover:text-white transition">Cookie Policy</a></li>
-                <li><a href="/terms" class="hover:text-white transition">Disclaimer</a></li>
               </ul>
             </div>
           </div>
@@ -475,7 +588,7 @@ onMounted(() => {
               © 2026 Esprito Tech QFZ LLC. All rights reserved.
             </p>
             <div class="flex items-center gap-6 text-gray-400 text-sm">
-              <span>Built with ❤️ for the TON ecosystem</span>
+              <span>Built with love for the blockchain community and DEX traders</span>
             </div>
           </div>
         </div>
@@ -554,6 +667,30 @@ onMounted(() => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Smart order cards */
+.smart-order-card {
+  background: radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.smart-order-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.smart-order-card:hover::before {
+  opacity: 1;
 }
 
 /* Star animation enhancement */
