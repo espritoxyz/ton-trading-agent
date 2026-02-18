@@ -1,4 +1,6 @@
 <script setup>
+import { Lock, Cpu, Shield, Eye, Target } from 'lucide-vue-next'
+
 const stars = Array.from({ length: 150 }, () => ({
   left: `${Math.random() * 100}%`,
   top: `${Math.random() * 100}%`,
@@ -19,25 +21,25 @@ const values = [
     number: '01',
     title: 'You Stay in Control',
     description: 'We never custody your funds. Trades execute directly from your wallet through decentralized exchanges. Your keys, your crypto — we just make it smarter.',
-    icon: '🔐'
+    icon: Lock
   },
   {
     number: '02',
     title: 'AI Assists, You Decide',
     description: 'Our AI surfaces signals, patterns, and intelligence — but every trade is your decision. We\'re a copilot, not an autopilot. We\'re honest about what AI can and can\'t predict.',
-    icon: '🧠'
+    icon: Cpu
   },
   {
     number: '03',
     title: 'Security is Non-Negotiable',
     description: 'We come from the security world. Risk detection isn\'t an afterthought — it\'s embedded in every product we build. Before we help you trade, we help you stay safe.',
-    icon: '🛡️'
+    icon: Shield
   },
   {
     number: '04',
     title: 'Transparency by Default',
     description: 'Our fees are disclosed upfront. Our AI\'s limitations are clearly stated. We don\'t promise guaranteed returns — we promise to give you better information than you\'d have without us.',
-    icon: '🔍'
+    icon: Eye
   },
 ]
 </script>
@@ -85,26 +87,23 @@ const values = [
         </div>
       </nav>
 
-      <!-- Hero Section -->
-      <section class="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-5xl mx-auto text-center">
-          <div class="inline-block mb-6 px-6 py-2 glass-card cosmic-glow">
-            <span class="text-sm font-semibold gradient-text">🛡️ Built from the Security World Up</span>
-          </div>
-          <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Built by people who broke the blockchain to
-            <span class="gradient-text"> make it safer.</span>
-          </h1>
-          <p class="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed max-w-3xl mx-auto">
-            Esprito was founded in 2024 by a team with deep roots in blockchain security research. We started by protecting traders from on-chain fraud — and evolved into building the AI copilot serious DeFi traders have been waiting for.
-          </p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/app" class="px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold text-lg">
-              Launch App
-            </a>
-            <a href="/careers" class="px-8 py-4 glass-card hover:bg-white/10 transition font-semibold text-lg rounded-full">
-              Join Our Team
-            </a>
+      <!-- Mission Section -->
+      <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+          <div class="glass-card p-12 cosmic-glow text-center">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cosmic-500/20 to-purple-600/20 border border-cosmic-500/30 flex items-center justify-center mx-auto mb-6">
+              <Target :size="32" class="text-cosmic-400" />
+            </div>
+            <h2 class="text-4xl font-bold mb-6">
+              Our <span class="gradient-text">Mission</span>
+            </h2>
+            <p class="text-xl md:text-2xl text-gray-300 leading-relaxed italic">
+              "We believe every trader deserves the kind of intelligence that was previously only available to hedge funds and insiders."
+            </p>
+            <div class="mt-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            <p class="text-gray-300 leading-relaxed mt-8 max-w-2xl mx-auto">
+              Esprito's mission is to give any DeFi trader AI-powered tools that help them trade more efficient, execute at the best prices, give access to innovative DeFi tools and extra income.
+            </p>
           </div>
         </div>
       </section>
@@ -134,7 +133,7 @@ const values = [
                 Our <span class="gradient-text">Story</span>
               </h2>
               <p class="text-gray-300 leading-relaxed mb-6">
-                Esprito began as a <strong class="text-white">blockchain security lab</strong>. Our founding team built one of the first bytecode-level smart contract analyzers for the TON ecosystem — a tool capable of detecting honeypots, hidden fees, and malicious contract logic before users lost funds.
+                Esprito began as a <strong class="text-white">TON blockchain security lab</strong>. Our founding team built one of the first bytecode-level smart contract analyzers for the TON ecosystem — a tool capable of detecting honeypots, hidden fees, and malicious contract logic before users lost funds.
               </p>
               <p class="text-gray-300 leading-relaxed mb-6">
                 Our honeypot detector was adopted by <strong class="text-white">STON.fi</strong>, one of TON's leading decentralized exchanges. In production since February 2025, it has scanned over <strong class="text-white">27,000 smart contracts</strong>, catching 857 confirmed honeypots with a near-zero false positive rate of under 0.4%.
@@ -156,7 +155,7 @@ const values = [
                   </div>
                   <div class="glass-card p-5">
                     <div class="text-sm text-cosmic-400 font-semibold mb-1">2024</div>
-                    <h3 class="text-white font-bold mb-2">Founded as a Security Lab</h3>
+                    <h3 class="text-white font-bold mb-2">Founded as a TON security lab</h3>
                     <p class="text-gray-400 text-sm">Built the first bytecode-level smart contract analyzer for TON, detecting honeypots and malicious contract logic.</p>
                   </div>
                 </div>
@@ -167,8 +166,8 @@ const values = [
                   </div>
                   <div class="glass-card p-5">
                     <div class="text-sm text-purple-400 font-semibold mb-1">February 2025</div>
-                    <h3 class="text-white font-bold mb-2">STON.fi Partnership</h3>
-                    <p class="text-gray-400 text-sm">Our honeypot detector went live in production on STON.fi, scanning thousands of contracts daily.</p>
+                    <h3 class="text-white font-bold mb-2">STON.fi partnership</h3>
+                    <p class="text-gray-400 text-sm">Our honeypot detector went live in production on STON.fi, scanning hundreds of smart contracts daily.</p>
                   </div>
                 </div>
 
@@ -179,7 +178,7 @@ const values = [
                   <div class="glass-card p-5">
                     <div class="text-sm text-blue-400 font-semibold mb-1">Q1 2026</div>
                     <h3 class="text-white font-bold mb-2">Esprito AI Launches</h3>
-                    <p class="text-gray-400 text-sm">The AI trading copilot goes live — natural language trading, real-time analytics, and on-chain security built in from day one.</p>
+                    <p class="text-gray-400 text-sm">The AI trading copilot goes live — natural language trading, real-time analytics, and on-chain security.</p>
                   </div>
                 </div>
 
@@ -195,25 +194,6 @@ const values = [
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Mission Section -->
-      <section class="py-20 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-4xl mx-auto">
-          <div class="glass-card p-12 cosmic-glow text-center">
-            <div class="text-5xl mb-6">🌌</div>
-            <h2 class="text-4xl font-bold mb-6">
-              Our <span class="gradient-text">Mission</span>
-            </h2>
-            <p class="text-xl md:text-2xl text-gray-300 leading-relaxed italic">
-              "We believe every trader deserves the kind of intelligence that was previously only available to hedge funds and insiders."
-            </p>
-            <div class="mt-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-            <p class="text-gray-300 leading-relaxed mt-8 max-w-2xl mx-auto">
-              Esprito's mission is to give any DeFi trader — regardless of experience or capital — AI-powered tools that surface real alpha, execute at the best prices, and keep them safe from on-chain risk. All without giving up self-custody.
-            </p>
           </div>
         </div>
       </section>
@@ -236,8 +216,8 @@ const values = [
             >
               <div class="flex items-start gap-5">
                 <div class="flex-shrink-0">
-                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cosmic-500/20 to-purple-600/20 border border-cosmic-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
-                    {{ value.icon }}
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cosmic-500/20 to-purple-600/20 border border-cosmic-500/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <component :is="value.icon" :size="24" class="text-cosmic-400" />
                   </div>
                 </div>
                 <div>
@@ -246,28 +226,6 @@ const values = [
                   <p class="text-gray-400 leading-relaxed">{{ value.description }}</p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CTA Section -->
-      <section class="py-20 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-4xl mx-auto text-center">
-          <div class="glass-card p-12 cosmic-glow">
-            <h2 class="text-4xl font-bold mb-6">
-              Ready to trade <span class="gradient-text">smarter?</span>
-            </h2>
-            <p class="text-xl text-gray-300 mb-8">
-              Join traders using Esprito AI to trade easier and smarter on DEXes.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="/app" class="px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold text-lg">
-                Launch App
-              </a>
-              <a href="/careers" class="px-8 py-4 glass-card hover:bg-white/10 transition font-semibold text-lg rounded-full">
-                Join Our Team
-              </a>
             </div>
           </div>
         </div>
@@ -320,7 +278,7 @@ const values = [
           <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
             <p class="text-gray-400 text-sm">© 2026 Esprito Tech QFZ LLC. All rights reserved.</p>
             <div class="flex items-center gap-6 text-gray-400 text-sm">
-              <span>Built with ❤️ for the TON ecosystem</span>
+              <span>Built with love for the TON ecosystem</span>
             </div>
           </div>
         </div>

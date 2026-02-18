@@ -1,4 +1,6 @@
 <script setup>
+import { Globe, Rocket, Cpu, DollarSign, Shield, Zap, Mail } from 'lucide-vue-next'
+
 const stars = Array.from({ length: 150 }, () => ({
   left: `${Math.random() * 100}%`,
   top: `${Math.random() * 100}%`,
@@ -7,54 +9,33 @@ const stars = Array.from({ length: 150 }, () => ({
 }))
 
 const perks = [
-  { icon: '🌍', title: 'Fully Remote', description: 'Work from anywhere. We\'re a distributed team across multiple time zones — async-first culture.' },
-  { icon: '🚀', title: 'Early-Stage Impact', description: 'Join at the ground floor. Your work ships to thousands of users and shapes the product direction.' },
-  { icon: '🧠', title: 'Deep Tech Stack', description: 'Work at the intersection of AI, blockchain, and DeFi — some of the most interesting problems in tech.' },
-  { icon: '💰', title: 'Competitive Comp', description: 'Market-rate salary, token allocation, and equity in a fast-growing Web3 company.' },
-  { icon: '🛡️', title: 'Security-First Culture', description: 'We come from the security world. You\'ll work with people who take correctness, reliability, and safety seriously.' },
-  { icon: '⚡', title: 'Move Fast', description: 'No bureaucracy. Ideas go from chat to production in days, not months.' },
+  { icon: Globe, title: 'Office/Remote', description: 'Work from our office or remote. We\'re a team across different time zones.' },
+  { icon: Rocket, title: 'Early-Stage Impact', description: 'Join us at the ground floor. Your work ships to thousands of users.' },
+  { icon: Cpu, title: 'Deep Tech Stack', description: 'Work at the intersection of AI, blockchain and DeFi.' },
+  { icon: DollarSign, title: 'Competitive Comp', description: 'Market-rate salary and shares option in a fast-growing AI company.' },
+  { icon: Shield, title: 'Value Culture', description: 'You\'ll work with people who is focused on customer\'s value.' },
+  { icon: Zap, title: 'Move Fast', description: 'No bureaucracy. Ideas go from chat to production in days, not months.' },
 ]
 
 const openRoles = [
   {
-    title: 'Senior Backend Engineer',
-    team: 'Engineering',
-    type: 'Full-time · Remote',
-    tags: ['Kotlin', 'Java', 'Spring Boot', 'TON Blockchain'],
-    description: 'Build the core backend services powering our AI trading engine — order management, strategy execution, real-time monitoring, and blockchain integrations.',
-  },
-  {
     title: 'AI/ML Engineer',
     team: 'AI',
-    type: 'Full-time · Remote',
+    type: 'Full-time · Office/Remote',
     tags: ['Python', 'LLM', 'NLP', 'RAG'],
     description: 'Design and improve the AI models that interpret user trading commands, generate market signals, and power our conversational trading interface.',
   },
   {
-    title: 'Frontend Engineer',
-    team: 'Engineering',
-    type: 'Full-time · Remote',
-    tags: ['Vue.js', 'TypeScript', 'TailwindCSS'],
-    description: 'Build the web application and Telegram Mini App interfaces that make complex DeFi operations feel simple and intuitive.',
-  },
-  {
     title: 'Blockchain Engineer',
     team: 'Engineering',
-    type: 'Full-time · Remote',
+    type: 'Full-time · Office/Remote',
     tags: ['TON', 'Ethereum', 'Solana', 'Smart Contracts'],
     description: 'Own our multi-chain integrations — from TON and STON.fi to Ethereum, Solana, and beyond. Build the DEX routing, contract interaction, and on-chain analytics layers.',
   },
   {
-    title: 'Smart Contract Security Researcher',
-    team: 'Security',
-    type: 'Full-time · Remote',
-    tags: ['TON', 'FunC', 'Tact', 'Security Research'],
-    description: 'Extend our honeypot detection and smart contract analysis capabilities. Work on the tools that keep Esprito users safe from on-chain threats.',
-  },
-  {
     title: 'Growth & Community Lead',
     team: 'Growth',
-    type: 'Full-time · Remote',
+    type: 'Full-time · Office/Remote',
     tags: ['DeFi', 'Crypto', 'Community', 'Marketing'],
     description: 'Drive user acquisition and build the Esprito community across Telegram, X, Reddit, and the broader DeFi ecosystem.',
   },
@@ -115,14 +96,14 @@ const teamColors = {
       <section class="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
         <div class="max-w-5xl mx-auto text-center">
           <div class="inline-block mb-6 px-6 py-2 glass-card cosmic-glow">
-            <span class="text-sm font-semibold gradient-text">🚀 We're Hiring</span>
+            <span class="text-sm font-semibold gradient-text">We're Hiring</span>
           </div>
           <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Build the future of
             <span class="gradient-text"> DeFi trading</span>
           </h1>
           <p class="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed max-w-3xl mx-auto">
-            Join a small, high-conviction team at the intersection of AI, blockchain security, and decentralized finance. We're building tools that give every trader an edge.
+            Join a high-conviction team at the intersection of AI, blockchain and decentralized finance. We're improving traders experience.
           </p>
           <a href="mailto:careers@esprito.app" class="inline-block px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold text-lg">
             View Open Roles ↓
@@ -146,7 +127,9 @@ const teamColors = {
               :key="perk.title"
               class="perk-card glass-card p-8 group transition-all duration-300"
             >
-              <div class="text-4xl mb-5 group-hover:scale-110 transition-transform duration-300">{{ perk.icon }}</div>
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cosmic-500/20 to-purple-600/20 border border-cosmic-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                <component :is="perk.icon" :size="24" class="text-cosmic-400" />
+              </div>
               <h3 class="text-xl font-bold text-white mb-3 group-hover:text-cosmic-300 transition-colors duration-300">{{ perk.title }}</h3>
               <p class="text-gray-400 leading-relaxed">{{ perk.description }}</p>
             </div>
@@ -161,7 +144,7 @@ const teamColors = {
             <h2 class="text-4xl md:text-5xl font-bold mb-4">
               Open <span class="gradient-text">Roles</span>
             </h2>
-            <p class="text-xl text-gray-300">All positions are fully remote</p>
+            <p class="text-xl text-gray-300">All positions could be remote or office based</p>
           </div>
 
           <div class="space-y-6">
@@ -213,12 +196,11 @@ const teamColors = {
       <section class="py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-4xl mx-auto">
           <div class="glass-card p-12 cosmic-glow text-center">
-            <div class="text-4xl mb-4">💌</div>
             <h2 class="text-3xl font-bold mb-4">
               Don't see a fit?
             </h2>
             <p class="text-xl text-gray-300 mb-8">
-              We're always on the lookout for exceptional people. If you're passionate about DeFi, AI, or blockchain security — we want to hear from you.
+              We're always on the lookout for exceptional people. If you're passionate about DeFi, AI, or blockchain security contact us.
             </p>
             <a
               href="mailto:careers@esprito.app?subject=General Application"
@@ -226,7 +208,6 @@ const teamColors = {
             >
               Send us your CV
             </a>
-            <p class="text-gray-400 text-sm mt-4">careers@esprito.app</p>
           </div>
         </div>
       </section>
@@ -278,7 +259,7 @@ const teamColors = {
           <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
             <p class="text-gray-400 text-sm">© 2026 Esprito Tech QFZ LLC. All rights reserved.</p>
             <div class="flex items-center gap-6 text-gray-400 text-sm">
-              <span>Built with ❤️ for the TON ecosystem</span>
+              <span>Built with love for the TON ecosystem</span>
             </div>
           </div>
         </div>

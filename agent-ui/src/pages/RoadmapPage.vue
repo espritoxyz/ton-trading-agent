@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-P
+
 // Sound effects
 const soundEnabled = ref(false)
 const sounds = {

@@ -325,7 +325,7 @@ const getCategoryName = (categoryId) => {
                 <span class="text-xl font-bold">Esprito App</span>
               </div>
               <p class="text-gray-400 text-sm">
-                The future of decentralized trading powered by AI.
+                The future of decentralized crypto trading powered by AI.
               </p>
             </div>
 
