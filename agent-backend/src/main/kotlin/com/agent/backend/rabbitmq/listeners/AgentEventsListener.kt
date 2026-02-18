@@ -101,12 +101,15 @@ class AgentEventsListener(
                     // Record outgoing token transaction if successful
                     if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
                         try {
+                            val asset = assetsCache.getAssetByContractAddress(jettonMaster)
                             walletService.processOutgoingTokenTransaction(
                                 userId = userId,
                                 transactionHash = txId,
                                 amountNano = amountNano,
                                 jettonMasterAddress = jettonMaster,
-                                recipientAddress = receiver
+                                recipientAddress = receiver,
+                                jettonSymbol = asset?.symbol,
+                                jettonDecimals = asset?.decimals,
                             )
                         } catch (e: Exception) {
                             logger.error(e) { "[agent-events] Failed to record outgoing token transaction" }
