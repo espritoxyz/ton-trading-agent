@@ -129,11 +129,12 @@ class PriceTrackerService(
 
                             // Emit notification event for order fill
                             try {
+                                val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol ?: order.jettonMaster
                                 notificationEventPublisher.publishNotificationEvent(
                                     userId = order.userId,
                                     type = "ORDER_FILLED",
                                     title = "Order Filled",
-                                    message = "Your ${order.action} order for ${order.amount} ${order.jettonMaster} has been filled at target price ${t.targetPrice}",
+                                    message = "Your ${order.action} order for ${order.amount} $symbol has been filled at target price ${t.targetPrice}",
                                     metadata = mapOf(
                                         "orderId" to (order.id ?: 0L),
                                         "jettonMaster" to order.jettonMaster,
