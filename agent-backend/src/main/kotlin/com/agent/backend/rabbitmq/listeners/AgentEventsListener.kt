@@ -133,9 +133,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-                    val jettonMaster = data["jettonMaster"] as? String
-                    val swapTonAmount = data["swapTonAmount"] as? Number
-                    val minimalTokenAmount = data["minimalTokenAmount"] as? Number
+                    val jettonMaster = data["requestedJettonMaster"] as? String
+                    val swapTonAmount = data["requestedSwapTonAmount"] as? Number
+                    val minimalTokenAmount = data["requestedMinimalTokenAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
@@ -185,9 +185,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-                    val jettonMaster = data["jettonMaster"] as? String
-                    val swapTokenAmount = data["swapTokenAmount"] as? Number
-                    val minimalTonAmount = data["minimalTonAmount"] as? Number
+                    val jettonMaster = data["requestedJettonMaster"] as? String
+                    val swapTokenAmount = data["requestedSwapTokenAmount"] as? Number
+                    val minimalTonAmount = data["requestedMinimalTonAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
