@@ -98,6 +98,8 @@ Key entities: `AgentUser`, `UserWallet`, `Order`, `PriceTracker`, `Notification`
 ## UI/Frontend Guidelines section
 When fixing UI/CSS issues, investigate the root cause (stacking contexts, border box model, render order) before applying surface-level fixes like z-index increases or simple class additions. First attempts with shallow fixes have repeatedly failed.
 
+When adding icons to the UI, always prefer Lucide icons (already available via `lucide-vue-next`) over emojis or other icon sets. Do not use emoji characters as UI icons.
+
 ## Domain Rules section
 Always convert blockchain values (nano, wei, etc.) to human-readable format before displaying. Never show raw on-chain values like 149501718 — convert to 0.149 TON etc.
 
@@ -106,3 +108,6 @@ Use the GitHub CLI (`gh`) for all GitHub-related tasks: reviewing PRs, creating 
 
 ## Code Quality section
 Do not add unnecessary dependencies. Before introducing a new library (Caffeine, Guava, etc.), check if the existing stack already provides equivalent functionality. Ask before adding dependencies.
+
+## Documentation and References section
+When in doubt about library APIs, framework behavior, or best practices, use the MCP context7 tool to fetch up-to-date documentation. Prefer context7 over guessing or relying on potentially outdated training knowledge.
