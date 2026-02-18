@@ -4,6 +4,7 @@ import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationEventPublisher
+import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
@@ -17,6 +18,7 @@ class AgentEventsListener(
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
     private val notificationEventPublisher: NotificationEventPublisher,
+    private val assetsCache: StonfiAssetsCacheService,
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -159,14 +161,15 @@ class AgentEventsListener(
                     // Emit notification event for successful swap
                     if (success) {
                         try {
+                            val tokenSymbol = jettonMaster?.let { assetsCache.getAssetByContractAddress(it)?.symbol } ?: jettonMaster ?: "unknown"
                             notificationEventPublisher.publishNotificationEvent(
                                 userId = userId,
                                 type = "SWAP_EXECUTED",
                                 title = "Swap Executed",
-                                message = "Swapped ${swapTonAmount ?: "unknown"} TON for ${minimalTokenAmount ?: "unknown"} tokens",
+                                message = "Swapped ${swapTonAmount ?: "unknown"} TON for ${minimalTokenAmount ?: "unknown"} $tokenSymbol",
                                 metadata = mapOf(
                                     "fromAsset" to "TON",
-                                    "toAsset" to (jettonMaster ?: "unknown"),
+                                    "toAsset" to tokenSymbol,
                                     "fromAmount" to (swapTonAmount?.toDouble() ?: 0.0),
                                     "toAmount" to (minimalTokenAmount?.toDouble() ?: 0.0),
                                     "transactionId" to (txId ?: "")
@@ -210,13 +213,14 @@ class AgentEventsListener(
                     // Emit notification event for successful swap
                     if (success) {
                         try {
+                            val tokenSymbol = jettonMaster?.let { assetsCache.getAssetByContractAddress(it)?.symbol } ?: jettonMaster ?: "unknown"
                             notificationEventPublisher.publishNotificationEvent(
                                 userId = userId,
                                 type = "SWAP_EXECUTED",
                                 title = "Swap Executed",
-                                message = "Swapped ${swapTokenAmount ?: "unknown"} tokens for ${minimalTonAmount ?: "unknown"} TON",
+                                message = "Swapped ${swapTokenAmount ?: "unknown"} $tokenSymbol for ${minimalTonAmount ?: "unknown"} TON",
                                 metadata = mapOf(
-                                    "fromAsset" to (jettonMaster ?: "unknown"),
+                                    "fromAsset" to tokenSymbol,
                                     "toAsset" to "TON",
                                     "fromAmount" to (swapTokenAmount?.toDouble() ?: 0.0),
                                     "toAmount" to (minimalTonAmount?.toDouble() ?: 0.0),
