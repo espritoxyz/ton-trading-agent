@@ -172,7 +172,7 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
             <!-- Unread Count Badge -->
             <span
                 v-if="hasUnread"
-                class="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg shadow-red-500/50 animate-pulse border-2 border-white dark:border-gray-900"
+                class="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-gray-900"
             >
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
             </span>
