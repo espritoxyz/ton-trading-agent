@@ -12,7 +12,7 @@ help:
 	@printf "  make env-check   - ensure `%s` exists\n" "$(ENV_FILE)"
 	@printf "  make build       - run `$(COMPOSE) build`\n"
 	@printf "  make up          - run `$(COMPOSE) up -d`\n"
-	@printf "  make down        - run `$(COMPOSE) down --volumes --remove-orphans`\n"
+	@printf "  make down        - run `$(COMPOSE) down`\n"
 	@printf "  make restart     - down then up\n"
 	@printf "  make ui-dev      - run UI dev server in `%s`\n" "$(UI_DIR)"
 	@printf "  make ui-build    - build UI\n"
@@ -31,7 +31,7 @@ up:
 	@$(COMPOSE) up -d
 
 down:
-	@$(COMPOSE) down --volumes --remove-orphans
+	@$(COMPOSE) down
 
 restart: down up
 
@@ -48,4 +48,5 @@ stop: down
 logs:
 	@$(COMPOSE) logs -f
 
-clean: down
+clean:
+	@$(COMPOSE) down --volumes
