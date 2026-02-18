@@ -119,6 +119,8 @@ class PriceTrackerService(
                         logger.warn { "[price-tracker] Triggered tracker ${t.id} references missing order $orderId" }
                     } else if (!order.fulfilled) {
                         try {
+                            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol ?: order.jettonMaster
+
                             executeOrderSwap(order)
                             order.fulfilled = true
                             orders.save(order)
@@ -127,14 +129,13 @@ class PriceTrackerService(
                                     "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
                             }
 
-                            // Emit notification event for order fill
+                            // Notify user that order conditions are met and swap is being initiated
                             try {
-                                val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol ?: order.jettonMaster
                                 notificationEventPublisher.publishNotificationEvent(
                                     userId = order.userId,
                                     type = "ORDER_FILLED",
-                                    title = "Order Filled",
-                                    message = "Your ${order.action} order for ${order.amount} $symbol has been filled at target price ${t.targetPrice}",
+                                    title = "Order Conditions Met",
+                                    message = "Target price ${t.targetPrice} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
                                     metadata = mapOf(
                                         "orderId" to (order.id ?: 0L),
                                         "jettonMaster" to order.jettonMaster,
@@ -147,7 +148,6 @@ class PriceTrackerService(
                             } catch (e: Exception) {
                                 logger.warn(e) { "[price-tracker] Failed to publish ORDER_FILLED notification for order ${order.id}" }
                             }
-
                         } catch (e: Exception) {
                             logger.error(e) { "[price-tracker] Failed to execute swap for order ${order.id}" }
                         }
