@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, getCurrentInstance, computed } from 'vue'
+import {computed, getCurrentInstance, onMounted, ref, watch} from 'vue'
 import LandingApp from './pages/LandingPage.vue'
 import AppLayout from './layouts/AppLayout.vue'
-import ChatPanel from './components/ChatPanel.vue'
 import RoadmapPage from './pages/RoadmapPage.vue'
 import PrivacyPage from './pages/PrivacyPage.vue'
 import BlogPage from './pages/BlogPage.vue'
@@ -10,6 +9,7 @@ import TermsPage from './pages/TermsPage.vue'
 import AboutPage from './pages/AboutPage.vue'
 import CareersPage from './pages/CareersPage.vue'
 import EmailVerificationPage from './components/EmailVerificationPage.vue'
+import Dashboard from "./pages/Dashboard.vue";
 
 const route = ref(window.location.pathname || '/')
 const instance = getCurrentInstance()
@@ -63,19 +63,19 @@ onMounted(() => {
 
 <template>
   <div>
-    <component v-if="route === '/'" :is="LandingApp" />
-    <component v-else-if="route === '/roadmap'" :is="RoadmapPage" />
-    <component v-else-if="route === '/privacy'" :is="PrivacyPage" />
-    <component v-else-if="route === '/blog'" :is="BlogPage" />
-    <component v-else-if="route === '/terms'" :is="TermsPage" />
-    <component v-else-if="route === '/about'" :is="AboutPage" />
-    <component v-else-if="route === '/careers'" :is="CareersPage" />
-    <component v-else-if="verificationToken" :is="EmailVerificationPage" :token="verificationToken" />
+    <component v-if="route === '/'" :is="LandingApp"/>
+    <component v-else-if="route === '/roadmap'" :is="RoadmapPage"/>
+    <component v-else-if="route === '/privacy'" :is="PrivacyPage"/>
+    <component v-else-if="route === '/blog'" :is="BlogPage"/>
+    <component v-else-if="route === '/terms'" :is="TermsPage"/>
+    <component v-else-if="route === '/about'" :is="AboutPage"/>
+    <component v-else-if="route === '/careers'" :is="CareersPage"/>
+    <component v-else-if="verificationToken" :is="EmailVerificationPage" :token="verificationToken"/>
     <component v-else-if="route.startsWith('/app')" :is="AppLayout">
       <template v-slot>
-        <ChatPanel />
+        <Dashboard/>
       </template>
     </component>
-    <component v-else :is="LandingApp" />
+    <component v-else :is="LandingApp"/>
   </div>
 </template>
