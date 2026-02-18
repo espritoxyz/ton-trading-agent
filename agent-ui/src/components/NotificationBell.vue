@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, type Component } from 'vue'
-import { Bell, X, Check, Trash2, CheckCheck, WifiOff, Wifi, Loader, Wallet, CircleCheck, ArrowLeftRight, TrendingUp } from 'lucide-vue-next'
+import { Bell, X, Trash2, CheckCheck, WifiOff, Wifi, Wallet, CircleCheck, ArrowLeftRight, TrendingUp } from 'lucide-vue-next'
 import { useNotifications } from '../composables/useNotifications'
 import { accessToken, userId } from '../composables/useAuth'
 import type { Notification, NotificationType } from '../types'
@@ -83,15 +83,6 @@ function toggleDropdown() {
             top: `${rect.bottom + 8}px`,
             right: `${viewportWidth - rect.right}px`
         }
-    }
-}
-
-async function handleMarkAsRead(id: number, event: Event) {
-    event.stopPropagation()
-    try {
-        await markAsRead(id)
-    } catch (e) {
-        console.error('Failed to mark notification as read:', e)
     }
 }
 
@@ -281,30 +272,16 @@ const isAuthenticated = computed(() => !!accessToken.value && !!userId.value)
                         <div
                             v-for="(notification, index) in displayNotifications"
                             :key="notification.id"
-                            @click="!notification.isRead && handleMarkAsRead(notification.id, $event)"
+                            @mouseenter="!notification.isRead && markAsRead(notification.id)"
                             class="mb-1.5 p-2.5 rounded-xl transition-all duration-200 notification-item group relative"
                             :class="[
                                 !notification.isRead
-                                    ? 'bg-gradient-to-br from-blue-50/80 to-indigo-50/60 dark:from-blue-900/20 dark:to-indigo-900/15 border border-blue-200/50 dark:border-blue-700/40 shadow-sm hover:shadow-md cursor-pointer'
+                                    ? 'bg-gradient-to-br from-blue-50/80 to-indigo-50/60 dark:from-blue-900/20 dark:to-indigo-900/15 border border-blue-200/50 dark:border-blue-700/40 shadow-sm hover:shadow-md'
                                     : 'bg-white/40 dark:bg-gray-800/30 border border-gray-200/40 dark:border-gray-700/40 hover:bg-white/60 dark:hover:bg-gray-800/50 hover:shadow-sm',
                                 'hover:scale-[1.01] hover:border-gray-300/60 dark:hover:border-gray-600/60'
                             ]"
                             :style="{ animationDelay: `${index * 30}ms` }"
                         >
-                            <!-- Mark as Read Indicator (Top Left for Unread) -->
-                            <button
-                                v-if="!notification.isRead"
-                                @click="handleMarkAsRead(notification.id, $event)"
-                                class="absolute top-1.5 left-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-150 hover:scale-110 z-10"
-                                title="Mark as read"
-                            >
-                                <Check
-                                    :size="12"
-                                    class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                    :strokeWidth="2.5"
-                                />
-                            </button>
-
                             <!-- Delete Button (Top Right) -->
                             <button
                                 @click="handleDelete(notification.id, $event)"
