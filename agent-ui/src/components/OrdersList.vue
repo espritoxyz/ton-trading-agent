@@ -1,45 +1,43 @@
 <template>
   <div class="orders-list">
-    <!-- Header with Filters -->
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Orders</h3>
-
-      <!-- Filter Pills -->
-      <div class="flex gap-2">
-        <button
-            @click="filterStatus = 'all'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'all'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          All ({{ orders.length }})
-        </button>
-        <button
-            @click="filterStatus = 'active'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'active'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          Active ({{ activeOrders.length }})
-        </button>
-        <button
-            @click="filterStatus = 'fulfilled'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'fulfilled'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          Fulfilled ({{ fulfilledOrders.length }})
-        </button>
-      </div>
+    <!-- Filter Tabs -->
+    <div class="flex gap-6 border-b border-gray-200 dark:border-gray-700/60 mb-4">
+      <button
+          @click="filterStatus = 'all'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'all'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        All
+        <span class="ml-1.5 text-xs text-gray-400 dark:text-gray-500">{{ orders.length }}</span>
+      </button>
+      <button
+          @click="filterStatus = 'active'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'active'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        Active
+        <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold">{{ activeOrders.length }}</span>
+      </button>
+      <button
+          @click="filterStatus = 'fulfilled'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'fulfilled'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        Fulfilled
+        <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">{{ fulfilledOrders.length }}</span>
+      </button>
     </div>
 
     <!-- Loading State -->

@@ -61,7 +61,7 @@ if (setNavigationTabs) {
     </div>
 
     <!-- Assets Tab -->
-    <div v-else-if="activeTab === 'assets'" class="h-full overflow-auto">
+    <div v-else-if="activeTab === 'assets'" class="h-full overflow-auto page-scroller">
       <div class="glass-card p-6">
         <div class="flex items-center gap-3 mb-6">
           <div
@@ -84,7 +84,7 @@ if (setNavigationTabs) {
     </div>
 
     <!-- Transactions Tab -->
-    <div v-else-if="activeTab === 'transactions'" class="h-full overflow-auto">
+    <div v-else-if="activeTab === 'transactions'" class="h-full overflow-auto page-scroller">
       <div class="glass-card p-6">
         <div class="flex items-center gap-3 mb-6">
           <div
@@ -107,7 +107,7 @@ if (setNavigationTabs) {
     </div>
 
     <!-- Orders Tab -->
-    <div v-else-if="activeTab === 'orders'" class="h-full overflow-auto">
+    <div v-else-if="activeTab === 'orders'" class="h-full overflow-auto page-scroller">
       <div class="glass-card p-6">
         <div class="flex items-center gap-3 mb-6">
           <div
@@ -130,3 +130,29 @@ if (setNavigationTabs) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.page-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+  scrollbar-gutter: stable;
+}
+
+.page-scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page-scroller::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.page-scroller::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1, #a855f7);
+  border-radius: 10px;
+}
+
+.page-scroller::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7c3aed, #d946ef);
+}
+</style>
