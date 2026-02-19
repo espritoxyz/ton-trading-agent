@@ -33,7 +33,7 @@ object AgentPrompt {
                     if (index != dataRows.lastIndex) appendLine()
                 }
             }
-        } ?: ""
+        } ?: error("known_tokens could not be loaded") // fall on startup
 
     fun makeAgentMessage(bcAdapter: BlockchainAdapter): Message {
 
