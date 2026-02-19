@@ -99,8 +99,8 @@
                       : 'bg-orange-500/20 text-orange-400'
                   ]"
               >
-                <TrendingUp v-if="order.action === 'buy'" :size="22"/>
-                <TrendingDown v-else :size="22"/>
+                <CirclePlus v-if="order.action === 'buy'" :size="22"/>
+                <CircleMinus v-else :size="22"/>
               </div>
             </div>
 
@@ -290,7 +290,7 @@
 
 <script setup lang="ts">
 import {computed, inject, ref} from 'vue'
-import {ArrowDown, ArrowUp, Bell, Check, Trash2, TrendingDown, TrendingUp} from 'lucide-vue-next'
+import {ArrowDown, ArrowUp, Bell, Check, CircleMinus, CirclePlus, Trash2} from 'lucide-vue-next'
 import type {OrderData} from '../types'
 import {api} from '../composables/useApi'
 import {userId} from '../composables/useAuth'
