@@ -3,12 +3,14 @@ package com.agent.backend.controller
 import com.agent.backend.dto.UserInfoResponse
 import com.agent.backend.dto.UserUpdateRequest
 import com.agent.backend.dto.WalletStateResponse
+import com.agent.backend.service.OrderService
 import com.agent.backend.service.UserProvisioningService
 import com.agent.backend.service.UserService
 import com.agent.backend.service.WalletStateService
 import kotlinx.coroutines.runBlocking
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -22,7 +24,8 @@ import org.springframework.web.bind.annotation.RestController
 class UserController(
     private val userService: UserService,
     private val provisioning: UserProvisioningService,
-    private val walletStateService: WalletStateService
+    private val walletStateService: WalletStateService,
+    private val orderService: OrderService
 ) {
     /** Resolve current local userId from JWT (creates row on first visit). */
     private fun currentUserId(auth: JwtAuthenticationToken): Long {
@@ -73,16 +76,21 @@ class UserController(
         )
     }
 
-    /**
-     * Get unified wallet state (balance + assets + transactions) with caching.
-     *
-     * This endpoint replaces separate calls to /balance, /assets, and /wallet/transactions.
-     * Includes intelligent caching (8s TTL) with event-driven invalidation.
-     *
-     * @param userId User ID
-     * @param transactionsLimit Maximum number of transactions to return (default: 20)
-     * @return Complete wallet state with metadata
-     */
+    /** Delete an order by ID. Only the owning user can delete their own orders. */
+    @DeleteMapping("/{userId}/orders/{orderId}")
+    fun deleteOrder(
+        auth: JwtAuthenticationToken,
+        @PathVariable userId: Long,
+        @PathVariable orderId: Long
+    ): ResponseEntity<Unit> {
+        val current = currentUserId(auth)
+        require(current == userId) { "forbidden" }
+
+        orderService.deleteByIdForUser(userId, orderId)
+        walletStateService.invalidateCache(userId, "order deleted via UI")
+        return ResponseEntity.noContent().build()
+    }
+
     @GetMapping("/{userId}/wallet-state")
     fun getWalletState(
         auth: JwtAuthenticationToken,

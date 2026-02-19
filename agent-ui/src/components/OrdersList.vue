@@ -53,6 +53,12 @@
       {{ ordersError }}
     </div>
 
+    <!-- Delete Error -->
+    <div v-if="deleteError"
+         class="text-red-600 dark:text-red-400 text-sm p-3 bg-red-100 dark:bg-red-900/20 rounded-lg mb-4">
+      {{ deleteError }}
+    </div>
+
     <!-- Empty State -->
     <div v-else-if="filteredOrders.length === 0" class="text-gray-600 dark:text-gray-400 text-sm text-center py-8">
       <div class="flex flex-col items-center gap-2">
@@ -149,63 +155,77 @@
             </div>
           </div>
 
-          <!-- Right Section: Trigger Price Info -->
-          <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
-            <div
-                :class="[
-                  'trigger-card px-4 py-3 rounded-xl border-2',
-                  order.direction === 'UP'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
-                    : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
-                ]"
-            >
-              <div class="flex flex-col items-center gap-2">
-                <!-- Bell Icon with Direction Arrow -->
-                <div class="flex items-center gap-2">
-                  <!-- Bell Icon (lucide) -->
-                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                  </svg>
+          <!-- Right Section: Trigger Price Info + Delete Button -->
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <div v-if="order.targetPrice && order.direction">
+              <div
+                  :class="[
+                    'trigger-card px-4 py-3 rounded-xl border-2',
+                    order.direction === 'UP'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
+                      : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
+                  ]"
+              >
+                <div class="flex flex-col items-center gap-2">
+                  <!-- Bell Icon with Direction Arrow -->
+                  <div class="flex items-center gap-2">
+                    <!-- Bell Icon (lucide) -->
+                    <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
 
-                  <!-- Direction Arrow (lucide) -->
-                  <svg
-                      :class="[
-                        'w-5 h-5',
-                        order.direction === 'UP' ? 'text-emerald-400' : 'text-orange-400'
-                      ]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                  >
-                    <path
-                        v-if="order.direction === 'UP'"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2.5"
-                        d="M5 10l7-7m0 0l7 7m-7-7v18"
-                    />
-                    <path
-                        v-else
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2.5"
-                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                    />
-                  </svg>
-                </div>
+                    <!-- Direction Arrow (lucide) -->
+                    <svg
+                        :class="[
+                          'w-5 h-5',
+                          order.direction === 'UP' ? 'text-emerald-400' : 'text-orange-400'
+                        ]"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                      <path
+                          v-if="order.direction === 'UP'"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2.5"
+                          d="M5 10l7-7m0 0l7 7m-7-7v18"
+                      />
+                      <path
+                          v-else
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2.5"
+                          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                      />
+                    </svg>
+                  </div>
 
-                <!-- Trigger Text -->
-                <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                  Price {{ order.direction === 'UP' ? 'above' : 'below' }}
-                </div>
+                  <!-- Trigger Text -->
+                  <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    Price {{ order.direction === 'UP' ? 'above' : 'below' }}
+                  </div>
 
-                <!-- Target Price -->
-                <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
-                  ${{ formatTargetPrice(order.targetPrice) }}
+                  <!-- Target Price -->
+                  <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
+                    ${{ formatTargetPrice(order.targetPrice) }}
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- Delete button: only for active (non-fulfilled) orders -->
+            <button
+                v-if="!order.fulfilled"
+                @click="deleteOrder(order.id)"
+                :disabled="deletingOrderId !== null"
+                class="delete-btn p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Delete order"
+            >
+              <div v-if="deletingOrderId === order.id" class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+              <Trash2 v-else :size="16"/>
+            </button>
           </div>
         </div>
       </div>
@@ -248,7 +268,10 @@
 
 <script setup lang="ts">
 import {computed, inject, ref} from 'vue'
+import {Trash2} from 'lucide-vue-next'
 import type {OrderData} from '../types'
+import {api} from '../composables/useApi'
+import {userId} from '../composables/useAuth'
 
 // Inject wallet state from parent
 const walletState = inject<any>('walletState')
@@ -265,6 +288,8 @@ const {
 // Filter state
 const filterStatus = ref<'all' | 'active' | 'fulfilled'>('all')
 const copiedOrderId = ref<number | null>(null)
+const deletingOrderId = ref<number | null>(null)
+const deleteError = ref<string | null>(null)
 
 // Pagination
 const currentPage = ref(1)
@@ -347,6 +372,38 @@ const formatTargetPrice = (price: number): string => {
     return price.toFixed(4)
   } else {
     return price.toFixed(8).replace(/\.?0+$/, '')
+  }
+}
+
+const deleteOrder = async (orderId: number) => {
+  if (!userId.value || deletingOrderId.value !== null) return
+
+  deletingOrderId.value = orderId
+  deleteError.value = null
+
+  // Optimistic update
+  const rawState = walletState.walletState
+  const previousOrders = rawState.value?.orders ?? []
+  if (rawState.value) {
+    rawState.value = {
+      ...rawState.value,
+      orders: previousOrders.filter((o: OrderData) => o.id !== orderId)
+    }
+  }
+
+  try {
+    await api.delete(`/user/${userId.value}/orders/${orderId}`)
+  } catch (err: any) {
+    // Revert optimistic update on failure
+    if (rawState.value) {
+      rawState.value = {
+        ...rawState.value,
+        orders: previousOrders
+      }
+    }
+    deleteError.value = err.response?.data?.message || 'Failed to delete order'
+  } finally {
+    deletingOrderId.value = null
   }
 }
 
