@@ -1,16 +1,17 @@
 package com.agent.backend
 
-import com.agent.backend.db.entity.Notification
 import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.rabbitmq.NotificationEvent
 import com.agent.backend.rabbitmq.NotificationEventListener
 import com.agent.backend.service.NotificationService
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.*
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 // Kotlin/Mockito null-safety helpers
 private fun <T> any(type: Class<T>): T = ArgumentMatchers.any(type)

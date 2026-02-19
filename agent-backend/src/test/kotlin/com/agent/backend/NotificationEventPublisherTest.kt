@@ -72,11 +72,11 @@ class NotificationEventPublisherTest {
         // Then
         assertNotNull(capturedMap)
         assertEquals(2L, (capturedMap!!["userId"] as Number).toLong())
-        assertEquals("TRANSACTION_COMPLETE", capturedMap!!["type"])
-        assertEquals("Transaction Sent", capturedMap!!["title"])
-        assertEquals("Successfully sent 5.0 TON", capturedMap!!["message"])
-        assertNotNull(capturedMap!!["metadata"])
-        assertNotNull(capturedMap!!["timestamp"])
+        assertEquals("TRANSACTION_COMPLETE", capturedMap["type"])
+        assertEquals("Transaction Sent", capturedMap["title"])
+        assertEquals("Successfully sent 5.0 TON", capturedMap["message"])
+        assertNotNull(capturedMap["metadata"])
+        assertNotNull(capturedMap["timestamp"])
     }
 
     @Test
