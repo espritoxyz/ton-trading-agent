@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
 @Repository
@@ -16,12 +17,15 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
     fun countByUser_IdAndIsReadFalse(userId: Long): Long
 
     @Modifying
+    @Transactional
     fun deleteByCreatedAtBefore(cutoffDate: Instant): Int
 
     @Modifying
+    @Transactional
     fun deleteByUser_Id(userId: Long): Int
 
     @Modifying
+    @Transactional
     @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :readAt WHERE n.user.id = :userId AND n.isRead = false")
     fun markAllAsReadByUserId(userId: Long, readAt: Instant): Int
 }
