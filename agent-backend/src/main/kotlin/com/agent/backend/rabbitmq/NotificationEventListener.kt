@@ -2,7 +2,6 @@ package com.agent.backend.rabbitmq
 
 import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.service.NotificationService
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.stereotype.Component
@@ -19,16 +18,13 @@ data class NotificationEvent(
 @Component
 class NotificationEventListener(
     private val notificationService: NotificationService,
-    private val objectMapper: ObjectMapper
 ) {
     private val logger = KotlinLogging.logger {}
 
     @RabbitListener(queues = [RabbitConfig.NOTIFICATION_QUEUE])
-    fun handleNotificationEvent(message: String) {
+    fun handleNotificationEvent(event: NotificationEvent) {
         try {
-            logger.info { "Received notification event: $message" }
-
-            val event = objectMapper.readValue(message, NotificationEvent::class.java)
+            logger.info { "Received notification event for user ${event.userId}: ${event.type}" }
 
             // Validate required fields
             require(event.userId > 0) { "Invalid userId: ${event.userId}" }
@@ -56,7 +52,7 @@ class NotificationEventListener(
             logger.info { "Successfully created notification ${notification.id} for user ${event.userId}" }
 
         } catch (e: Exception) {
-            logger.error(e) { "Failed to process notification event: $message" }
+            logger.error(e) { "Failed to process notification event for user ${event.userId}: ${event.type}" }
             // Exception will cause message to be requeued or sent to DLQ based on retry policy
             throw e
         }

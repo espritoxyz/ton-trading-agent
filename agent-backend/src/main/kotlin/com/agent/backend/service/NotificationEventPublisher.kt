@@ -1,7 +1,6 @@
 package com.agent.backend.service
 
 import com.agent.backend.rabbitmq.RabbitConfig
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Component
@@ -14,7 +13,6 @@ import java.time.Instant
 @Component
 class NotificationEventPublisher(
     private val rabbitTemplate: RabbitTemplate,
-    private val objectMapper: ObjectMapper
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -45,13 +43,10 @@ class NotificationEventPublisher(
                 "timestamp" to Instant.now().toString()
             )
 
-            val eventJson = objectMapper.writeValueAsString(event)
-
-            // Set a timeout of 1 second for sending
             rabbitTemplate.convertAndSend(
                 RabbitConfig.NOTIFICATION_EXCHANGE,
                 "", // Fanout exchange doesn't use routing key
-                eventJson
+                event
             )
 
             logger.debug { "Published notification event for user $userId: $type" }

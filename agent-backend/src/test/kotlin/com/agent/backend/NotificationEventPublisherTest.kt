@@ -2,25 +2,26 @@ package com.agent.backend
 
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.NotificationEventPublisher
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.*
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+
+// Kotlin/Mockito null-safety helpers
+private fun anyString(): String = ArgumentMatchers.anyString()
+private fun <K, V> anyMap(): Map<K, V> = ArgumentMatchers.anyMap()
 
 class NotificationEventPublisherTest {
 
     private lateinit var rabbitTemplate: RabbitTemplate
-    private lateinit var objectMapper: ObjectMapper
     private lateinit var publisher: NotificationEventPublisher
 
     @BeforeEach
     fun setup() {
         rabbitTemplate = mock(RabbitTemplate::class.java)
-        objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
-        publisher = NotificationEventPublisher(rabbitTemplate, objectMapper)
+        publisher = NotificationEventPublisher(rabbitTemplate)
     }
 
     @Test
@@ -39,7 +40,7 @@ class NotificationEventPublisherTest {
         verify(rabbitTemplate).convertAndSend(
             eq(RabbitConfig.NOTIFICATION_EXCHANGE),
             eq(""),
-            anyString()
+            anyMap<String, Any>()
         )
     }
 
@@ -57,33 +58,32 @@ class NotificationEventPublisherTest {
             "currency" to "TON"
         )
 
-        // Capture the message sent
-        var capturedMessage: String? = null
+        // Capture the map sent to rabbitTemplate
+        var capturedMap: Map<*, *>? = null
         doAnswer { invocation ->
-            capturedMessage = invocation.getArgument(2) as String
+            @Suppress("UNCHECKED_CAST")
+            capturedMap = invocation.getArgument(2) as Map<*, *>
             null
-        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString())
+        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap<String, Any>())
 
         // When
         publisher.publishNotificationEvent(userId, type, title, message, metadata)
 
         // Then
-        assertNotNull(capturedMessage)
-        val eventMap = objectMapper.readValue(capturedMessage, Map::class.java)
-
-        assertEquals(2L, (eventMap["userId"] as Number).toLong())
-        assertEquals("TRANSACTION_COMPLETE", eventMap["type"])
-        assertEquals("Transaction Sent", eventMap["title"])
-        assertEquals("Successfully sent 5.0 TON", eventMap["message"])
-        assertNotNull(eventMap["metadata"])
-        assertNotNull(eventMap["timestamp"])
+        assertNotNull(capturedMap)
+        assertEquals(2L, (capturedMap!!["userId"] as Number).toLong())
+        assertEquals("TRANSACTION_COMPLETE", capturedMap!!["type"])
+        assertEquals("Transaction Sent", capturedMap!!["title"])
+        assertEquals("Successfully sent 5.0 TON", capturedMap!!["message"])
+        assertNotNull(capturedMap!!["metadata"])
+        assertNotNull(capturedMap!!["timestamp"])
     }
 
     @Test
     fun `publishNotificationEvent should not throw when RabbitMQ fails`() {
         // Given
         doThrow(RuntimeException("RabbitMQ connection failed"))
-            .`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString())
+            .`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap<String, Any>())
 
         // When/Then - should not throw
         assertDoesNotThrow {
@@ -106,19 +106,19 @@ class NotificationEventPublisherTest {
         val message = "Your order has been filled"
         val metadata = emptyMap<String, Any>()
 
-        var capturedMessage: String? = null
+        var capturedMap: Map<*, *>? = null
         doAnswer { invocation ->
-            capturedMessage = invocation.getArgument(2) as String
+            @Suppress("UNCHECKED_CAST")
+            capturedMap = invocation.getArgument(2) as Map<*, *>
             null
-        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString())
+        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap<String, Any>())
 
         // When
         publisher.publishNotificationEvent(userId, type, title, message, metadata)
 
         // Then
-        assertNotNull(capturedMessage)
-        val eventMap = objectMapper.readValue(capturedMessage, Map::class.java)
-        assertTrue((eventMap["metadata"] as Map<*, *>).isEmpty())
+        assertNotNull(capturedMap)
+        assertTrue((capturedMap!!["metadata"] as Map<*, *>).isEmpty())
     }
 
     @Test
@@ -142,20 +142,19 @@ class NotificationEventPublisherTest {
             )
         )
 
-        var capturedMessage: String? = null
+        var capturedMap: Map<*, *>? = null
         doAnswer { invocation ->
-            capturedMessage = invocation.getArgument(2) as String
+            @Suppress("UNCHECKED_CAST")
+            capturedMap = invocation.getArgument(2) as Map<*, *>
             null
-        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString())
+        }.`when`(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap<String, Any>())
 
         // When
         publisher.publishNotificationEvent(userId, type, title, message, metadata)
 
         // Then
-        assertNotNull(capturedMessage)
-        val eventMap = objectMapper.readValue(capturedMessage, Map::class.java)
-        val eventMetadata = eventMap["metadata"] as Map<*, *>
-
+        assertNotNull(capturedMap)
+        val eventMetadata = capturedMap!!["metadata"] as Map<*, *>
         assertEquals("swap-123", eventMetadata["swapId"])
         assertEquals("TON", eventMetadata["fromAsset"])
         assertNotNull(eventMetadata["nestedData"])

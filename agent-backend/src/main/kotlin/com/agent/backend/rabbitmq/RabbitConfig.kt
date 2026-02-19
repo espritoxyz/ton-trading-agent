@@ -45,7 +45,12 @@ class RabbitConfig {
     }
 
     @Bean
-    fun messageConverter() = Jackson2JsonMessageConverter()
+    fun messageConverter() = Jackson2JsonMessageConverter().apply {
+        // Use the listener method's parameter type for deserialization rather than the
+        // __TypeId__ message header. This allows publishing plain Maps while listeners
+        // that declare a typed parameter (e.g. NotificationEvent) receive the correct type.
+        setAlwaysConvertToInferredType(true)
+    }
 
     @Bean
     fun rabbitTemplate(cf: CachingConnectionFactory): RabbitTemplate =
