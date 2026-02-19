@@ -7,7 +7,6 @@ import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageHeaderAccessor
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.stereotype.Component
@@ -36,11 +35,7 @@ class WebSocketAuthInterceptor(
                 val jwt = jwtDecoder.decode(token)
                 val authentication = JwtAuthenticationToken(jwt)
 
-                // Set authentication in the accessor user
                 accessor.user = authentication
-
-                // Also set in SecurityContext for consistency
-                SecurityContextHolder.getContext().authentication = authentication
 
                 logger.info { "WebSocket authenticated for user: ${jwt.subject}" }
             } catch (e: Exception) {

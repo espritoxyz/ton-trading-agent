@@ -31,7 +31,7 @@ class WebSocketAuthorizationInterceptor(
                 throw IllegalArgumentException("Not authenticated")
             }
 
-            // Check if subscribing to /topic/notifications/{userId}
+            // Only /topic/notifications/{userId} is supported; deny everything else
             if (destination?.startsWith("/topic/notifications/") == true) {
                 val requestedUserId = destination.substring("/topic/notifications/".length).toLongOrNull()
 
@@ -51,6 +51,9 @@ class WebSocketAuthorizationInterceptor(
                 }
 
                 logger.info { "User $authenticatedUserId subscribed to notification topic" }
+            } else {
+                logger.warn { "Subscription to unrecognized topic denied: $destination" }
+                throw IllegalArgumentException("Subscription to topic $destination is not allowed")
             }
         }
 
