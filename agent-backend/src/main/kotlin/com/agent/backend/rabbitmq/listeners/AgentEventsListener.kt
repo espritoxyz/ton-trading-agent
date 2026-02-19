@@ -217,16 +217,29 @@ class AgentEventsListener(
     ) {
         try {
             val tokenSymbol = jettonMaster?.let { assetsCache.getAssetByContractAddress(it)?.symbol } ?: jettonMaster ?: "unknown"
+            val tokenDecimals = jettonMaster?.let { assetsCache.getDecimals(it) } ?: 9
+            val swapTonAmountHuman = swapTonAmount?.let { nano ->
+                BigDecimal(nano.toLong())
+                    .divide(BigDecimal.TEN.pow(9), 9, RoundingMode.HALF_UP)
+                    .stripTrailingZeros()
+                    .toPlainString()
+            } ?: "unknown"
+            val minimalTokenAmountHuman = minimalTokenAmount?.let { nano ->
+                BigDecimal(nano.toLong())
+                    .divide(BigDecimal.TEN.pow(tokenDecimals), tokenDecimals, RoundingMode.HALF_UP)
+                    .stripTrailingZeros()
+                    .toPlainString()
+            } ?: "unknown"
             notificationEventPublisher.publishNotificationEvent(
                 userId = userId,
                 type = "SWAP_EXECUTED",
                 title = "Swap Executed",
-                message = "Swapped ${swapTonAmount ?: "unknown"} TON for ${minimalTokenAmount ?: "unknown"} $tokenSymbol",
+                message = "Swapped $swapTonAmountHuman TON for $minimalTokenAmountHuman $tokenSymbol",
                 metadata = mapOf(
                     "fromAsset" to "TON",
                     "toAsset" to tokenSymbol,
-                    "fromAmount" to (swapTonAmount?.toDouble() ?: 0.0),
-                    "toAmount" to (minimalTokenAmount?.toDouble() ?: 0.0),
+                    "fromAmount" to (swapTonAmountHuman.toDoubleOrNull() ?: 0.0),
+                    "toAmount" to (minimalTokenAmountHuman.toDoubleOrNull() ?: 0.0),
                     "transactionId" to (txId ?: "")
                 )
             )
