@@ -3,7 +3,6 @@ package com.agent.backend.scheduler
 import com.agent.backend.db.rep.NotificationRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -11,7 +10,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @Component
-@EnableScheduling
 class NotificationCleanupScheduler(
     private val notificationRepository: NotificationRepository,
     @Value("\${notification.retention.days:90}")
