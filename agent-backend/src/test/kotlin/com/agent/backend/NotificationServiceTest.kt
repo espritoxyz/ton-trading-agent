@@ -6,13 +6,18 @@ import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.db.rep.AgentUserRepository
 import com.agent.backend.db.rep.NotificationRepository
 import com.agent.backend.service.NotificationService
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.mockito.Mockito.*
+import org.mockito.Mockito.any
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.messaging.simp.SimpMessagingTemplate
@@ -23,7 +28,6 @@ class NotificationServiceTest {
 
     private lateinit var notificationRepository: NotificationRepository
     private lateinit var userRepository: AgentUserRepository
-    private lateinit var objectMapper: ObjectMapper
     private lateinit var messagingTemplate: SimpMessagingTemplate
     private lateinit var notificationService: NotificationService
 
@@ -34,13 +38,11 @@ class NotificationServiceTest {
     fun setup() {
         notificationRepository = mock(NotificationRepository::class.java)
         userRepository = mock(AgentUserRepository::class.java)
-        objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
         messagingTemplate = mock(SimpMessagingTemplate::class.java)
 
         notificationService = NotificationService(
             notificationRepository,
             userRepository,
-            objectMapper,
             messagingTemplate
         )
 
@@ -58,7 +60,7 @@ class NotificationServiceTest {
             type = NotificationType.BALANCE_CHANGE,
             title = "Balance Updated",
             message = "Your balance changed",
-            metadata = """{"amount": 100.0, "currency": "USD"}""",
+            metadata = mapOf("amount" to 100.0, "currency" to "USD"),
             isRead = false,
             createdAt = Instant.now()
         )
@@ -168,7 +170,7 @@ class NotificationServiceTest {
             type = NotificationType.BALANCE_CHANGE,
             title = "Balance Updated",
             message = "Your balance changed",
-            metadata = """{"amount": 100.0}""",
+            metadata = mapOf("amount" to 100.0),
             isRead = false,
             createdAt = Instant.now()
         )
@@ -203,7 +205,7 @@ class NotificationServiceTest {
             type = NotificationType.BALANCE_CHANGE,
             title = "Balance Updated",
             message = "Your balance changed",
-            metadata = """{"amount": 100.0}""",
+            metadata = mapOf("amount" to 100.0),
             isRead = true,
             createdAt = Instant.now(),
             readAt = Instant.now()

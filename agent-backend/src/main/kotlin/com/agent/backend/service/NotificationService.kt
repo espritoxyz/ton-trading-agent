@@ -5,7 +5,6 @@ import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.db.rep.AgentUserRepository
 import com.agent.backend.db.rep.NotificationRepository
 import com.agent.backend.dto.NotificationResponse
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional
 class NotificationService(
     private val notificationRepository: NotificationRepository,
     private val userRepository: AgentUserRepository,
-    private val objectMapper: ObjectMapper,
     private val messagingTemplate: SimpMessagingTemplate
 ) {
     private val logger = KotlinLogging.logger {}
@@ -38,7 +36,7 @@ class NotificationService(
             type = type,
             title = title,
             message = message,
-            metadata = objectMapper.writeValueAsString(metadata)
+            metadata = metadata
         )
 
         val savedNotification = notificationRepository.save(notification)
@@ -55,7 +53,7 @@ class NotificationService(
      */
     private fun broadcastNotificationToUser(userId: Long, notification: Notification) {
         try {
-            val response = NotificationResponse.from(notification, objectMapper)
+            val response = NotificationResponse.from(notification)
             messagingTemplate.convertAndSend("/topic/notifications/$userId", response)
             logger.info { "Broadcasted notification ${notification.id} to user $userId via WebSocket" }
         } catch (e: Exception) {
@@ -109,7 +107,7 @@ class NotificationService(
     }
 
     fun toResponse(notification: Notification): NotificationResponse {
-        return NotificationResponse.from(notification, objectMapper)
+        return NotificationResponse.from(notification)
     }
 
     @Transactional
@@ -141,6 +139,7 @@ class NotificationService(
                     "Your $currency balance has changed by $amount"
                 )
             }
+
             NotificationType.TRANSACTION_COMPLETE -> {
                 val status = metadata["status"] as? String
                 val amount = metadata["amount"]
@@ -152,6 +151,7 @@ class NotificationService(
                 }
                 Pair("Transaction Complete", message)
             }
+
             NotificationType.SWAP_EXECUTED -> {
                 val fromAmount = metadata["fromAmount"]
                 val fromAsset = metadata["fromAsset"]
@@ -162,6 +162,7 @@ class NotificationService(
                     "Swapped $fromAmount $fromAsset for $toAmount $toAsset"
                 )
             }
+
             NotificationType.ORDER_FILLED -> {
                 val status = metadata["status"] as? String
                 if (status == "cancelled") {

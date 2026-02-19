@@ -7,11 +7,19 @@ import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.dto.NotificationResponse
 import com.agent.backend.service.NotificationService
 import com.agent.backend.service.UserProvisioningService
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.*
+import org.mockito.Mockito.doNothing
+import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
@@ -56,7 +64,7 @@ class NotificationControllerTest {
             type = NotificationType.BALANCE_CHANGE,
             title = "Balance Updated",
             message = "Your balance changed",
-            metadata = """{"amount": 100.0}""",
+            metadata = mapOf("amount" to 100.0),
             isRead = false,
             createdAt = Instant.now()
         )
@@ -143,7 +151,7 @@ class NotificationControllerTest {
             type = NotificationType.BALANCE_CHANGE,
             title = "Balance Updated",
             message = "Your balance changed",
-            metadata = """{"amount": 100.0}""",
+            metadata = mapOf("amount" to 100.0),
             isRead = true,
             createdAt = testNotification.createdAt,
             readAt = Instant.now()
