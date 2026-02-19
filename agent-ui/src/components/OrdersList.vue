@@ -174,9 +174,8 @@
                   ]"
               >
                 <div class="flex flex-col items-center gap-2">
-                  <!-- Bell Icon with Direction Arrow -->
+                  <!-- Direction Arrow -->
                   <div class="flex items-center gap-2">
-                    <Bell :size="16" class="text-gray-500 dark:text-gray-400"/>
                     <ArrowUp
                         v-if="order.direction === 'UP'"
                         :size="20"
@@ -288,7 +287,7 @@
 
 <script setup lang="ts">
 import {computed, inject, ref} from 'vue'
-import {ArrowDown, ArrowUp, Bell, Check, CircleMinus, CirclePlus, Trash2} from 'lucide-vue-next'
+import {ArrowDown, ArrowUp, Check, CircleMinus, CirclePlus, Trash2} from 'lucide-vue-next'
 import type {OrderData} from '../types'
 import {api} from '../composables/useApi'
 import {userId} from '../composables/useAuth'
