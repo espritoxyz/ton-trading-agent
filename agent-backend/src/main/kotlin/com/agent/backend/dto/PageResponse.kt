@@ -26,6 +26,22 @@ data class PageResponse<T>(
             )
         }
 
+        fun <T, R> from(list: List<T>, transform: (T) -> R): PageResponse<R> {
+            val content = list.map(transform)
+            return PageResponse(
+                content = content,
+                page = PageMetadata(
+                    number = 0,
+                    size = list.size,
+                    totalElements = list.size.toLong(),
+                    totalPages = if (list.isEmpty()) 0 else 1,
+                    first = true,
+                    last = true,
+                    empty = list.isEmpty()
+                )
+            )
+        }
+
         fun <T, R> from(page: Page<T>, transform: (T) -> R): PageResponse<R> {
             return PageResponse(
                 content = page.content.map(transform),

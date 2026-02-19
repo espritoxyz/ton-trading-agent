@@ -40,14 +40,7 @@ class NotificationController(
 
         return if (unread) {
             val notifications = notificationService.getUnreadNotifications(userId)
-            val responses = notifications.map { notificationService.toResponse(it) }
-            // Convert list to a page-like response (simplified for unread filter)
-            val pageImpl = org.springframework.data.domain.PageImpl(
-                responses,
-                PageRequest.of(0, responses.size.coerceAtLeast(1)),
-                responses.size.toLong()
-            )
-            ResponseEntity.ok(PageResponse.from(pageImpl))
+            ResponseEntity.ok(PageResponse.from(notifications) { notificationService.toResponse(it) })
         } else {
             val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             val notifications = notificationService.getUserNotifications(userId, pageable)
