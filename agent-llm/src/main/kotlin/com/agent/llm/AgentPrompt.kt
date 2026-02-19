@@ -7,6 +7,34 @@ object AgentPrompt {
 
     const val utilitySummarizeAnchor = "[UTILITY] Summarize request processing results"
 
+    val knownTokensInline: String = AgentPrompt::class.java
+        .getResourceAsStream("/known_tokens.csv")
+        ?.bufferedReader()
+        ?.useLines { lines ->
+            val rows = lines
+                .filter { it.isNotBlank() }
+                .map { it.split(',') }
+                .filter { it.size >= 2 }
+                .toList()
+
+            if (rows.isEmpty()) {
+                ""
+            } else buildString {
+                append("LowercaseSymbol")
+                append("    ")
+                append("JettonMaster")
+                appendLine()
+                appendLine()
+                val dataRows = rows.drop(1)
+                dataRows.forEachIndexed { index, cols ->
+                    append(cols[0].trim())
+                    append("    ")
+                    append(cols[1].trim())
+                    if (index != dataRows.lastIndex) appendLine()
+                }
+            }
+        } ?: error("known_tokens could not be loaded") // fall on startup
+
     fun makeAgentMessage(bcAdapter: BlockchainAdapter): Message {
 
         val promptText = """
@@ -14,11 +42,16 @@ START OF AGENT PARAMETERS
 {
     userId: ${bcAdapter.userId}
 }
-END OF AGENT PARAMETERS    
-            
-START OF AGENT DESCRIPTION.
+END OF AGENT PARAMETERS
+
+START OF KNOWN TOKENS
+$knownTokensInline
+END OF KNOWN TOKENS
+
+START OF AGENT DESCRIPTION
             
 1. GENERAL CONTEXT DESCRIPTION:
+
 You are TON Trading Agent, a cautious assistant that helps a single authenticated user inspect their TON balances and execute blockchain operations via tools.
 You operate in an environment where:
 
@@ -53,9 +86,11 @@ If user asks to sell some token, it means swapping that token to TON.
 
 Swapping token A to token B is performed by swapping token A to TON and received amount of TON to token B.
 
-When the user mentions USDT, USD, USD₮, etc., use jetton master EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs UNTIL SPECIFIED AGAINST IT BY USER. DO NOT CALL get_candidate_assets FOR USDT-RELATED SYMBOLS UNTIL USER SPECIFIES AGAINST THIS.
-
-When the user mentions a token symbol/ticker, you MUST call get_candidate_assets to obtain candidates. Then select the best master by comparing 'norm_symbol' strings. If multiple plausible matches, return alternatives ("symbol — its jetton master" in a list). The only exception is USDT, described above.
+When the user mentions a token symbol/ticker, you must correctly identify corresponding jetton master to perform operations.
+Strictly follow the pipeline described below to obtain correct jetton master:
+1. Consult 'KNOWN TOKENS' section at the beginning of this prompt to find the exact lowercase match for the symbol (ticker)
+2. If you could not match the symbol, call 'get_candidate_assets' tool to obtain candidates.
+3. Select the best jetton master by comparing 'norm_symbol' strings. If multiple plausible matches, return alternatives ("symbol — its jetton master" in a list).
 
 2.2. User identity, limits, and safety
 
@@ -185,7 +220,7 @@ When you do not know something or lack a tool to do it safely, say so honestly a
 
 You must strictly follow these rules at all times when assisting the user with TON trading and blockchain-related operations.
 
-END OF AGENT DESCRIPTION.
+END OF AGENT DESCRIPTION
         """.trimIndent()
         return Message.system(
             promptText
