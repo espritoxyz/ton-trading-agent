@@ -1,9 +1,11 @@
 package com.agent.backend.rabbitmq.listeners
 
+import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationEventPublisher
+import com.agent.backend.service.NotificationService
 import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -20,6 +22,7 @@ class AgentEventsListener(
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
     private val notificationEventPublisher: NotificationEventPublisher,
+    private val notificationService: NotificationService,
     private val assetsCache: StonfiAssetsCacheService,
 ) {
     companion object {
@@ -230,18 +233,20 @@ class AgentEventsListener(
                     .stripTrailingZeros()
                     .toPlainString()
             } ?: "unknown"
+            val metadata = mapOf<String, Any>(
+                "fromAsset" to "TON",
+                "toAsset" to tokenSymbol,
+                "fromAmount" to swapTonAmountHuman,
+                "toAmount" to minimalTokenAmountHuman,
+                "transactionId" to (txId ?: "")
+            )
+            val (title, message) = notificationService.generateNotificationText(NotificationType.SWAP_EXECUTED, metadata)
             notificationEventPublisher.publishNotificationEvent(
                 userId = userId,
                 type = "SWAP_EXECUTED",
-                title = "Swap Executed",
-                message = "Swapped $swapTonAmountHuman TON for $minimalTokenAmountHuman $tokenSymbol",
-                metadata = mapOf(
-                    "fromAsset" to "TON",
-                    "toAsset" to tokenSymbol,
-                    "fromAmount" to (swapTonAmountHuman.toDoubleOrNull() ?: 0.0),
-                    "toAmount" to (minimalTokenAmountHuman.toDoubleOrNull() ?: 0.0),
-                    "transactionId" to (txId ?: "")
-                )
+                title = title,
+                message = message,
+                metadata = metadata
             )
         } catch (e: Exception) {
             logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }
@@ -264,18 +269,20 @@ class AgentEventsListener(
                     .stripTrailingZeros()
                     .toPlainString()
             } ?: "unknown"
+            val metadata = mapOf<String, Any>(
+                "fromAsset" to tokenSymbol,
+                "toAsset" to "TON",
+                "fromAmount" to swapTokenAmountHuman,
+                "toAmount" to (minimalTonAmount?.toString() ?: "unknown"),
+                "transactionId" to (txId ?: "")
+            )
+            val (title, message) = notificationService.generateNotificationText(NotificationType.SWAP_EXECUTED, metadata)
             notificationEventPublisher.publishNotificationEvent(
                 userId = userId,
                 type = "SWAP_EXECUTED",
-                title = "Swap Executed",
-                message = "Swapped $swapTokenAmountHuman $tokenSymbol for ${minimalTonAmount ?: "unknown"} TON",
-                metadata = mapOf(
-                    "fromAsset" to tokenSymbol,
-                    "toAsset" to "TON",
-                    "fromAmount" to (swapTokenAmountHuman.toDoubleOrNull() ?: 0.0),
-                    "toAmount" to (minimalTonAmount?.toDouble() ?: 0.0),
-                    "transactionId" to (txId ?: "")
-                )
+                title = title,
+                message = message,
+                metadata = metadata
             )
         } catch (e: Exception) {
             logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }

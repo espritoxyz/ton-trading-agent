@@ -108,6 +108,10 @@ class NotificationService(
         notificationRepository.delete(notification)
     }
 
+    fun toResponse(notification: Notification): NotificationResponse {
+        return NotificationResponse.from(notification, objectMapper)
+    }
+
     @Transactional
     fun deleteAllNotifications(userId: Long): Int {
         val deletedCount = notificationRepository.deleteByUser_Id(userId)
@@ -132,47 +136,49 @@ class NotificationService(
             NotificationType.BALANCE_CHANGE -> {
                 val amount = metadata["amount"] ?: "unknown"
                 val currency = metadata["currency"] ?: "TON"
-                val title = "Balance Updated"
-                val message = "Your $currency balance changed by $amount"
-                Pair(title, message)
+                Pair(
+                    "Balance Updated",
+                    "Your $currency balance has changed by $amount"
+                )
             }
             NotificationType.TRANSACTION_COMPLETE -> {
                 val status = metadata["status"] as? String
                 val amount = metadata["amount"]
                 val currency = metadata["currency"] ?: "TON"
-                val title = "Transaction Complete"
                 val message = when (status) {
                     "success" -> "Successfully sent $amount $currency"
                     "failed" -> "Transaction failed: ${metadata["errorReason"] ?: "Unknown error"}"
                     else -> "Transaction completed"
                 }
-                Pair(title, message)
+                Pair("Transaction Complete", message)
             }
             NotificationType.SWAP_EXECUTED -> {
                 val fromAmount = metadata["fromAmount"]
                 val fromAsset = metadata["fromAsset"]
                 val toAmount = metadata["toAmount"]
                 val toAsset = metadata["toAsset"]
-                val title = "Swap Executed"
-                val message = "Swapped $fromAmount $fromAsset for $toAmount $toAsset"
-                Pair(title, message)
+                Pair(
+                    "Swap Executed",
+                    "Swapped $fromAmount $fromAsset for $toAmount $toAsset"
+                )
             }
             NotificationType.ORDER_FILLED -> {
                 val status = metadata["status"] as? String
                 if (status == "cancelled") {
                     val orderId = metadata["orderId"]
-                    val title = "Order Cancelled"
-                    val message = "Order #$orderId was cancelled"
-                    Pair(title, message)
+                    Pair(
+                        "Order Cancelled",
+                        "Order #$orderId was cancelled"
+                    )
                 } else {
                     val side = metadata["side"] ?: "buy"
                     val quantity = metadata["quantity"] ?: metadata["filledQuantity"]
                     val symbol = metadata["symbol"]
                     val price = metadata["price"]
-                    val fillType = metadata["fillType"] ?: "full"
-                    val title = "Order Filled"
-                    val message = "Your $side order for $quantity $symbol at $price has been $fillType filled"
-                    Pair(title, message)
+                    Pair(
+                        "Order Conditions Met",
+                        "Target price $price reached for your $side order of $quantity $symbol. Initiating swap..."
+                    )
                 }
             }
         }

@@ -321,9 +321,10 @@ class NotificationServiceTest {
         )
 
         // Then
-        assertEquals("Order Filled", title)
+        assertEquals("Order Conditions Met", title)
         assertTrue(message.contains("buy"))
         assertTrue(message.contains("10"))
         assertTrue(message.contains("USDT"))
+        assertTrue(message.contains("5.0"))
     }
 }

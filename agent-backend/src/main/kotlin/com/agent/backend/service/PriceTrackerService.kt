@@ -1,6 +1,7 @@
 package com.agent.backend.service
 
 import com.agent.backend.db.entity.Direction
+import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.db.entity.Order
 import com.agent.backend.db.entity.PriceTracker
 import com.agent.backend.db.rep.OrderRepository
@@ -21,6 +22,7 @@ class PriceTrackerService(
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
     private val orderService: OrderService,
     private val notificationEventPublisher: NotificationEventPublisher,
+    private val notificationService: NotificationService,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -133,19 +135,24 @@ class PriceTrackerService(
 
                             // Notify user that order conditions are met and swap is being initiated
                             try {
+                                val metadata = mapOf<String, Any>(
+                                    "orderId" to (order.id ?: 0L),
+                                    "jettonMaster" to order.jettonMaster,
+                                    "side" to order.action,
+                                    "quantity" to order.amount.toPlainString(),
+                                    "symbol" to symbol,
+                                    "price" to t.targetPrice.toPlainString(),
+                                    "fillType" to "fully"
+                                )
+                                val (title, message) = notificationService.generateNotificationText(
+                                    NotificationType.ORDER_FILLED, metadata
+                                )
                                 notificationEventPublisher.publishNotificationEvent(
                                     userId = order.userId,
                                     type = "ORDER_FILLED",
-                                    title = "Order Conditions Met",
-                                    message = "Target price ${t.targetPrice.toPlainString()} reached for your ${order.action} order of ${order.amount} $symbol. Initiating swap...",
-                                    metadata = mapOf(
-                                        "orderId" to (order.id ?: 0L),
-                                        "jettonMaster" to order.jettonMaster,
-                                        "action" to order.action,
-                                        "amount" to order.amount,
-                                        "targetPrice" to t.targetPrice,
-                                        "fillType" to "full"
-                                    )
+                                    title = title,
+                                    message = message,
+                                    metadata = metadata
                                 )
                             } catch (e: Exception) {
                                 logger.warn(e) { "[price-tracker] Failed to publish ORDER_FILLED notification for order ${order.id}" }
