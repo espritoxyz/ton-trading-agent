@@ -1,6 +1,6 @@
 package com.agent.backend.db.entity
 
-enum class NotificationType {
+enum class  NotificationType {
     BALANCE_CHANGE,
     TRANSACTION_COMPLETE,
     SWAP_EXECUTED,
