@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, type Component } from 'vue'
-import { Bell, X, Trash2, CheckCheck, WifiOff, Wifi, Wallet, CircleCheck, ArrowLeftRight, TrendingUp } from 'lucide-vue-next'
+import { Bell, X, Trash2, CheckCheck, WifiOff, Wifi, Wallet, CircleCheck, ArrowLeftRight, ClipboardCheck, TrendingUpDown } from 'lucide-vue-next'
 import { useNotifications } from '../composables/useNotifications'
 import { accessToken, userId } from '../composables/useAuth'
 import type { Notification, NotificationType } from '../types'
@@ -127,7 +127,9 @@ function getNotificationIcon(type: NotificationType): Component {
         case 'SWAP_EXECUTED':
             return ArrowLeftRight
         case 'ORDER_FILLED':
-            return TrendingUp
+            return ClipboardCheck
+        case 'TRACKER_TRIGGERED':
+            return TrendingUpDown
         default:
             return Bell
     }

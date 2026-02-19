@@ -144,6 +144,7 @@ export type NotificationType =
     | 'TRANSACTION_COMPLETE'
     | 'SWAP_EXECUTED'
     | 'ORDER_FILLED'
+    | 'TRACKER_TRIGGERED'
 
 export interface Notification {
     id: number
@@ -196,12 +197,21 @@ export interface OrderFilledMetadata {
     reason?: string
 }
 
+export interface TrackerTriggeredMetadata {
+    trackerId: number
+    jettonMaster: string
+    symbol: string
+    targetPrice: string
+    direction: 'UP' | 'DOWN'
+}
+
 // Union type for all metadata types
 export type NotificationMetadata =
     | BalanceChangeMetadata
     | TransactionCompleteMetadata
     | SwapExecutedMetadata
     | OrderFilledMetadata
+    | TrackerTriggeredMetadata
 
 // Utility functions to parse and validate notification metadata
 export function parseNotificationMetadata<T extends NotificationMetadata>(

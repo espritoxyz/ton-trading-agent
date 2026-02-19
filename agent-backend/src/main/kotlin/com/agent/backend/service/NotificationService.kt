@@ -182,6 +182,17 @@ class NotificationService(
                     )
                 }
             }
+
+            NotificationType.TRACKER_TRIGGERED -> {
+                val symbol = metadata["symbol"]
+                val price = metadata["targetPrice"]
+                val direction = metadata["direction"]
+                val directionText = if (direction == "UP") "risen to" else "fallen to"
+                Pair(
+                    "Price Alert Triggered",
+                    "$symbol has $directionText $price"
+                )
+            }
         }
     }
 }

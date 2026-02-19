@@ -115,8 +115,7 @@ class PriceTrackerService(
                 logger.debug { "Triggered tracker $t" }
                 priceTrackers.save(t)
 
-                // If this tracker is linked to an order, execute the corresponding swap automatically.
-                t.orderId?.let { orderId ->
+                 t.orderId?.let { orderId ->
                     val order = orders.findById(orderId).orElse(null)
                     if (order == null) {
                         logger.warn { "[price-tracker] Triggered tracker ${t.id} references missing order $orderId" }
@@ -161,8 +160,7 @@ class PriceTrackerService(
                             logger.error(e) { "[price-tracker] Failed to execute swap for order ${order.id}" }
                         }
                     }
-                }
-                notifyUser(t.userId, t)
+                } ?: notifyUser(t.userId, t)
             }
         }
     }
@@ -190,6 +188,29 @@ class PriceTrackerService(
         logger.info {
             "[price-tracker] Triggered for user=$userId jetton=${tracker.jettonMaster} direction=${tracker.direction} " +
                     "target=${tracker.targetPrice}"
+        }
+        try {
+            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(tracker.jettonMaster)?.symbol
+                ?: tracker.jettonMaster
+            val metadata = mapOf<String, Any>(
+                "trackerId" to (tracker.id ?: 0L),
+                "jettonMaster" to tracker.jettonMaster,
+                "symbol" to symbol,
+                "targetPrice" to tracker.targetPrice.toPlainString(),
+                "direction" to tracker.direction.name,
+            )
+            val (title, message) = notificationService.generateNotificationText(
+                NotificationType.TRACKER_TRIGGERED, metadata
+            )
+            notificationEventPublisher.publishNotificationEvent(
+                userId = userId,
+                type = "TRACKER_TRIGGERED",
+                title = title,
+                message = message,
+                metadata = metadata
+            )
+        } catch (e: Exception) {
+            logger.warn(e) { "[price-tracker] Failed to publish TRACKER_TRIGGERED notification for tracker ${tracker.id}" }
         }
     }
 }
