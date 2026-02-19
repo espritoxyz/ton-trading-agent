@@ -16,7 +16,8 @@ import kotlin.math.pow
 open class BalanceService(
     private val assetService: AssetService,
     private val txRepo: BalanceTransactionRepository,
-    private val stonfiAssetsCache: StonfiAssetsCacheService
+    private val stonfiAssetsCache: StonfiAssetsCacheService,
+    private val notificationEventPublisher: NotificationEventPublisher
 ) {
     private val tonAddress = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
 
@@ -51,7 +52,23 @@ open class BalanceService(
     open fun recordTransaction(userId: Long, type: String, amountUsd: Double, reference: String? = null) : BalanceTransaction {
         val cents = kotlin.math.round(amountUsd * 100).toLong()
         val tx = BalanceTransaction(userId = userId, type = type, amountUsdCents = cents, reference = reference)
-        return txRepo.save(tx)
+        val saved = txRepo.save(tx)
+
+        // Publish notification event for balance change
+        notificationEventPublisher.publishNotificationEvent(
+            userId = userId,
+            type = "BALANCE_CHANGE",
+            title = "Balance Updated",
+            message = "Your balance changed by $${String.format("%.2f", amountUsd)} ($type)",
+            metadata = mapOf(
+                "amount" to amountUsd,
+                "currency" to "USD",
+                "type" to type,
+                "reference" to (reference ?: "")
+            )
+        )
+
+        return saved
     }
 
     private fun priceUsdPerUnit(address: String): Double {
