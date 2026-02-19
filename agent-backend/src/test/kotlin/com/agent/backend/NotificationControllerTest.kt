@@ -31,7 +31,7 @@ import java.time.Instant
 // Helper functions to work around Mockito/Kotlin nullability issues
 private fun <T> any(type: Class<T>): T = ArgumentMatchers.any(type)
 private fun anyLong(): Long = ArgumentMatchers.anyLong()
-private fun anyString(): String = ArgumentMatchers.anyString()
+private fun anyString(): String = ArgumentMatchers.anyString() ?: ""
 
 class NotificationControllerTest {
 

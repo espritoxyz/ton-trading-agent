@@ -19,8 +19,10 @@ import java.util.UUID
 // Kotlin/Mockito null-safety helpers
 private fun <T> any(type: Class<T>): T = ArgumentMatchers.any(type)
 private fun anyLong(): Long = ArgumentMatchers.anyLong()
-private fun anyString(): String = ArgumentMatchers.anyString()
+private fun anyString(): String = ArgumentMatchers.anyString() ?: ""
 private fun <K, V> anyMap(): Map<K, V> = ArgumentMatchers.anyMap()
+// Unconstrained T prevents Kotlin from adding intrinsic null checks on ArgumentCaptor.capture()
+private fun <T> captureArg(captor: ArgumentCaptor<T>): T = captor.capture()
 
 class AgentEventsListenerTest {
 
@@ -77,7 +79,7 @@ class AgentEventsListenerTest {
         @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
         verify(notificationEventPublisher).publishNotificationEvent(
-            anyLong(), anyString(), anyString(), anyString(), captor.capture()
+            anyLong(), anyString(), anyString(), anyString(), captureArg(captor)
         )
         val metadata = captor.value
         assertEquals("TON", metadata["fromAsset"])
@@ -96,7 +98,7 @@ class AgentEventsListenerTest {
         @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
         verify(notificationEventPublisher).publishNotificationEvent(
-            anyLong(), anyString(), anyString(), anyString(), captor.capture()
+            anyLong(), anyString(), anyString(), anyString(), captureArg(captor)
         )
         assertEquals(jettonMaster, captor.value["toAsset"])
     }
@@ -136,7 +138,7 @@ class AgentEventsListenerTest {
         @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
         verify(notificationEventPublisher).publishNotificationEvent(
-            anyLong(), anyString(), anyString(), anyString(), captor.capture()
+            anyLong(), anyString(), anyString(), anyString(), captureArg(captor)
         )
         val metadata = captor.value
         assertEquals("USDT", metadata["fromAsset"])
@@ -162,7 +164,7 @@ class AgentEventsListenerTest {
         @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
         verify(notificationEventPublisher).publishNotificationEvent(
-            anyLong(), anyString(), anyString(), anyString(), captor.capture()
+            anyLong(), anyString(), anyString(), anyString(), captureArg(captor)
         )
         assertEquals("1.5", captor.value["fromAmount"])
     }
