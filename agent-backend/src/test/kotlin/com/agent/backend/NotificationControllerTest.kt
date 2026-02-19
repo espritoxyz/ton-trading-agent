@@ -7,8 +7,6 @@ import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.dto.NotificationResponse
 import com.agent.backend.service.NotificationService
 import com.agent.backend.service.UserProvisioningService
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -31,19 +29,18 @@ class NotificationControllerTest {
 
     private lateinit var notificationService: NotificationService
     private lateinit var provisioning: UserProvisioningService
-    private lateinit var objectMapper: ObjectMapper
     private lateinit var controller: NotificationController
 
     private lateinit var testUser: AgentUser
     private lateinit var testNotification: Notification
+    private lateinit var testNotificationResponse: NotificationResponse
     private lateinit var authToken: JwtAuthenticationToken
 
     @BeforeEach
     fun setup() {
         notificationService = mock(NotificationService::class.java)
         provisioning = mock(UserProvisioningService::class.java)
-        objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
-        controller = NotificationController(notificationService, provisioning, objectMapper)
+        controller = NotificationController(notificationService, provisioning)
 
         // Setup test data
         testUser = AgentUser(
@@ -63,6 +60,18 @@ class NotificationControllerTest {
             isRead = false,
             createdAt = Instant.now()
         )
+
+        testNotificationResponse = NotificationResponse(
+            id = 1L,
+            type = NotificationType.BALANCE_CHANGE,
+            title = "Balance Updated",
+            message = "Your balance changed",
+            metadata = mapOf("amount" to 100.0),
+            isRead = false,
+            createdAt = testNotification.createdAt,
+            readAt = null
+        )
+        `when`(notificationService.toResponse(any(Notification::class.java))).thenReturn(testNotificationResponse)
 
         // Mock JWT token
         val jwt = mock(Jwt::class.java)
@@ -140,6 +149,8 @@ class NotificationControllerTest {
             readAt = Instant.now()
         )
         `when`(notificationService.markAsRead(1L, 1L)).thenReturn(readNotification)
+        val readResponse = testNotificationResponse.copy(isRead = true, readAt = readNotification.readAt)
+        `when`(notificationService.toResponse(readNotification)).thenReturn(readResponse)
 
         // When
         val response = controller.markAsRead(authToken, 1L)

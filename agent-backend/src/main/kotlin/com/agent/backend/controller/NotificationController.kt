@@ -5,7 +5,6 @@ import com.agent.backend.dto.PageResponse
 import com.agent.backend.dto.UnreadCountResponse
 import com.agent.backend.service.NotificationService
 import com.agent.backend.service.UserProvisioningService
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.*
 class NotificationController(
     private val notificationService: NotificationService,
     private val provisioning: UserProvisioningService,
-    private val objectMapper: ObjectMapper
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -42,7 +40,7 @@ class NotificationController(
 
         return if (unread) {
             val notifications = notificationService.getUnreadNotifications(userId)
-            val responses = notifications.map { NotificationResponse.from(it, objectMapper) }
+            val responses = notifications.map { notificationService.toResponse(it) }
             // Convert list to a page-like response (simplified for unread filter)
             val pageImpl = org.springframework.data.domain.PageImpl(
                 responses,
@@ -53,7 +51,7 @@ class NotificationController(
         } else {
             val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
             val notifications = notificationService.getUserNotifications(userId, pageable)
-            val response = PageResponse.from(notifications) { NotificationResponse.from(it, objectMapper) }
+            val response = PageResponse.from(notifications) { notificationService.toResponse(it) }
             ResponseEntity.ok(response)
         }
     }
@@ -74,7 +72,7 @@ class NotificationController(
 
         return try {
             val notification = notificationService.markAsRead(id, userId)
-            ResponseEntity.ok(NotificationResponse.from(notification, objectMapper))
+            ResponseEntity.ok(notificationService.toResponse(notification))
         } catch (_: NoSuchElementException) {
             logger.warn { "Notification not found: $id" }
             ResponseEntity.notFound().build()
