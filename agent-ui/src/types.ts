@@ -155,6 +155,8 @@ export interface Notification {
     isRead: boolean
     createdAt: string
     readAt?: string | null
+    /** When true, this is a UI-refresh signal only and must not be displayed as a notification. */
+    refreshOnly?: boolean
 }
 
 // Metadata type interfaces for each notification type

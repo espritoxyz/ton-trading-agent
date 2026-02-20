@@ -2,6 +2,7 @@ package com.agent.backend.llm
 
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.NotificationService
 import com.agent.backend.service.OrderService
 import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
@@ -41,6 +42,7 @@ class AgentBlockchainAdapter(
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
+    private val notificationService: NotificationService,
 ) : BlockchainAdapter(userId) {
 
     companion object {
@@ -300,6 +302,7 @@ class AgentBlockchainAdapter(
             amount = amount,
             targetPrice = targetPrice,
         )
+        notificationService.broadcastWalletRefresh(userId)
     }
 
     override fun listOrders(activeOnly: Boolean): String {

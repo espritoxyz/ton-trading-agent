@@ -62,6 +62,30 @@ class NotificationService(
         }
     }
 
+    /**
+     * Send a wallet-refresh signal to the user's WebSocket topic without saving anything to the DB.
+     * The frontend treats this as a prompt to reload wallet state (assets, orders, transactions).
+     */
+    fun broadcastWalletRefresh(userId: Long) {
+        try {
+            val signal = NotificationResponse(
+                id = -1L,
+                type = NotificationType.BALANCE_CHANGE,
+                title = "",
+                message = "",
+                metadata = emptyMap(),
+                isRead = true,
+                createdAt = java.time.Instant.now(),
+                readAt = null,
+                refreshOnly = true
+            )
+            messagingTemplate.convertAndSend("/topic/notifications/$userId", signal)
+            logger.debug { "Sent wallet-refresh signal to user $userId via WebSocket" }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to send wallet-refresh signal to user $userId" }
+        }
+    }
+
     fun getUserNotifications(userId: Long, pageable: Pageable): Page<Notification> {
         return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable)
     }

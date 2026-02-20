@@ -12,7 +12,9 @@ data class NotificationResponse(
     val metadata: Map<String, Any>,
     val isRead: Boolean,
     val createdAt: Instant,
-    val readAt: Instant?
+    val readAt: Instant?,
+    /** When true, this message is a UI-refresh signal only and must not be displayed to the user. */
+    val refreshOnly: Boolean = false
 ) {
     companion object {
         fun from(notification: Notification): NotificationResponse {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, inject, onMounted, provide, ref, watch} from 'vue'
+import {computed, inject, onMounted, onUnmounted, provide, ref, watch} from 'vue'
 import BalanceCard from '../components/BalanceCard.vue'
 import ChatPanel from '../components/ChatPanel.vue'
 import AssetsList from '../components/AssetsList.vue'
@@ -8,15 +8,18 @@ import OrdersList from '../components/OrdersList.vue'
 import {ClipboardList, MessageSquare, Receipt, Wallet} from 'lucide-vue-next'
 import {accessToken, userId} from '../composables/useAuth.ts'
 import {useWalletState} from '../composables/useWalletState.ts'
+import {lastIncomingNotification} from '../composables/useNotifications.ts'
 
 type Tab = 'overview' | 'assets' | 'transactions' | 'orders'
+
+const DATA_REFRESH_TYPES = new Set(['BALANCE_CHANGE', 'TRANSACTION_COMPLETE', 'SWAP_EXECUTED', 'ORDER_FILLED'])
 
 const activeTab = ref<Tab>('overview')
 const loggedIn = computed(() => !!accessToken.value)
 
 // Create wallet state instance for Assets and Transactions tabs
 const walletStateInstance = useWalletState()
-const {loadWalletState} = walletStateInstance
+const {loadWalletState, refreshWalletState} = walletStateInstance
 
 // Provide to child components
 provide('walletState', walletStateInstance)
@@ -32,6 +35,24 @@ onMounted(async () => {
   if (loggedIn.value && userId.value) {
     await loadWalletState(userId.value)
   }
+})
+
+// Auto-refresh wallet data when a data-changing notification arrives via WebSocket
+let refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const stopNotificationWatch = watch(lastIncomingNotification, (notification) => {
+  if (!notification || !userId.value) return
+  if (!DATA_REFRESH_TYPES.has(notification.type)) return
+
+  if (refreshDebounceTimer) clearTimeout(refreshDebounceTimer)
+  refreshDebounceTimer = setTimeout(() => {
+    refreshDebounceTimer = null
+    refreshWalletState(userId.value!)
+  }, 1000)
+})
+
+onUnmounted(() => {
+  stopNotificationWatch()
+  if (refreshDebounceTimer) clearTimeout(refreshDebounceTimer)
 })
 
 const tabs = [

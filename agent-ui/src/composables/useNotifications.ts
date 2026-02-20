@@ -9,6 +9,9 @@ const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)
 const connected = ref(false)
 const stompClient = ref<Client | null>(null)
+
+// Exposed so components can watch for data-changing notifications and refresh accordingly
+export const lastIncomingNotification = ref<Notification | null>(null)
 let subscription: StompSubscription | null = null
 let reconnectAttempt = 0
 let reconnectTimer: number | null = null
@@ -274,6 +277,12 @@ export function useNotifications() {
     function handleIncoming(notification: Notification) {
         console.log('[Notifications] Received notification:', notification)
 
+        // Refresh-only signals: trigger data reload but do not display as a notification
+        if (notification.refreshOnly) {
+            lastIncomingNotification.value = notification
+            return
+        }
+
         // Deduplicate by ID
         const exists = notifications.value.some(n => n.id === notification.id)
         if (exists) {
@@ -288,6 +297,9 @@ export function useNotifications() {
         if (!notification.isRead) {
             unreadCount.value++
         }
+
+        // Signal data change so watchers can refresh relevant UI data
+        lastIncomingNotification.value = notification
 
         // Trigger browser notification if permission granted
         triggerBrowserNotification(notification)
