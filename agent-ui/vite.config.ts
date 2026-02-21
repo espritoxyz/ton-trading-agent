@@ -16,6 +16,12 @@ const config = {
         changeOrigin: true,
         secure: false,
         rewrite: (p: string) => p.replace(/^\/api/, ''),
+      },
+      '/ws': {
+        target: proxyTarget,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
       }
     }
   },

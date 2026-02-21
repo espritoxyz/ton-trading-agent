@@ -51,8 +51,7 @@ export function useNotifications() {
             return
         }
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-        const wsUrl = `${baseUrl}/ws`
+        const wsUrl = (import.meta.env.VITE_API_BASE_URL || '') + '/ws'
 
         console.log('[Notifications] Connecting to WebSocket at:', wsUrl)
 
