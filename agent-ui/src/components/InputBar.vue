@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
+
+defineExpose({ fill })
 const props = defineProps<{ disabled?: boolean }>()
 const emit = defineEmits<{ (e: 'send', text: string): void }>()
 const text = ref('')
@@ -25,6 +27,14 @@ async function onSend() {
   text.value = ''
   await nextTick()
   adjustHeight()
+}
+
+function fill(value: string) {
+  text.value = value
+  nextTick(() => {
+    textarea.value?.focus()
+    adjustHeight()
+  })
 }
 
 function onKeyDown(e: KeyboardEvent) {
