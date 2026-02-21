@@ -1,5 +1,5 @@
 import {ref} from 'vue'
-import {api, refreshToken} from './useApi'
+import {api, refreshToken} from './useApi.ts'
 
 export const accessToken = ref<string | null>(sessionStorage.getItem('access_token'))
 export const email = ref<string | null>(null)

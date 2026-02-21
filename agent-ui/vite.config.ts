@@ -29,6 +29,14 @@ const config = {
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+      },
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router'],
+          'vendor-icons': ['lucide-vue-next', '@heroicons/vue'],
+          'vendor-ws': ['@stomp/stompjs', 'sockjs-client'],
+          'vendor-http': ['axios'],
+        }
       }
     }
   }

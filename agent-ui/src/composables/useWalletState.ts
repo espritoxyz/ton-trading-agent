@@ -1,5 +1,5 @@
 import {computed, ref} from 'vue'
-import {api} from './useApi'
+import {api} from './useApi.ts'
 import {accessToken} from './useAuth'
 import type {AssetData, WalletStateResponse} from '../types'
 

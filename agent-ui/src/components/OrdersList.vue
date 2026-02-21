@@ -289,7 +289,7 @@
 import {computed, inject, ref} from 'vue'
 import {ArrowDown, ArrowUp, Check, CircleMinus, CirclePlus, Trash2} from 'lucide-vue-next'
 import type {OrderData} from '../types'
-import {api} from '../composables/useApi'
+import {api} from '../composables/useApi.ts'
 import {userId} from '../composables/useAuth'
 
 // Inject wallet state from parent
