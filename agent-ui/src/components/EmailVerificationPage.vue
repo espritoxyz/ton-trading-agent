@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, defineProps } from 'vue'
+import { ref, onMounted } from 'vue'
 import { verifyEmail } from '../composables/useAuth'
 import { Loader, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-vue-next'
 

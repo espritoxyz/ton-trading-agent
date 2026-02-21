@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, defineEmits, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { initiateDeposit, type DepositSession } from '../composables/useDeposit'
 import { Wallet, Copy, CheckCircle, Loader, AlertCircle, Clock } from 'lucide-vue-next'
 

@@ -3,7 +3,7 @@ import { Client, StompSubscription } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import type { Notification } from '../types'
 import { accessToken, userId, refreshAccessToken } from './useAuth'
-import { api } from './useApi'
+import { api } from './useApi.ts'
 
 const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)

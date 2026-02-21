@@ -8,6 +8,7 @@ import ChatHints from './ChatHints.vue'
 import TopUpModal from './TopUpModal.vue'
 import { MessageCircle, Lock } from 'lucide-vue-next'
 import type { ChatHint } from '../data/chatHints'
+import { api } from '../composables/useApi.ts'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
@@ -16,7 +17,7 @@ const showTopUpModal = ref(false)
 
 async function clearConversation() {
   try {
-    await (await import('../composables/useApi.ts')).api.post('/chat/history/clear')
+    await api.post('/chat/history/clear')
   } catch {}
   chat.clearChat()
 }
