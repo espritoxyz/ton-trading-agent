@@ -222,7 +222,7 @@ const pageSize = 20
 
 // Filtered transactions
 const filteredTransactions = computed(() => {
-  return transactions.value.filter(tx => {
+  return transactions.value.filter((tx: Transaction) => {
     // Filter by asset type
     if (filters.value.assetType !== 'ALL' && tx.assetType !== filters.value.assetType) {
       return false

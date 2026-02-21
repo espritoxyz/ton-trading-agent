@@ -81,7 +81,7 @@ function scrollToTop(smooth = true) {
   }
 }
 
-watch(() => messages.length, async () => {
+watch(() => messages.value.length, async () => {
   await nextTick()
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (autoScroll.value) scrollToBottom(true)
@@ -101,7 +101,7 @@ onMounted(() => {
 
     // defensive styles
     try { scroller.value.style.overflowY = 'auto' } catch(e){}
-    try { scroller.value.style.webkitOverflowScrolling = 'touch' } catch(e){}
+    try { (scroller.value.style as unknown as Record<string, string>).webkitOverflowScrolling = 'touch' } catch(e){}
 
     onScrollListener = () => {
       const el = scroller.value!
