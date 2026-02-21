@@ -4,8 +4,10 @@ import * as chatModule from '../composables/useChat.ts'
 import { accessToken } from '../composables/useAuth.ts'
 import MessageBubble from './MessageBubble.vue'
 import InputBar from './InputBar.vue'
+import ChatHints from './ChatHints.vue'
 import TopUpModal from './TopUpModal.vue'
 import { MessageCircle, Lock } from 'lucide-vue-next'
+import type { ChatHint } from '../data/chatHints'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
@@ -19,6 +21,7 @@ async function clearConversation() {
   chat.clearChat()
 }
 
+const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null)
 const scroller = ref<HTMLDivElement | null>(null)
 const ready = computed(() => !!accessToken.value)
 
@@ -136,6 +139,10 @@ async function handleSend(text: string) {
   requestAnimationFrame(() => scrollToBottom(true))
 }
 
+function handleHintSelect(hint: ChatHint) {
+  inputBarRef.value?.fill(hint.insertText)
+}
+
 function handleOpenTopUp() {
   showTopUpModal.value = true
 }
@@ -200,7 +207,8 @@ function handleTopUpCompleted() {
       </transition>
     </div>
 
-    <InputBar :disabled="!ready" @send="handleSend" />
+    <ChatHints v-if="messages.length === 0" @select="handleHintSelect" />
+    <InputBar ref="inputBarRef" :disabled="!ready" @send="handleSend" />
   </div>
 
   <TopUpModal
