@@ -18,6 +18,8 @@ class OrderService(
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
     private val stonfiPoolsCacheService: StonfiPoolsCacheService,
     private val rabbitTemplate: RabbitTemplate,
+    private val walletService: WalletService,
+    private val notificationEventPublisher: NotificationEventPublisher
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -27,7 +29,24 @@ class OrderService(
     fun listAllOrdersByUser(userId: Long): List<Order> =
         orders.findAllByUserId(userId)
 
+    fun deleteByIdForUser(userId: Long, id: Long) {
+        val order = orders.findById(id).orElse(null)
+        if (order == null) {
+            logger.warn { "Attempt to delete missing order id=$id by userId=$userId" }
+            return
+        }
+
+        if (order.userId != userId) {
+            logger.warn { "Attempt to delete order id=$id that belongs to userId=${order.userId} by userId=$userId" }
+            return
+        }
+
+        logger.debug { "Deleting order id=$id for userId=$userId" }
+        orders.deleteById(id)
+    }
+
     fun executeOrderSwap(order: Order) {
+
 
         if (order.action.equals("sell", ignoreCase = true)) {
             val tokenToTonRate = getTokenToTonInternal(order.jettonMaster)
@@ -77,6 +96,10 @@ class OrderService(
         }
 
     private fun swapTonToTokenInternal(userId: Long, jettonMaster: String, minimalTokenAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
             val slippageSafetyFactor = 1.1
@@ -92,9 +115,11 @@ class OrderService(
         val data = mutableMapOf<String, Any?>(
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTokenAmount" to minimalTokenAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords,
         )
         if (swapTonAmount != null) data["swapTonAmount"] = swapTonAmount
 
@@ -108,6 +133,10 @@ class OrderService(
     }
 
     private fun swapTokenToTonInternal(userId: Long, jettonMaster: String, minimalTonAmount: Double) {
+        val wallet = walletService.getUserWallet(userId)
+            ?: throw IllegalStateException("User $userId has no wallet")
+        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
 
         val swapTokenAmountNano: Long? = tokenToTonRate?.let { rate ->
@@ -128,9 +157,11 @@ class OrderService(
         val data = mutableMapOf<String, Any?>(
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
+            "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
             "minimalTonAmount" to minimalTonAmount,
             "poolAddress" to poolAddress,
+            "mnemonic" to mnemonicWords,
         )
         if (swapTokenAmountNano != null) data["swapTokenAmount"] = swapTokenAmountNano
 

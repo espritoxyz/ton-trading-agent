@@ -1,45 +1,43 @@
 <template>
   <div class="orders-list">
-    <!-- Header with Filters -->
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Orders</h3>
-
-      <!-- Filter Pills -->
-      <div class="flex gap-2">
-        <button
-            @click="filterStatus = 'all'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'all'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          All ({{ orders.length }})
-        </button>
-        <button
-            @click="filterStatus = 'active'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'active'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          Active ({{ activeOrders.length }})
-        </button>
-        <button
-            @click="filterStatus = 'fulfilled'"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-colors',
-              filterStatus === 'fulfilled'
-                ? 'bg-cyan-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'
-            ]"
-        >
-          Fulfilled ({{ fulfilledOrders.length }})
-        </button>
-      </div>
+    <!-- Filter Tabs -->
+    <div class="flex gap-6 border-b border-gray-200 dark:border-gray-700/60 mb-4">
+      <button
+          @click="filterStatus = 'all'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'all'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        All
+        <span class="ml-1.5 text-xs text-gray-400 dark:text-gray-500">{{ orders.length }}</span>
+      </button>
+      <button
+          @click="filterStatus = 'active'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'active'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        Active
+        <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold">{{ activeOrders.length }}</span>
+      </button>
+      <button
+          @click="filterStatus = 'fulfilled'"
+          :class="[
+            'pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            filterStatus === 'fulfilled'
+              ? 'border-indigo-500 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          ]"
+      >
+        Fulfilled
+        <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">{{ fulfilledOrders.length }}</span>
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -51,6 +49,12 @@
     <div v-else-if="ordersError"
          class="text-red-600 dark:text-red-400 text-sm p-4 bg-red-100 dark:bg-red-900/20 rounded-lg">
       {{ ordersError }}
+    </div>
+
+    <!-- Delete Error -->
+    <div v-if="deleteError"
+         class="text-red-600 dark:text-red-400 text-sm p-3 bg-red-100 dark:bg-red-900/20 rounded-lg mb-4">
+      {{ deleteError }}
     </div>
 
     <!-- Empty State -->
@@ -69,25 +73,32 @@
       <div
           v-for="order in paginatedOrders"
           :key="order.id"
-          class="order-item p-4 rounded-xl bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
+          :class="[
+            'order-item p-4 rounded-xl transition-colors',
+            order.fulfilled
+              ? 'order-fulfilled bg-gray-50 dark:bg-gray-800/30'
+              : 'order-active bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50',
+          ]"
       >
+        <!-- Main content row -->
         <div class="flex items-center gap-4 justify-between">
+
           <!-- Left Section: Action Icon and Details -->
           <div class="flex items-center gap-4 flex-1 min-w-0">
+
             <!-- Action Icon -->
             <div class="flex-shrink-0">
               <div
                   :class="[
                     'w-12 h-12 rounded-xl flex items-center justify-center',
-                    order.action === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                    order.fulfilled ? 'opacity-50' : '',
+                    order.action === 'buy'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-orange-500/20 text-orange-400'
                   ]"
               >
-                <svg v-if="order.action === 'buy'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/>
-                </svg>
+                <CirclePlus v-if="order.action === 'buy'" :size="22"/>
+                <CircleMinus v-else :size="22"/>
               </div>
             </div>
 
@@ -95,13 +106,23 @@
             <div class="flex-1 min-w-0 space-y-1.5">
               <!-- Action and Amount -->
               <div class="flex items-baseline gap-2.5">
-                <span class="font-bold text-lg text-gray-900 dark:text-white uppercase">
+                <span
+                    :class="[
+                      'font-bold text-lg uppercase',
+                      order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
+                    ]"
+                >
                   {{ order.action }}
                 </span>
-                <span class="font-mono text-lg font-semibold text-gray-900 dark:text-white">
+                <span
+                    :class="[
+                      'font-mono text-lg font-semibold',
+                      order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
+                    ]"
+                >
                   {{ formatAmount(order.amount) }}
                 </span>
-                <span class="text-base text-gray-600 dark:text-gray-400 font-medium">
+                <span class="text-base text-gray-500 dark:text-gray-400 font-medium">
                   {{ order.symbol || 'Token' }}
                 </span>
               </div>
@@ -132,81 +153,99 @@
                 </button>
               </div>
 
-              <!-- Date and Status -->
-              <div class="flex items-center gap-3 text-xs">
-                <span class="text-gray-500 dark:text-gray-500">{{ formatDate(order.createdAt) }}</span>
-                <span
-                    :class="[
-                      'px-2 py-0.5 rounded-full font-medium',
-                      order.fulfilled
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    ]"
-                >
-                  {{ order.fulfilled ? 'Fulfilled' : 'Active' }}
+              <!-- Date -->
+              <div class="text-xs text-gray-500 dark:text-gray-500">
+                {{ formatDate(order.createdAt) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Section: Cards -->
+          <div class="flex items-stretch gap-2 flex-shrink-0">
+
+            <!-- Trigger Price Card -->
+            <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
+              <div
+                  :class="[
+                    'trigger-card h-full px-4 py-3 rounded-xl border-2',
+                    order.direction === 'UP'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
+                      : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
+                  ]"
+              >
+                <div class="flex flex-col items-center gap-2">
+                  <!-- Direction Arrow -->
+                  <div class="flex items-center gap-2">
+                    <ArrowUp
+                        v-if="order.direction === 'UP'"
+                        :size="20"
+                        class="text-emerald-400"
+                        stroke-width="2.5"
+                    />
+                    <ArrowDown
+                        v-else
+                        :size="20"
+                        class="text-orange-400"
+                        stroke-width="2.5"
+                    />
+                  </div>
+
+                  <!-- Trigger Text -->
+                  <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    Price {{ order.direction === 'UP' ? 'above' : 'below' }}
+                  </div>
+
+                  <!-- Target Price -->
+                  <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
+                    ${{ formatTargetPrice(order.targetPrice) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Card: Cancel (active) or Filled (fulfilled) -->
+            <div class="flex-shrink-0 flex">
+
+              <!-- Cancel card for active orders -->
+              <button
+                  v-if="!order.fulfilled"
+                  @click.stop="deleteOrder(order.id)"
+                  :disabled="deletingOrderId !== null"
+                  :class="[
+                    'action-card h-full px-4 py-3 rounded-xl border-2 min-w-[72px]',
+                    'flex flex-col items-center justify-center gap-2',
+                    'transition-all duration-200',
+                    deletingOrderId === order.id
+                      ? 'bg-red-500/20 border-red-500/50 dark:bg-red-500/15 dark:border-red-500/40 cursor-wait'
+                      : 'bg-red-500/10 border-red-500/30 dark:bg-red-500/5 dark:border-red-500/20 hover:bg-red-500/20 hover:border-red-500/50 dark:hover:bg-red-500/15 dark:hover:border-red-500/40',
+                    deletingOrderId !== null && deletingOrderId !== order.id
+                      ? 'opacity-50 cursor-not-allowed'
+                      : '',
+                  ]"
+                  title="Cancel order"
+              >
+                <div v-if="deletingOrderId === order.id"
+                     class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"/>
+                <Trash2 v-else :size="16" class="text-red-400"/>
+                <span v-show="deletingOrderId !== order.id" class="text-xs font-medium text-red-400 whitespace-nowrap">
+                  Cancel
+                </span>
+              </button>
+
+              <!-- Filled indicator card for fulfilled orders -->
+              <div
+                  v-else
+                  class="h-full px-4 py-3 rounded-xl border-2 min-w-[72px] bg-emerald-500/5 border-emerald-500/20 dark:border-emerald-500/15 flex flex-col items-center justify-center gap-2"
+              >
+                <Check :size="16" class="text-emerald-400 opacity-70"/>
+                <span class="text-xs font-medium text-emerald-500 dark:text-emerald-400 opacity-70 whitespace-nowrap">
+                  Filled
                 </span>
               </div>
+
             </div>
           </div>
 
-          <!-- Right Section: Trigger Price Info -->
-          <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
-            <div
-                :class="[
-                  'trigger-card px-4 py-3 rounded-xl border-2',
-                  order.direction === 'UP'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
-                    : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
-                ]"
-            >
-              <div class="flex flex-col items-center gap-2">
-                <!-- Bell Icon with Direction Arrow -->
-                <div class="flex items-center gap-2">
-                  <!-- Bell Icon (lucide) -->
-                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                  </svg>
-
-                  <!-- Direction Arrow (lucide) -->
-                  <svg
-                      :class="[
-                        'w-5 h-5',
-                        order.direction === 'UP' ? 'text-emerald-400' : 'text-orange-400'
-                      ]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                  >
-                    <path
-                        v-if="order.direction === 'UP'"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2.5"
-                        d="M5 10l7-7m0 0l7 7m-7-7v18"
-                    />
-                    <path
-                        v-else
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2.5"
-                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                    />
-                  </svg>
-                </div>
-
-                <!-- Trigger Text -->
-                <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                  Price {{ order.direction === 'UP' ? 'above' : 'below' }}
-                </div>
-
-                <!-- Target Price -->
-                <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
-                  ${{ formatTargetPrice(order.targetPrice) }}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -248,7 +287,10 @@
 
 <script setup lang="ts">
 import {computed, inject, ref} from 'vue'
+import {ArrowDown, ArrowUp, Check, CircleMinus, CirclePlus, Trash2} from 'lucide-vue-next'
 import type {OrderData} from '../types'
+import {api} from '../composables/useApi.ts'
+import {userId} from '../composables/useAuth'
 
 // Inject wallet state from parent
 const walletState = inject<any>('walletState')
@@ -265,6 +307,8 @@ const {
 // Filter state
 const filterStatus = ref<'all' | 'active' | 'fulfilled'>('all')
 const copiedOrderId = ref<number | null>(null)
+const deletingOrderId = ref<number | null>(null)
+const deleteError = ref<string | null>(null)
 
 // Pagination
 const currentPage = ref(1)
@@ -350,6 +394,38 @@ const formatTargetPrice = (price: number): string => {
   }
 }
 
+const deleteOrder = async (orderId: number) => {
+  if (!userId.value || deletingOrderId.value !== null) return
+
+  deletingOrderId.value = orderId
+  deleteError.value = null
+
+  // Optimistic update
+  const rawState = walletState.walletState
+  const previousOrders = rawState.value?.orders ?? []
+  if (rawState.value) {
+    rawState.value = {
+      ...rawState.value,
+      orders: previousOrders.filter((o: OrderData) => o.id !== orderId)
+    }
+  }
+
+  try {
+    await api.delete(`/user/${userId.value}/orders/${orderId}`)
+  } catch (err: any) {
+    // Revert optimistic update on failure
+    if (rawState.value) {
+      rawState.value = {
+        ...rawState.value,
+        orders: previousOrders
+      }
+    }
+    deleteError.value = err.response?.data?.message || 'Failed to delete order'
+  } finally {
+    deletingOrderId.value = null
+  }
+}
+
 const copyAddress = async (address: string, orderId: number) => {
   try {
     await navigator.clipboard.writeText(address)
@@ -388,12 +464,29 @@ computed(() => {
   border-color: rgba(99, 102, 241, 0.1);
 }
 
-.order-item:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+/* Active orders: amber left accent */
+.order-active {
+  border-left: 3px solid rgba(251, 191, 36, 0.6);
 }
 
-:global(.dark) .order-item:hover {
+.order-active:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  border-left-color: rgba(251, 191, 36, 0.85);
+}
+
+:global(.dark) .order-active:hover {
   border-color: rgba(99, 102, 241, 0.3);
+  border-left-color: rgba(251, 191, 36, 0.7);
+}
+
+/* Fulfilled orders: emerald left accent, dimmed */
+.order-fulfilled {
+  border-left: 3px solid rgba(52, 211, 153, 0.4);
+  opacity: 0.75;
+}
+
+:global(.dark) .order-fulfilled {
+  border-left-color: rgba(52, 211, 153, 0.3);
 }
 
 .trigger-card {
@@ -408,6 +501,19 @@ computed(() => {
 
 :global(.dark) .trigger-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.action-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.action-card:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+:global(.dark) .action-card:not(:disabled):hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
 }
 
 .copy-btn.copied {

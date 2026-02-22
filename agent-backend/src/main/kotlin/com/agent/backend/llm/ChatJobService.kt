@@ -8,6 +8,7 @@ import com.agent.backend.service.ConfirmationItem
 import com.agent.backend.service.ConfirmationService
 import com.agent.backend.service.ConfirmationStatus
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.NotificationService
 import com.agent.backend.service.OrderService
 import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
@@ -57,7 +58,8 @@ class ChatJobService(
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
-    private val walletService: WalletService
+    private val walletService: WalletService,
+    private val notificationService: NotificationService
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -129,7 +131,8 @@ class ChatJobService(
                 walletService,
                 priceTrackerService,
                 orderService,
-                externalToolResultService
+                externalToolResultService,
+                notificationService
             )
         )
 

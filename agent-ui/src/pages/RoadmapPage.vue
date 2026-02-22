@@ -561,10 +561,10 @@ onUnmounted(() => {
             <div>
               <h4 class="font-semibold mb-4">Company</h4>
               <ul class="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                <li><a href="/about" class="hover:text-white transition">About Us</a></li>
                 <li><a href="/blog" class="hover:text-white transition">Blog</a></li>
-                <li><a href="#" class="hover:text-white transition">Careers</a></li>
-                <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                <li><a href="/careers" class="hover:text-white transition">Careers</a></li>
+                <li><a href="mailto:support@esprito.app" class="hover:text-white transition">Contact</a></li>
               </ul>
             </div>
 
@@ -573,8 +573,6 @@ onUnmounted(() => {
               <ul class="space-y-2 text-gray-400 text-sm">
                 <li><a href="/terms" class="hover:text-white transition">Terms of Service</a></li>
                 <li><a href="/privacy" class="hover:text-white transition">Privacy Policy</a></li>
-                <li><a href="/privacy" class="hover:text-white transition">Cookie Policy</a></li>
-                <li><a href="/terms" class="hover:text-white transition">Disclaimer</a></li>
               </ul>
             </div>
           </div>

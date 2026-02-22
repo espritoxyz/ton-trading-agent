@@ -1,23 +1,33 @@
 package com.agent.backend.rabbitmq.listeners
 
+import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.NotificationEventPublisher
+import com.agent.backend.service.NotificationService
+import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.WalletService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.*
-
-private val logger = KotlinLogging.logger {}
 
 @Component
 class AgentEventsListener(
     private val jobService: ChatJobService,
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
+    private val notificationEventPublisher: NotificationEventPublisher,
+    private val notificationService: NotificationService,
+    private val assetsCache: StonfiAssetsCacheService,
 ) {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
 
 
@@ -94,12 +104,15 @@ class AgentEventsListener(
                     // Record outgoing token transaction if successful
                     if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
                         try {
+                            val asset = assetsCache.getAssetByContractAddress(jettonMaster)
                             walletService.processOutgoingTokenTransaction(
                                 userId = userId,
                                 transactionHash = txId,
                                 amountNano = amountNano,
                                 jettonMasterAddress = jettonMaster,
-                                recipientAddress = receiver
+                                recipientAddress = receiver,
+                                jettonSymbol = asset?.symbol,
+                                jettonDecimals = asset?.decimals,
                             )
                         } catch (e: Exception) {
                             logger.error(e) { "[agent-events] Failed to record outgoing token transaction" }
@@ -130,12 +143,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-//                    val jettonMinter = data["jettonMinter"] as? String
-//                    val offerNanotons = data["offerNanotons"] as? String
-//                    val minAskNano = data["minAskNano"] as? String
-//                    val router = data["router"] as? String
-//                    val pool = data["pool"] as? String
-//                    val pTon = data["pTon"] as? String
+                    val jettonMaster = data["requestedJettonMaster"] as? String
+                    val swapTonAmount = data["requestedSwapTonAmount"] as? Number
+                    val minimalTokenAmount = data["requestedMinimalTokenAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
@@ -156,6 +166,8 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    if (success) publishSwapTonToTokenNotification(userId, jettonMaster, swapTonAmount, minimalTokenAmount, txId)
+
                     logger.info { "[agent-events] Successfully completed swap-ton-to-token result for user $userId" }
 
                 }
@@ -164,12 +176,9 @@ class AgentEventsListener(
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
                     val success = data["success"] as? Boolean ?: false
                     val txId = data["txId"] as? String
-//                    val jettonMinter = data["jettonMinter"] as? String
-//                    val offerNanotons = data["offerNanotons"] as? String
-//                    val minAskNano = data["minAskNano"] as? String
-//                    val router = data["router"] as? String
-//                    val pool = data["pool"] as? String
-//                    val pTon = data["pTon"] as? String
+                    val jettonMaster = data["requestedJettonMaster"] as? String
+                    val swapTokenAmountNano = data["requestedSwapTokenAmount"] as? Number
+                    val minimalTonAmount = data["requestedMinimalTonAmount"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
@@ -189,6 +198,8 @@ class AgentEventsListener(
                         result = report,
                     )
 
+                    if (success) publishSwapTokenToTonNotification(userId, jettonMaster, swapTokenAmountNano, minimalTonAmount, txId)
+
                     logger.info { "[agent-events] Successfully completed swap-token-to-ton result for user $userId" }
 
                 }
@@ -197,6 +208,73 @@ class AgentEventsListener(
             }
         } catch (e: Exception) {
             logger.error(e) { "[agent-events] Failed to handle agent event" }
+        }
+    }
+
+    private fun publishSwapTonToTokenNotification(
+        userId: Long,
+        jettonMaster: String?,
+        swapTonAmount: Number?,
+        minimalTokenAmount: Number?,
+        txId: String?,
+    ) {
+        try {
+            val tokenSymbol = jettonMaster?.let { assetsCache.getAssetByContractAddress(it)?.symbol } ?: jettonMaster ?: "unknown"
+            val swapTonAmountHuman = swapTonAmount?.toString() ?: "unknown"
+            val minimalTokenAmountHuman = minimalTokenAmount?.toString() ?: "unknown"
+            val metadata = mapOf<String, Any>(
+                "fromAsset" to "TON",
+                "toAsset" to tokenSymbol,
+                "fromAmount" to swapTonAmountHuman,
+                "toAmount" to minimalTokenAmountHuman,
+                "transactionId" to (txId ?: "")
+            )
+            val (title, message) = notificationService.generateNotificationText(NotificationType.SWAP_EXECUTED, metadata)
+            notificationEventPublisher.publishNotificationEvent(
+                userId = userId,
+                type = "SWAP_EXECUTED",
+                title = title,
+                message = message,
+                metadata = metadata
+            )
+        } catch (e: Exception) {
+            logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }
+        }
+    }
+
+    private fun publishSwapTokenToTonNotification(
+        userId: Long,
+        jettonMaster: String?,
+        swapTokenAmountNano: Number?,
+        minimalTonAmount: Number?,
+        txId: String?,
+    ) {
+        try {
+            val tokenSymbol = jettonMaster?.let { assetsCache.getAssetByContractAddress(it)?.symbol } ?: jettonMaster ?: "unknown"
+            val decimals = jettonMaster?.let { assetsCache.getDecimals(it) } ?: 9
+            val swapTokenAmountHuman = swapTokenAmountNano?.let { nano ->
+                BigDecimal(nano.toLong())
+                    .divide(BigDecimal.TEN.pow(decimals), decimals, RoundingMode.HALF_UP)
+                    .stripTrailingZeros()
+                    .toPlainString()
+            } ?: "unknown"
+            val metadata = mapOf<String, Any>(
+                "fromAsset" to tokenSymbol,
+                "toAsset" to "TON",
+                "fromAmount" to swapTokenAmountHuman,
+                "toAmount" to (minimalTonAmount?.toString() ?: "unknown"),
+                "transactionId" to (txId ?: "")
+            )
+            val (title, message) = notificationService.generateNotificationText(NotificationType.SWAP_EXECUTED, metadata)
+            notificationEventPublisher.publishNotificationEvent(
+                userId = userId,
+                type = "SWAP_EXECUTED",
+                title = title,
+                message = message,
+                metadata = metadata
+            )
+        } catch (e: Exception) {
+            logger.warn(e) { "[agent-events] Failed to publish SWAP_EXECUTED notification" }
         }
     }
 }

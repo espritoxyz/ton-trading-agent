@@ -2,6 +2,7 @@ package com.agent.backend.llm
 
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
+import com.agent.backend.service.NotificationService
 import com.agent.backend.service.OrderService
 import com.agent.backend.service.PriceTrackerService
 import com.agent.backend.service.StonfiAssetsCacheService
@@ -41,6 +42,7 @@ class AgentBlockchainAdapter(
     private val priceTrackerService: PriceTrackerService,
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
+    private val notificationService: NotificationService,
 ) : BlockchainAdapter(userId) {
 
     companion object {
@@ -82,11 +84,6 @@ class AgentBlockchainAdapter(
         return mnemonicPhrase.split(" ").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
-    private data class TonToUsdtDto(
-        val symbol: String,
-        val price: Float,
-    )
-
     override fun getTonToUSDT(): Double? {
         return getTonToUSDTStatic()
     }
@@ -94,7 +91,7 @@ class AgentBlockchainAdapter(
     override fun sendTonToAddress(amount: Double, receiverAddress: String) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val payload = mapOf(
             "type" to "agent-llm.send-ton",
@@ -124,7 +121,7 @@ class AgentBlockchainAdapter(
             .setScale(0, RoundingMode.CEILING)
             .toLong()
 
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val payload = mapOf(
             "type" to "agent-llm.send-token",
@@ -150,7 +147,7 @@ class AgentBlockchainAdapter(
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
@@ -189,7 +186,7 @@ class AgentBlockchainAdapter(
     override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
-        val mnemonicWords = walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
+        val mnemonicWords = getUserMnemonicWords()
 
         val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
 
@@ -291,8 +288,13 @@ class AgentBlockchainAdapter(
         }
     }
 
-    override fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double) {
+    override fun deleteOrders(ids: List<Long>) {
+        ids.forEach {
+            orderService.deleteByIdForUser(userId, it)
+        }
+    }
 
+    override fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double) {
         priceTrackerService.createOrderWithTracker(
             userId = userId,
             jettonMaster = jettonMaster,
@@ -300,10 +302,15 @@ class AgentBlockchainAdapter(
             amount = amount,
             targetPrice = targetPrice,
         )
+        notificationService.broadcastWalletRefresh(userId)
     }
 
-    override fun listUnfulfilledOrders(): String {
-        val orders = orderService.listUnfulfilledOrdersByUser(userId)
+    override fun listOrders(activeOnly: Boolean): String {
+        val orders = if (activeOnly)
+            orderService.listUnfulfilledOrdersByUser(userId)
+        else
+            orderService.listAllOrdersByUser(userId)
+
         if (orders.isEmpty()) return ""
 
         val trackersByOrderId = priceTrackerService.listByUser(userId)
@@ -315,7 +322,7 @@ class AgentBlockchainAdapter(
             val targetPrice = tracker?.targetPrice
             val asset = assetsCache.getAssetByContractAddress(o.jettonMaster)
             val ticker = asset?.symbol
-            "[ticker=${ticker}, action=${o.action}, amount=${o.amount}, " +
+            "[ticker=${ticker}, action=${o.action}, amount=${o.amount}, isActive=${!o.fulfilled}," +
                 "targetPrice=${targetPrice}, createdAt=${o.createdAt}, id=${o.id}]"
         }
     }

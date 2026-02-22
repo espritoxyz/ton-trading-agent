@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, defineEmits } from 'vue'
+import { ref } from 'vue'
 import { register } from '../composables/useAuth'
 import { Sparkles, Mail, Lock, User, AlertTriangle, Loader, CheckCircle } from 'lucide-vue-next'
 

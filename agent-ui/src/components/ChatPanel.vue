@@ -4,8 +4,11 @@ import * as chatModule from '../composables/useChat.ts'
 import { accessToken } from '../composables/useAuth.ts'
 import MessageBubble from './MessageBubble.vue'
 import InputBar from './InputBar.vue'
+import ChatHints from './ChatHints.vue'
 import TopUpModal from './TopUpModal.vue'
 import { MessageCircle, Lock } from 'lucide-vue-next'
+import type { ChatHint } from '../data/chatHints'
+import { api } from '../composables/useApi.ts'
 
 const chat = chatModule.useChat()
 const messages = chat.messages
@@ -14,11 +17,12 @@ const showTopUpModal = ref(false)
 
 async function clearConversation() {
   try {
-    await (await import('../composables/useApi.ts')).api.post('/chat/history/clear')
+    await api.post('/chat/history/clear')
   } catch {}
   chat.clearChat()
 }
 
+const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null)
 const scroller = ref<HTMLDivElement | null>(null)
 const ready = computed(() => !!accessToken.value)
 
@@ -78,7 +82,7 @@ function scrollToTop(smooth = true) {
   }
 }
 
-watch(() => messages.length, async () => {
+watch(() => messages.value.length, async () => {
   await nextTick()
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (autoScroll.value) scrollToBottom(true)
@@ -98,7 +102,7 @@ onMounted(() => {
 
     // defensive styles
     try { scroller.value.style.overflowY = 'auto' } catch(e){}
-    try { scroller.value.style.webkitOverflowScrolling = 'touch' } catch(e){}
+    try { (scroller.value.style as unknown as Record<string, string>).webkitOverflowScrolling = 'touch' } catch(e){}
 
     onScrollListener = () => {
       const el = scroller.value!
@@ -134,6 +138,10 @@ async function handleSend(text: string) {
   await chat.sendMessage(text)
   await nextTick()
   requestAnimationFrame(() => scrollToBottom(true))
+}
+
+function handleHintSelect(hint: ChatHint) {
+  inputBarRef.value?.fill(hint.insertText)
 }
 
 function handleOpenTopUp() {
@@ -200,7 +208,8 @@ function handleTopUpCompleted() {
       </transition>
     </div>
 
-    <InputBar :disabled="!ready" @send="handleSend" />
+    <ChatHints v-if="messages.length === 0" @select="handleHintSelect" />
+    <InputBar ref="inputBarRef" :disabled="!ready" @send="handleSend" />
   </div>
 
   <TopUpModal

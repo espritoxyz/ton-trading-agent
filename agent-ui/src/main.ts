@@ -3,7 +3,7 @@ import App from './App.vue'
 import './assets/tailwind.css'
 import { initAuth } from './composables/useAuth'
 import { loadTheme, applyTheme } from './composables/useTheme'
-import '../landing/src/style.css'
+import './assets/landing.css'
 import VueYandexMetrika from 'vue3-yandex-metrika'
 
 // Ensure theme class is set before we mount so styles render correctly

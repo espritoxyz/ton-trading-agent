@@ -137,3 +137,119 @@ export interface WalletStateMetadata {
     activeOrdersCount: number
     fulfilledOrdersCount: number
 }
+
+// Notification types
+export type NotificationType =
+    | 'BALANCE_CHANGE'
+    | 'TRANSACTION_COMPLETE'
+    | 'SWAP_EXECUTED'
+    | 'ORDER_FILLED'
+    | 'TRACKER_TRIGGERED'
+
+export interface Notification {
+    id: number
+    type: NotificationType
+    title: string
+    message: string
+    metadata: NotificationMetadata
+    isRead: boolean
+    createdAt: string
+    readAt?: string | null
+    /** When true, this is a UI-refresh signal only and must not be displayed as a notification. */
+    refreshOnly?: boolean
+}
+
+// Metadata type interfaces for each notification type
+export interface BalanceChangeMetadata {
+    amount: number
+    currency: string
+    newBalance?: number
+    transactionId?: string
+}
+
+export interface TransactionCompleteMetadata {
+    transactionId: string
+    status: 'success' | 'failed'
+    amount?: number
+    currency?: string
+    recipientAddress?: string
+    errorReason?: string
+}
+
+export interface SwapExecutedMetadata {
+    fromAsset: string
+    toAsset: string
+    fromAmount: number
+    toAmount: number
+    executionPrice?: number
+    slippagePercent?: number
+    transactionId?: string
+}
+
+export interface OrderFilledMetadata {
+    orderId: number
+    jettonMaster?: string
+    action?: string
+    amount?: number
+    targetPrice?: number
+    fillType: 'full' | 'partial' | 'cancelled'
+    filledQuantity?: number
+    remainingQuantity?: number
+    status?: string
+    reason?: string
+}
+
+export interface TrackerTriggeredMetadata {
+    trackerId: number
+    jettonMaster: string
+    symbol: string
+    targetPrice: string
+    direction: 'UP' | 'DOWN'
+}
+
+// Union type for all metadata types
+export type NotificationMetadata =
+    | BalanceChangeMetadata
+    | TransactionCompleteMetadata
+    | SwapExecutedMetadata
+    | OrderFilledMetadata
+    | TrackerTriggeredMetadata
+
+// Utility functions to parse and validate notification metadata
+export function parseNotificationMetadata<T extends NotificationMetadata>(
+    notification: Notification
+): T | null {
+    try {
+        if (typeof notification.metadata === 'string') {
+            return JSON.parse(notification.metadata) as T
+        }
+        return notification.metadata as T
+    } catch (e) {
+        console.error('Failed to parse notification metadata:', e)
+        return null
+    }
+}
+
+export function isBalanceChangeMetadata(
+    metadata: NotificationMetadata
+): metadata is BalanceChangeMetadata {
+    return 'amount' in metadata && 'currency' in metadata
+}
+
+export function isTransactionCompleteMetadata(
+    metadata: NotificationMetadata
+): metadata is TransactionCompleteMetadata {
+    return 'transactionId' in metadata && 'status' in metadata
+}
+
+export function isSwapExecutedMetadata(
+    metadata: NotificationMetadata
+): metadata is SwapExecutedMetadata {
+    return 'fromAsset' in metadata && 'toAsset' in metadata && 'fromAmount' in metadata && 'toAmount' in metadata
+}
+
+export function isOrderFilledMetadata(
+    metadata: NotificationMetadata
+): metadata is OrderFilledMetadata {
+    return 'orderId' in metadata && 'fillType' in metadata
+}
