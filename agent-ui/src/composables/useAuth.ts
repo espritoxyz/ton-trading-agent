@@ -1,4 +1,4 @@
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 import {api, refreshToken} from './useApi.ts'
 
 export const accessToken = ref<string | null>(sessionStorage.getItem('access_token'))
@@ -9,6 +9,18 @@ export const loggingIn = ref(false)
 export const authError = ref<string | null>(null)
 export const needsVerification = ref(false)
 export const verificationEmail = ref<string | null>(null)
+export const isAdmin = ref(false)
+
+watch(accessToken, (token) => {
+    if (!token) { isAdmin.value = false; return }
+    try {
+        const payload = parseJwt(token)
+        const roles: string[] = payload?.realm_access?.roles ?? []
+        isAdmin.value = roles.includes('ADMIN')
+    } catch {
+        isAdmin.value = false
+    }
+}, { immediate: true })
 
 export async function login(username: string, password: string) {
     loggingIn.value = true

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId } from '../composables/useAuth.ts'
+import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId, isAdmin } from '../composables/useAuth.ts'
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
 import RegisterModal from './RegisterModal.vue'
-import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle } from 'lucide-vue-next'
+import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle, ShieldCheck } from 'lucide-vue-next'
 
 const { refreshWalletState, clearWalletState } = useWalletState()
 
@@ -272,6 +272,16 @@ onUnmounted(() => {
           <RefreshCw :size="16" />
           <span>Refresh Profile</span>
         </button>
+
+        <a
+          v-if="isAdmin"
+          href="/app/admin"
+          @click="showDropdown = false"
+          class="w-full rounded-lg bg-cosmic-500/10 dark:bg-cosmic-500/20 px-4 py-2 text-sm font-medium text-cosmic-700 dark:text-cosmic-300 hover:bg-cosmic-500/20 dark:hover:bg-cosmic-500/30 transition border border-cosmic-500/30 flex items-center justify-center gap-2 no-underline"
+        >
+          <ShieldCheck :size="16" />
+          <span>Admin Panel</span>
+        </a>
 
         <button
           class="w-full rounded-lg bg-gradient-to-r from-red-500 to-pink-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition flex items-center justify-center gap-2 shadow-md"

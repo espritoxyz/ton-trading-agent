@@ -10,6 +10,7 @@ import AboutPage from './pages/AboutPage.vue'
 import CareersPage from './pages/CareersPage.vue'
 import EmailVerificationPage from './components/EmailVerificationPage.vue'
 import Dashboard from "./pages/Dashboard.vue";
+import AdminPage from "./pages/AdminPage.vue";
 
 const route = ref(window.location.pathname || '/')
 const instance = getCurrentInstance()
@@ -71,6 +72,11 @@ onMounted(() => {
     <component v-else-if="route === '/about'" :is="AboutPage"/>
     <component v-else-if="route === '/careers'" :is="CareersPage"/>
     <component v-else-if="verificationToken" :is="EmailVerificationPage" :token="verificationToken"/>
+    <component v-else-if="route === '/app/admin'" :is="AppLayout">
+      <template v-slot>
+        <AdminPage/>
+      </template>
+    </component>
     <component v-else-if="route.startsWith('/app')" :is="AppLayout">
       <template v-slot>
         <Dashboard/>
