@@ -45,9 +45,9 @@ const stars = Array.from({ length: 150 }, () => ({
 
 // Animated statistics (like ston.fi)
 const stats = ref([
-  { label: 'Total Volume', value: '$0', target: 407810, prefix: '$', suffix: '' },
-  { label: 'Active Users', value: '0', target: 324, prefix: '', suffix: '+' },
-  { label: 'Transactions', value: '0', target: 3090, prefix: '', suffix: '' },
+  { label: 'Total Volume', value: '$0', target: 'Beta testing', prefix: '$', suffix: '' },
+  { label: 'Active Users', value: '0', target: 'Beta testing', prefix: '', suffix: '+' },
+  { label: 'Transactions', value: '0', target: 'Beta testing', prefix: '', suffix: '' },
 ])
 
 const animateStats = () => {
