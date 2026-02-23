@@ -23,6 +23,10 @@ data class ResendEmailResponse(
     val message: String? = null
 )
 
+data class ResendBatchResponse(
+    val data: List<ResendEmailResponse>? = null
+)
+
 @Component
 class ResendClient(
     @Value("\${email.resend.api-key}") private val apiKey: String,
@@ -59,6 +63,34 @@ class ResendClient(
         } catch (e: Exception) {
             logger.error(e) { "Failed to send email to $to" }
             throw EmailSendException("Failed to send email to $to: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Sends up to 100 emails in a single API request using Resend Batch API.
+     * Returns the number of emails accepted by Resend.
+     */
+    fun sendBatch(emails: List<ResendEmailRequest>): Int {
+        require(emails.isNotEmpty()) { "Batch must not be empty" }
+        require(emails.size <= 100) { "Batch size must not exceed 100" }
+
+        return try {
+            logger.debug { "Sending batch of ${emails.size} emails via Resend Batch API" }
+
+            val response = restClient.post()
+                .uri("$apiUrl/emails/batch")
+                .header("Authorization", "Bearer $apiKey")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(emails)
+                .retrieve()
+                .body<ResendBatchResponse>()
+
+            val accepted = response?.data?.size ?: 0
+            logger.info { "Batch accepted by Resend: $accepted / ${emails.size}" }
+            accepted
+        } catch (e: Exception) {
+            logger.error(e) { "Batch send failed for ${emails.size} emails" }
+            throw EmailSendException("Batch send failed: ${e.message}", e)
         }
     }
 }

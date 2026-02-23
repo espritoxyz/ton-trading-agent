@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import {
   MessageSquare,
@@ -13,26 +13,34 @@ import {
   Sun,
   Network
 } from 'lucide-vue-next'
+import axios from 'axios'
+
+const apiBase = (import.meta as any).env?.VITE_BACKEND_URL || '/api'
 
 const email = ref('')
 const subscribed = ref(false)
 const loading = ref(false)
+const subscribeError = ref('')
 
 const handleSubscribe = async () => {
   if (!email.value || !email.value.includes('@')) return
 
   loading.value = true
-  // TODO: Implement actual email subscription API call
-  setTimeout(() => {
+  subscribeError.value = ''
+
+  try {
+    await axios.post(`${apiBase}/newsletter/subscribe`, { email: email.value })
     subscribed.value = true
-    loading.value = false
     email.value = ''
-  }, 1000)
+  } catch (e: any) {
+    subscribeError.value = e?.response?.data?.message || 'Something went wrong. Please try again.'
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleImageError = (e) => {
-  console.log('Image failed to load:', e.target.src)
-  // Keep the image element but it will show broken image icon
+const handleImageError = (e: Event) => {
+  console.log('Image failed to load:', (e.target as HTMLImageElement).src)
 }
 
 // Generate random stars
@@ -467,10 +475,11 @@ onMounted(() => {
                   {{ loading ? 'Subscribing...' : 'Subscribe' }}
                 </button>
               </div>
+              <p v-if="subscribeError" class="mt-3 text-red-400 text-sm text-center">{{ subscribeError }}</p>
             </form>
 
             <div v-else class="glass-card p-6 max-w-md mx-auto bg-green-500/20 border-green-500/50">
-              <p class="text-green-400 font-semibold">✅ Successfully subscribed! Check your email for confirmation.</p>
+              <p class="text-green-400 font-semibold">Successfully subscribed! We'll keep you in the loop.</p>
             </div>
 
             <p class="text-sm text-gray-400 mt-6">

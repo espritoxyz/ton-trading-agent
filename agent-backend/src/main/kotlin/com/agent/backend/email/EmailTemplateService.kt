@@ -23,8 +23,12 @@ class EmailTemplateService {
         return ""
     }
 
-    fun generateNewsletterEmail(content: String): String {
-        // Placeholder for future implementation
-        return ""
+    fun generateNewsletterEmail(subject: String, htmlContent: String, unsubscribeLink: String, baseUrl: String): String {
+        val template = loadTemplate("templates/email/newsletter-email.html")
+        return template
+            .replace("{{subject}}", subject)
+            .replace("{{content}}", htmlContent)
+            .replace("{{unsubscribeLink}}", unsubscribeLink)
+            .replace("{{baseUrl}}", baseUrl)
     }
 }
