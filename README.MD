@@ -1,40 +1,66 @@
-# Запуск и установка
+# Esprito AI — TON Trading Agent
 
-1. Поднять `docker engine`
-2. Вставить `.env` в корень репозитория
-3. Включить впн на компе, иначе запросы в гпт не улетят
-4. В корне команда `docker compose build` и `docker compose up -d`
-5. В модуле `agent-ui` команда `npm run dev` чтобы поднять юи.... еще немного танцев с бубном и хвала! все запустилось локально
+> AI-powered trading agent for the TON blockchain. Chat naturally with an LLM that executes on-chain operations on your behalf.
 
-# Roadmap MVP 
+## What it does
 
-1. User Assets Widget [STONFI]
-    - [ ] Дизайн и моки @formazon
-2. User Orders Widget (👀 2026) 
-    - написать какие параметры по ордерам
-    - Дизайн [STONFI]
-    - Реализация
-3. User Transactions [STONFI]
-    - история транзакций 
-    - пополнения
-    - hyperlink (zishkaz)
-4. User Account [STONFI]
-    - [x] Sign in  
-    - [ ] Sign up (email)
-        - [ ] Добавить email verification no-reply@esprito.app
-5. Deposit Assets [STONFI+]
-    - добавить рецепт пополнить баланс
-    - отправить в чат сообщение пополнен баланс
-6. Withdraw Assets [STONFI] 
-    - send_ton_to_address
-    - send_token_to_address
-7. Chat Notifications (👀 2026) 
-    - надо подумать какие события улетают в чат
-8. Analytics
-    - Google Analytics или Yandex.Metrika
-9. Infrastructure
-    - app.stating.esprito.app
-    - app.esprito.app
+- **Chat-driven trading** — describe what you want in plain language; the agent figures out the on-chain steps
+- **Token swaps** — buy/sell tokens via Ston.fi DEX (TON ↔ Jetton, Jetton ↔ TON)
+- **Transfers** — send TON or any Jetton to any address
+- **Price queries** — real-time TON/USDT and token exchange rates
+- **Limit orders** — place and track conditional orders
 
+## Getting started
 
-[Описание рецептов](RECIPES.MD)
+### Prerequisites
+
+- Docker Engine + Docker Compose
+- Node.js ≥ 18 and npm ≥ 9 (for frontend build)
+- A `.env` file in the project root 
+- Access to OpenAI API (or a compatible proxy)
+
+### Running locally
+
+```bash
+# 1. Build all Docker images
+make build
+
+# 2. Start all backend services (PostgreSQL, Redis, RabbitMQ, Keycloak, backend, recipe processor, Nginx)
+make up
+
+# 3. Build the frontend (outputs to ui-dist/, served by Nginx)
+cd agent-ui && npm ci && npm run build
+
+# Follow logs
+make logs
+```
+
+The app will be available at `http://localhost` (port 8080, served by Nginx).
+
+### Stopping
+
+```bash
+make down        # stop containers
+make clean       # stop and remove all volumes (destructive)
+```
+
+## Development
+
+### Backend tests
+
+```bash
+gradle :agent-backend:test                        # run all tests
+gradle :agent-backend:test --tests "*.SomeTest"   # single test class
+```
+
+### Frontend
+
+```bash
+cd agent-ui
+npm run build          # compile TypeScript + Vite build → ui-dist/
+npm run dev            # start Vite dev server
+```
+
+## License
+
+Business Source License 1.1 — see [LICENSE](LICENSE).
