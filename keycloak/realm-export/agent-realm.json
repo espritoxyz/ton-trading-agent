@@ -481,15 +481,6 @@
       },
       "notBefore": 0,
       "groups": []
-    },
-    {
-      "username": "zishkaz",
-      "email": "example@mail.com",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        { "type": "password", "value": "zishkaz", "temporary": false }
-      ]
     }
   ],
   "scopeMappings": [
@@ -668,7 +659,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "NH0ClpAy9z3A5i4AYeSMXTiCk0oh8ERw",
+      "secret": "${KC_CLIENT_SECRET}",
       "redirectUris": [
         "*"
       ],
