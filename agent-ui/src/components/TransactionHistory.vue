@@ -6,25 +6,36 @@
     </div>
 
     <!-- Filters -->
-    <div class="filters flex flex-wrap gap-2 mb-4">
-      <select
-          v-model="filters.assetType"
-          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
-      >
-        <option value="ALL">All Assets</option>
-        <option value="TON">TON</option>
-        <option value="JETTON">Tokens</option>
-      </select>
+    <div class="filters flex flex-wrap gap-3 mb-4">
+      <!-- Asset Type -->
+      <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800/70 rounded-lg p-1">
+        <button
+            v-for="opt in assetOptions"
+            :key="opt.value"
+            @click="filters.assetType = opt.value"
+            :class="[
+              'px-3 py-1 text-sm font-medium rounded-md transition-all duration-200',
+              filters.assetType === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            ]"
+        >{{ opt.label }}</button>
+      </div>
 
-      <select
-          v-model="filters.kind"
-          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
-      >
-        <option value="ALL">All Types</option>
-        <option value="INCOMING">Incoming</option>
-        <option value="OUTGOING">Outgoing</option>
-        <option value="SWAP">Swaps</option>
-      </select>
+      <!-- Kind -->
+      <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800/70 rounded-lg p-1">
+        <button
+            v-for="opt in kindOptions"
+            :key="opt.value"
+            @click="filters.kind = opt.value"
+            :class="[
+              'px-3 py-1 text-sm font-medium rounded-md transition-all duration-200',
+              filters.kind === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            ]"
+        >{{ opt.label }}</button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -270,6 +281,20 @@ const formatDate = (dateString: string): string => {
     minute: '2-digit'
   })
 }
+
+// Filter options
+const assetOptions = [
+  {value: 'ALL', label: 'All'},
+  {value: 'TON', label: 'TON'},
+  {value: 'JETTON', label: 'Tokens'},
+] as const
+
+const kindOptions = [
+  {value: 'ALL', label: 'All'},
+  {value: 'INCOMING', label: 'Incoming'},
+  {value: 'OUTGOING', label: 'Outgoing'},
+  {value: 'SWAP', label: 'Swaps'},
+] as const
 
 // Filters
 const filters = ref({
