@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { initiateDeposit, type DepositSession } from '../composables/useDeposit'
-import { Wallet, Copy, CheckCircle, Loader, AlertCircle, Clock } from 'lucide-vue-next'
+import { Wallet, Copy, CheckCircle, Loader, AlertCircle, Clock, AlertTriangle } from 'lucide-vue-next'
 
 const emits = defineEmits(['close'])
 
@@ -106,6 +106,17 @@ onMounted(() => {
                             <div class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
                                 <p><strong>Active Session:</strong> This deposit session is active for {{ timeRemaining }}</p>
                                 <p><strong>Fast Detection:</strong> Transactions are detected automatically within 12-24 seconds</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gas Reserve Warning -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-xl p-4">
+                        <div class="flex gap-3">
+                            <AlertTriangle :size="20" class="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div class="text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                                <p><strong>Keep at least 0.3 TON in your wallet</strong></p>
+                                <p>The TON blockchain requires a small amount of TON on your wallet to pay for network transaction fees (gas). Without this reserve, swaps and other operations may fail. This is a blockchain requirement — not a service fee.</p>
                             </div>
                         </div>
                     </div>
