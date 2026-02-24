@@ -59,123 +59,112 @@
     </div>
 
     <!-- Activity List -->
-    <div v-else class="space-y-2">
+    <div v-else class="space-y-1">
       <template v-for="item in paginatedActivity" :key="item.itemType + '-' + item.id">
 
         <!-- Swap item -->
         <div
             v-if="item.itemType === 'swap'"
-            class="transaction-item p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
+            class="transaction-item flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
         >
-          <div class="flex items-start gap-3">
-            <!-- Swap Icon -->
-            <div class="flex-shrink-0 mt-1">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center bg-purple-500/20 text-purple-400">
-                <ArrowLeftRight class="w-4 h-4" />
-              </div>
-            </div>
-
-            <!-- Swap Details -->
-            <div class="flex-1 min-w-0">
-              <!-- Amounts -->
-              <div class="flex items-baseline gap-2 mb-1">
-                <span class="font-mono font-semibold text-gray-900 dark:text-white">
-                  {{ item.fromAmount }} {{ item.fromAsset }}
-                </span>
-                <span class="text-xs text-gray-500 dark:text-gray-500">→</span>
-                <span class="font-mono font-semibold text-gray-900 dark:text-white">
-                  {{ item.toAmount }} {{ item.toAsset }}
-                </span>
-              </div>
-
-              <!-- Label -->
-              <div class="text-xs text-purple-400 mb-1">Swap</div>
-
-              <!-- Date and Link -->
-              <div class="flex items-center gap-3 text-xs">
-                <span class="text-gray-500 dark:text-gray-500">{{ formatDate(item.createdAt) }}</span>
-                <a
-                    v-if="item.transactionId"
-                    :href="getTonViewerUrl(item.transactionId)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
-                >
-                  <span>View</span>
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                  </svg>
-                </a>
-              </div>
-            </div>
+          <!-- Date -->
+          <div class="w-28 flex-shrink-0 text-xs text-gray-500 dark:text-gray-500 tabular-nums">
+            {{ formatDate(item.createdAt) }}
           </div>
+
+          <!-- Icon + Label -->
+          <div class="flex items-center gap-2.5 w-44 flex-shrink-0">
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-purple-500/20 text-purple-400">
+              <ArrowLeftRight class="w-3.5 h-3.5" />
+            </div>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">Swap tokens</span>
+          </div>
+
+          <!-- Counterparty -->
+          <div class="flex-1 min-w-0">
+            <span class="text-sm text-cyan-400 font-medium">Ston.fi</span>
+          </div>
+
+          <!-- Amounts: – X TON › +Y TOKEN -->
+          <div class="flex-shrink-0 flex items-center gap-1.5 font-mono text-sm">
+            <span class="text-gray-400 dark:text-gray-400">–{{ item.fromAmount }} {{ item.fromAsset }}</span>
+            <span class="text-gray-600 dark:text-gray-600 text-xs">›</span>
+            <span class="text-cyan-400">+{{ item.toAmount }} {{ item.toAsset }}</span>
+          </div>
+
+          <!-- View link -->
+          <a
+              v-if="item.transactionId"
+              :href="getTonViewerUrl(item.transactionId)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex-shrink-0 ml-1 text-gray-500 hover:text-cyan-400 transition-colors"
+              title="View on explorer"
+          >
+            <ExternalLink :size="14" />
+          </a>
+          <div v-else class="flex-shrink-0 ml-1 w-3.5" />
         </div>
 
         <!-- Transaction item -->
         <div
             v-else
-            class="transaction-item p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
+            class="transaction-item flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
         >
-          <div class="flex items-start gap-3">
-            <!-- Direction Icon -->
-            <div class="flex-shrink-0 mt-1">
-              <div
-                  :class="[
-                    'w-8 h-8 rounded-full flex items-center justify-center',
-                    item.direction === 'INCOMING' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  ]"
-              >
-                <svg v-if="item.direction === 'INCOMING'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                </svg>
-                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                </svg>
-              </div>
+          <!-- Date -->
+          <div class="w-28 flex-shrink-0 text-xs text-gray-500 dark:text-gray-500 tabular-nums">
+            {{ formatDate(item.createdAt) }}
+          </div>
+
+          <!-- Icon + Label -->
+          <div class="flex items-center gap-2.5 w-44 flex-shrink-0">
+            <div
+                :class="[
+                  'w-7 h-7 rounded-lg flex items-center justify-center',
+                  item.direction === 'INCOMING' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                ]"
+            >
+              <svg v-if="item.direction === 'INCOMING'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              </svg>
+              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+              </svg>
             </div>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ item.direction === 'INCOMING' ? 'Received' : 'Sent' }}
+              {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
+            </span>
+          </div>
 
-            <!-- Transaction Details -->
-            <div class="flex-1 min-w-0">
-              <!-- Amount and Asset -->
-              <div class="flex items-baseline gap-2 mb-1">
-                <span class="font-mono font-semibold text-gray-900 dark:text-white">
-                  {{ item.direction === 'INCOMING' ? '+' : '-' }}{{ formatAmount(item.amountNano, item.jettonDecimals || 9) }}
-                </span>
-                <span class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
-                </span>
-              </div>
-
-              <!-- Addresses -->
-              <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
-                <span class="truncate">
-                  {{ item.direction === 'INCOMING' ? 'From:' : 'To:' }}
-                  {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
-                </span>
-              </div>
-
-              <!-- Comment (if exists) -->
-              <div v-if="item.comment" class="text-xs text-gray-500 dark:text-gray-500 italic mb-1 truncate">
-                "{{ item.comment }}"
-              </div>
-
-              <!-- Date and Link -->
-              <div class="flex items-center gap-3 text-xs">
-                <span class="text-gray-500 dark:text-gray-500">{{ formatDate(item.createdAt) }}</span>
-                <a
-                    :href="getTonViewerUrl(item.transactionHash)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
-                >
-                  <span>View</span>
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                  </svg>
-                </a>
-              </div>
+          <!-- Address + optional comment -->
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-cyan-400 font-medium truncate">
+              {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
+            </div>
+            <div v-if="item.comment" class="text-xs text-gray-500 dark:text-gray-500 italic truncate mt-0.5">
+              "{{ item.comment }}"
             </div>
           </div>
+
+          <!-- Amount -->
+          <div class="flex-shrink-0 font-mono text-sm">
+            <span :class="item.direction === 'INCOMING' ? 'text-green-400' : 'text-gray-300 dark:text-gray-300'">
+              {{ item.direction === 'INCOMING' ? '+' : '–' }}{{ formatAmount(item.amountNano, item.jettonDecimals || 9) }}
+              {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
+            </span>
+          </div>
+
+          <!-- View link -->
+          <a
+              :href="getTonViewerUrl(item.transactionHash)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex-shrink-0 ml-1 text-gray-500 hover:text-cyan-400 transition-colors"
+              title="View on explorer"
+          >
+            <ExternalLink :size="14" />
+          </a>
         </div>
 
       </template>
@@ -218,7 +207,7 @@
 
 <script setup lang="ts">
 import {computed, inject, ref, watch} from 'vue'
-import {ArrowLeftRight} from 'lucide-vue-next'
+import {ArrowLeftRight, ExternalLink} from 'lucide-vue-next'
 import type {SwapData, Transaction} from '../types'
 
 // Inject wallet state from parent
@@ -270,16 +259,15 @@ const getTonViewerUrl = (hash: string): string => {
 }
 
 /**
- * Format date to readable format
+ * Format date to "18 Feb 14:57" style
  */
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const day = date.getDate()
+  const month = date.toLocaleString('en-US', {month: 'short'})
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${day} ${month} ${hh}:${mm}`
 }
 
 // Filter options
@@ -382,18 +370,14 @@ const nextPage = () => {
 
 <style scoped>
 .transaction-item {
-  border: 1px solid rgba(99, 102, 241, 0.15);
-}
-
-:global(.dark) .transaction-item {
-  border-color: rgba(99, 102, 241, 0.1);
+  border: 1px solid transparent;
 }
 
 .transaction-item:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(99, 102, 241, 0.2);
 }
 
 :global(.dark) .transaction-item:hover {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.15);
 }
 </style>
