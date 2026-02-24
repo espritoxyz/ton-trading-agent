@@ -64,8 +64,8 @@ provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
           <div class="relative">
             <h1 class="text-xl font-semibold gradient-text group-hover:opacity-80 transition">Esprito AI</h1>
             <!-- Alpha Badge Superscript -->
-            <span class="absolute -top-1 -right-12 px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-500 text-white shadow-sm">
-              ALPHA
+            <span class="absolute -top-1 -right-10 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/40">
+              BETA
             </span>
           </div>
         </a>
