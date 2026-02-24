@@ -7,13 +7,13 @@ import com.agent.llm.tool.impl.CreatePriceTrackerAgentTool
 import com.agent.llm.tool.impl.DeleteOrdersAgentTool
 import com.agent.llm.tool.impl.DeletePriceTrackersAgentTool
 import com.agent.llm.tool.impl.GetCandidateAssetsAgentTool
-
 import com.agent.llm.tool.impl.GetTonToUSDTAgentTool
 import com.agent.llm.tool.impl.ListOrdersAgentTool
 import com.agent.llm.tool.impl.ListPriceTrackersAgentTool
 import com.agent.llm.tool.impl.SendTokenAgentTool
 import com.agent.llm.tool.impl.SendTonAgentTool
 import com.agent.llm.tool.impl.ShowTopUpAgentTool
+import com.agent.llm.tool.impl.SwapTokenToTokenAgentTool
 import com.agent.llm.tool.impl.SwapTokenToTonAgentTool
 import com.agent.llm.tool.impl.SwapTonToTokenAgentTool
 import com.agent.llm.tool.impl.TokenToTonAgentTool
@@ -28,6 +28,7 @@ class ToolDefinitions(
         SendTokenAgentTool(bcAdapter),
         SwapTonToTokenAgentTool(bcAdapter),
         SwapTokenToTonAgentTool(bcAdapter),
+        SwapTokenToTokenAgentTool(bcAdapter),
         GetCandidateAssetsAgentTool(bcAdapter),
         CreatePriceTrackerAgentTool(bcAdapter),
         ListPriceTrackersAgentTool(bcAdapter),

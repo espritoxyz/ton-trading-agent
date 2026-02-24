@@ -8,12 +8,16 @@ import org.springframework.web.client.RestClient
 import java.text.Normalizer
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
+import org.springframework.beans.factory.annotation.Value
 
 @Service
 class StonfiAssetsCacheService(
     private val stonfiProperties: StonfiProperties,
+    @Value("\${addressbook.ton}")
+    private val tonAddress: String,
+    @Value("\${addressbook.usdt}")
+    private val usdtAddress: String,
 ) {
-
     private val logger = KotlinLogging.logger {}
 
     /**

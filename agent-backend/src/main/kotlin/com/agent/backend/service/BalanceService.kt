@@ -11,16 +11,17 @@ import org.springframework.web.client.RestClient
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlin.math.pow
+import org.springframework.beans.factory.annotation.Value
 
 @Service
 open class BalanceService(
     private val assetService: AssetService,
     private val txRepo: BalanceTransactionRepository,
     private val stonfiAssetsCache: StonfiAssetsCacheService,
-    private val notificationEventPublisher: NotificationEventPublisher
+    private val notificationEventPublisher: NotificationEventPublisher,
+    @Value("\${addressbook.ton}")
+    private val tonAddress: String,
 ) {
-    private val tonAddress = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
-
     private val binanceClient: RestClient = RestClient.builder()
         .baseUrl("https://api.binance.com/api/v3")
         .build()

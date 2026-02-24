@@ -1,18 +1,28 @@
 package com.agent.backend.service
 
 import com.agent.backend.config.StonfiProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
+import org.springframework.beans.factory.annotation.Value
+
 
 @Service
 class StonfiPoolsCacheService(
     private val stonfiProperties: StonfiProperties,
+    private val stonfiAssetsCacheService: StonfiAssetsCacheService,
+    @Value("\${addressbook.ton}")
+    private val tonAddress: String,
+    @Value("\${addressbook.usdt}")
+    private val usdtAddress: String,
 ) {
 
-    private val tonAddress = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
+    private val MIN_TVL_USD: BigDecimal = BigDecimal("20000")
 
     private val logger = KotlinLogging.logger {}
 
@@ -28,8 +38,13 @@ class StonfiPoolsCacheService(
         val deprecated: Boolean? = null,
     )
 
+    class LowTvlPoolException(message: String) : RuntimeException(message)
+    class NoSupportedPoolException(message: String) : RuntimeException(message)
+
+
     private data class PoolListResponse(
-        val pool_list: List<StonfiPool> = emptyList()
+        @JsonProperty("pool_list")
+        val poolList: List<StonfiPool> = emptyList()
     )
 
     private val client: RestClient = RestClient.builder()
@@ -52,7 +67,6 @@ class StonfiPoolsCacheService(
 
     @Scheduled(fixedDelayString = "30000")
     fun scheduledRefresh() {
-
         try {
             refreshPoolsInternal()
         } catch (e: Exception) {
@@ -73,7 +87,7 @@ class StonfiPoolsCacheService(
             .retrieve()
             .body(PoolListResponse::class.java)
 
-        val pools = response?.pool_list ?: emptyList()
+        val pools = response?.poolList ?: emptyList()
         poolsRef.set(pools)
         lastUpdatedAt = System.currentTimeMillis()
     }
@@ -89,16 +103,26 @@ class StonfiPoolsCacheService(
 
     /**
 
-     * Returns the "best" pool for the given token pair, mimicking pickBestStonfiPoolForPair logic,
-     * but using only local cached pool data and geometric-mean score.
+     * Returns the "best" pool for the given token pair using a TVL-based score.
+     * Pools with TVL < MIN_TVL_USD are considered unsafe: if at least one such pool
+     * exists for the pair but none meet the threshold, a LowTvlPoolException is thrown.
      */
     fun getBestPoolByTokens(tokenA: String, tokenB: String): StonfiPool? {
-
         val a = tokenA.lowercase()
         val b = tokenB.lowercase()
 
+        // We only support pools where at least one side is TON or USDT
+        val ton = tonAddress.lowercase()
+        val usdt = usdtAddress.lowercase()
+
+        if (!(a == ton || b == ton || a == usdt || b == usdt)) {
+            throw NoSupportedPoolException("Pools without TON or USDT are not supported: $a-$b")
+        }
+
         var best: StonfiPool? = null
-        var bestScore: java.math.BigInteger = java.math.BigInteger.valueOf(-1)
+
+        var bestTvl: BigDecimal = BigDecimal.ZERO
+        var hasAnyBelowThreshold = false
 
         for (p in poolsRef.get()) {
             if (p.deprecated == true) continue
@@ -106,29 +130,52 @@ class StonfiPoolsCacheService(
             val t0 = p.token0_address.lowercase()
             val t1 = p.token1_address.lowercase()
 
-            val orientation: Int = when {
-                t0 == a && t1 == b -> 0
-                t0 == b && t1 == a -> 1
-                else -> continue
+            if (!((t0 == a && t1 == b) || (t0 == b && t1 == a))) {
+                continue
             }
 
             val r0 = parseBig(p.token0_balance ?: p.reserve0) ?: continue
             val r1 = parseBig(p.token1_balance ?: p.reserve1) ?: continue
 
-            if (r0 <= java.math.BigInteger.ZERO || r1 <= java.math.BigInteger.ZERO) continue
+            if (r0 <= BigInteger.ZERO || r1 <= BigInteger.ZERO) {
+                hasAnyBelowThreshold = true
+                continue
+            }
 
-            val reserveA = if (orientation == 0) r0 else r1
-            val reserveB = if (orientation == 0) r1 else r0
+            val price0 = stonfiAssetsCacheService.getDexUsdPrice(p.token0_address)
+            val price1 = stonfiAssetsCacheService.getDexUsdPrice(p.token1_address)
+            if (price0 == null || price1 == null) {
+                continue
+            }
 
-            val score = gmScore(reserveA, reserveB)
-            if (score > bestScore) {
-                bestScore = score
+            val tvl0 = BigDecimal(r0).multiply(BigDecimal.valueOf(price0))
+            val tvl1 = BigDecimal(r1).multiply(BigDecimal.valueOf(price1))
+            val tvl = tvl0.add(tvl1)
+
+            if (tvl <= MIN_TVL_USD) {
+                hasAnyBelowThreshold = true
+                continue
+            }
+
+            if (tvl > bestTvl) {
+                bestTvl = tvl
                 best = p
             }
         }
 
-        return best
+
+        if (best != null) {
+            logger.debug { "Picked best pool for $tokenA-$tokenB \n$best" }
+            return best
+        }
+
+        if (hasAnyBelowThreshold) {
+            throw LowTvlPoolException("All pools for pair $a-$b have TVL below ${MIN_TVL_USD.toPlainString()} USD")
+        }
+
+        return null
     }
+
 
     /**
      * Convenience for "token vs TON" where TON jetton master is fixed.
@@ -138,27 +185,11 @@ class StonfiPoolsCacheService(
         return getBestPoolByTokens(tokenJettonMaster, tonAddress)
     }
 
-    private fun parseBig(v: String?): java.math.BigInteger? {
-
+    private fun parseBig(v: String?): BigInteger? {
         if (v.isNullOrBlank()) return null
-        return try {
-            java.math.BigInteger(v)
-        } catch (e: Exception) {
-            null
-        }
+        return runCatching {
+            BigInteger(v)
+        }.getOrNull()
     }
 
-    private fun gmScore(a: java.math.BigInteger, b: java.math.BigInteger): java.math.BigInteger {
-        val prod = a.multiply(b)
-        if (prod <= java.math.BigInteger.ZERO) return java.math.BigInteger.ZERO
-
-        // integer sqrt via Newton method
-        var x0 = prod
-        var x1 = prod.shiftRight(1).add(java.math.BigInteger.ONE)
-        while (x1 < x0) {
-            x0 = x1
-            x1 = x1.add(prod.divide(x1)).shiftRight(1)
-        }
-        return x0
-    }
 }

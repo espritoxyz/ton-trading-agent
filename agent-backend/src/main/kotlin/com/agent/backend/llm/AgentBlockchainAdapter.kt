@@ -1,6 +1,8 @@
 package com.agent.backend.llm
 
+import com.agent.backend.AppUtils
 import com.agent.backend.rabbitmq.RabbitConfig
+
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationService
 import com.agent.backend.service.OrderService
@@ -43,7 +45,9 @@ class AgentBlockchainAdapter(
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
     private val notificationService: NotificationService,
+    private val appUtils: AppUtils,
 ) : BlockchainAdapter(userId) {
+
 
     companion object {
         private val staticBinanceClient: RestClient = RestClient.builder()
@@ -143,24 +147,32 @@ class AgentBlockchainAdapter(
     }
 
 
-
     override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
         val mnemonicWords = getUserMnemonicWords()
 
-        val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
+        val bestPool = try {
+            poolsCache.getBestPoolByTokenAndTon(jettonMaster)
+        } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
+            logger.warn(e) { "Swap TON->token rejected: unsupported pool for $jettonMaster" }
+            return
+        } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
+            logger.warn(e) { "Swap TON->token rejected: low TVL for $jettonMaster" }
+            return
+        }
+        val poolAddress = bestPool?.address
+
+        // We still need numeric rate internally for swap calculation; reuse price logic here.
+        val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
             // minimalTokenAmount tokens * (TON per token) = required TON (mid-price estimate)
-            val slippageSafetyFactor = 1.1 // +10% TON on top of mid-price estimate
-            (minimalTokenAmount * it * slippageSafetyFactor)
+            (minimalTokenAmount * it)
                 .toBigDecimal()
                 .setScale(6, RoundingMode.HALF_UP)
                 .toDouble()
         }
 
-        val bestPool = poolsCache.getBestPoolByTokenAndTon(jettonMaster)
-        val poolAddress = bestPool?.address
 
         val data = mutableMapOf<String, Any?>(
             "messageId" to messageId.toString(),
@@ -183,12 +195,109 @@ class AgentBlockchainAdapter(
         rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "agent-llm.swap-ton-to-token", payload)
     }
 
+    override fun swapTokenToToken(
+        offerJettonMaster: String,
+        askJettonMaster: String,
+        askTokenAmount: Double?,
+        offerTokenAmount: Double?,
+    ): String {
+        if (!appUtils.isStablecoin(offerJettonMaster) && !appUtils.isStablecoin(askJettonMaster)) {
+            val msg = "Swap token->token rejected: non-TON/non-USDT pools not supported"
+            externalToolResultService.complete(
+                messageId = messageId,
+                toolName = "swap_token_to_token",
+                result = msg,
+            )
+            logger.warn { msg }
+            return msg
+        }
+
+        val effectiveAsk = askTokenAmount ?: 0.0
+        val effectiveOffer = offerTokenAmount ?: 0.0
+
+        return try {
+            val wallet = walletService.getUserWallet(userId)
+                ?: throw IllegalStateException("User $userId has no wallet")
+            val mnemonicWords = getUserMnemonicWords()
+
+            val offerTokensHuman: BigDecimal = if (effectiveAsk > 0.0) {
+                // We have desired ask amount -> compute required offer amount via TON prices.
+                val (offerTokenToTonRate, _) = computeTokenToTonInternal(offerJettonMaster)
+                val (askTokenToTonRate, _) = computeTokenToTonInternal(askJettonMaster)
+
+                if (offerTokenToTonRate == null || askTokenToTonRate == null) {
+                    val msg = "Swap token->token rejected: cannot get TON prices for $offerJettonMaster or $askJettonMaster"
+                    logger.warn { msg }
+                    return msg
+                }
+
+                BigDecimal.valueOf(effectiveAsk)
+                    .multiply(BigDecimal.valueOf(askTokenToTonRate))
+                    .divide(BigDecimal.valueOf(offerTokenToTonRate), 12, RoundingMode.HALF_UP)
+            } else {
+                // We have offer amount directly -> just use it.
+                BigDecimal.valueOf(effectiveOffer)
+            }
+
+            val offerDecimals = assetsCache.getDecimals(offerJettonMaster) ?: 9
+            val offerFactor = BigDecimal.TEN.pow(offerDecimals)
+            val swapOfferTokenAmountNano = offerTokensHuman
+                .multiply(offerFactor)
+                .setScale(0, RoundingMode.CEILING)
+                .toLong()
+
+            val data = mutableMapOf<String, Any?>(
+                "messageId" to messageId.toString(),
+                "userId" to userId,
+                "walletAddress" to wallet.walletAddress,
+                "offerJettonMaster" to offerJettonMaster,
+                "askJettonMaster" to askJettonMaster,
+                "askTokenAmount" to if (effectiveAsk > 0.0) effectiveAsk else null,
+
+                "poolAddress" to null,
+                "mnemonic" to mnemonicWords,
+            )
+            data["swapOfferTokenAmount"] = swapOfferTokenAmountNano
+
+            val payload = mapOf(
+                "type" to "agent-llm.swap-token-to-token",
+                "occurredAt" to Instant.now().toString(),
+                "data" to data,
+            )
+
+            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "agent-llm.swap-token-to-token", payload)
+
+            if (effectiveAsk > 0.0) {
+                "Token-to-token swap from $offerJettonMaster to $askJettonMaster initiated to receive at least $effectiveAsk target units"
+            } else {
+                "Token-to-token swap from $offerJettonMaster to $askJettonMaster initiated offering $effectiveOffer units"
+            }
+        } catch (e: Exception) {
+            val msg = "Failed to initiate token-to-token swap: ${e.message}"
+            logger.warn(e) { msg }
+            msg
+        }
+    }
+
+
     override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
+
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
         val mnemonicWords = getUserMnemonicWords()
 
-        val (tokenToTonRate, _) = getTokenToTon(jettonMaster)
+        val bestPool = try {
+            poolsCache.getBestPoolByTokenAndTon(jettonMaster)
+        } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
+            logger.warn(e) { "Swap token->TON rejected: unsupported pool for $jettonMaster" }
+            return
+        } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
+            logger.warn(e) { "Swap token->TON rejected: low TVL for $jettonMaster" }
+            return
+        }
+        val poolAddress = bestPool?.address
+
+        val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
 
         // Compute how many tokens are needed, then convert to smallest units (nanojettons)
         val swapTokenAmountNano: Long? = tokenToTonRate?.let { rate ->
@@ -196,19 +305,14 @@ class AgentBlockchainAdapter(
             val tokens = BigDecimal.valueOf(minimalTonAmount) // tokens in units (not nano)
                 .divide(BigDecimal.valueOf(rate), 12, RoundingMode.HALF_UP)
 
-
             val decimals = assetsCache.getDecimals(jettonMaster) ?: 9 // fallback if missing
             val factor = BigDecimal.TEN.pow(decimals)
 
             tokens.multiply(factor)
-
                 .setScale(0, RoundingMode.CEILING)
                 .toLong()
         }
 
-
-        val bestPool = poolsCache.getBestPoolByTokenAndTon(jettonMaster)
-        val poolAddress = bestPool?.address
 
         val data = mutableMapOf<String, Any?>(
             "messageId" to messageId.toString(),
@@ -231,32 +335,47 @@ class AgentBlockchainAdapter(
         rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "agent-llm.swap-token-to-ton", payload)
     }
 
-    override fun getTokenToTon(jettonMaster: String): Pair<Double?, Double?> =
-        try {
-            val poolAddress = poolsCache.getBestPoolByTokenAndTon(jettonMaster)?.address
+    // Internal numeric price calculator reused by swap methods.
+    private fun computeTokenToTonInternal(jettonMaster: String): Pair<Double?, Double?> {
+        val poolAddress = try {
+            poolsCache.getBestPoolByTokenAndTon(jettonMaster)?.address
                 ?: error("No pool for $jettonMaster found")
-
-            logger.debug { "Pool address for $jettonMaster is $poolAddress" }
-
-            val tokenUsdtPrice = assetsCache.getDexUsdPrice(jettonMaster)
-            val tonUsdtPrice = getTonToUSDT() ?: return null to null
-
-            logger.debug { "tokenUsdtPrice=$tokenUsdtPrice, tonUsdtPrice=$tonUsdtPrice" }
-
-            // token_to_ton = token_usdt / ton_usdt
-            val price = tokenUsdtPrice?.let { price ->
-                if (price > 0.0 && tonUsdtPrice > 0.0) {
-                    (price / tonUsdtPrice).toBigDecimal().setScale(6, RoundingMode.HALF_UP).toDouble()
-                } else null
-            }
-
-            logger.debug { "Calculated price $price in TON of $jettonMaster" }
-
-            price to tokenUsdtPrice
-        } catch (e: Exception) {
-            logger.debug(e) { "Get token $jettonMaster to TON rate failed with exception" }
-            null to null
+        } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
+            logger.warn(e) { "Internal price lookup rejected: unsupported pool for $jettonMaster — ${e.message}" }
+            return null to null
+        } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
+            logger.warn(e) { "Internal price lookup rejected: low TVL for $jettonMaster — ${e.message}" }
+            return null to null
         }
+
+        logger.debug { "Pool address for $jettonMaster is $poolAddress" }
+
+        val tokenUsdtPrice = assetsCache.getDexUsdPrice(jettonMaster)
+        val tonUsdtPrice = getTonToUSDT() ?: return null to null
+
+        logger.debug { "tokenUsdtPrice=$tokenUsdtPrice, tonUsdtPrice=$tonUsdtPrice" }
+
+        val price = tokenUsdtPrice?.let { price ->
+            if (price > 0.0 && tonUsdtPrice > 0.0) {
+                (price / tonUsdtPrice).toBigDecimal().setScale(6, RoundingMode.HALF_UP).toDouble()
+            } else null
+        }
+
+        logger.debug { "Calculated price $price in TON of $jettonMaster" }
+
+        return price to tokenUsdtPrice
+    }
+
+    override fun getTokenToTon(jettonMaster: String): String {
+        return try {
+            val (tonPrice, usdPrice) = computeTokenToTonInternal(jettonMaster)
+            "[tonPrice=$tonPrice, usdPrice=$usdPrice]"
+        } catch (e: Exception) {
+            val msg = "Failed to get token->TON price for $jettonMaster: ${e.message}"
+            logger.warn(e) { msg }
+            msg
+        }
+    }
 
     override fun getCandidateAssets(symbol: String): String {
         val candidates = assetsCache.findCandidates(symbol)
@@ -294,16 +413,35 @@ class AgentBlockchainAdapter(
         }
     }
 
-    override fun createOrder(jettonMaster: String, action: String, amount: Double, targetPrice: Double) {
-        priceTrackerService.createOrderWithTracker(
-            userId = userId,
-            jettonMaster = jettonMaster,
-            action = action,
-            amount = amount,
-            targetPrice = targetPrice,
-        )
-        notificationService.broadcastWalletRefresh(userId)
+    override fun createOrder(
+        jettonMaster: String,
+        action: String,
+        amount: Double,
+        targetPrice: Double,
+        receivedJettonMaster: String?,
+    ): String {
+        return try {
+            // If LLM/tool didn't specify, default received asset to TON from address book
+            val effectiveReceived = receivedJettonMaster ?: appUtils.tonAddress
+
+            priceTrackerService.createOrderWithTracker(
+                userId = userId,
+                jettonMaster = jettonMaster,
+                action = action,
+                amount = amount,
+                targetPrice = targetPrice,
+                receivedJettonMaster = effectiveReceived,
+            )
+            notificationService.broadcastWalletRefresh(userId)
+
+            "Order created for $jettonMaster: action=$action, amount=$amount, targetPrice=$targetPrice, receive in $effectiveReceived"
+        } catch (e: Exception) {
+            val msg = "Failed to create order for $jettonMaster: ${e.message}"
+            logger.warn(e) { msg }
+            msg
+        }
     }
+
 
     override fun listOrders(activeOnly: Boolean): String {
         val orders = if (activeOnly)
@@ -323,7 +461,7 @@ class AgentBlockchainAdapter(
             val asset = assetsCache.getAssetByContractAddress(o.jettonMaster)
             val ticker = asset?.symbol
             "[ticker=${ticker}, action=${o.action}, amount=${o.amount}, isActive=${!o.fulfilled}," +
-                "targetPrice=${targetPrice}, createdAt=${o.createdAt}, id=${o.id}]"
+                    "targetPrice=${targetPrice}, createdAt=${o.createdAt}, id=${o.id}]"
         }
     }
 

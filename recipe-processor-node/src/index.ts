@@ -1,7 +1,8 @@
 import {publishJson, setupRabbit, shutdown, startConsumer} from "./rabbit.js";
 import {mockSendTon, sendTon, sendToken} from "./recipes/transactions.js";
 import { Address } from "@ton/core";
-import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon } from "./recipes/swap.js";
+import { swapTonToToken as doSwapTonToToken, swapTokenToTon as doSwapTokenToTon, swapTokenToToken as doSwapTokenToToken } from "./recipes/swap.js";
+
 import { handleWalletCreationRequest } from "./recipes/walletCreation.js";
 import { startMultiWalletMonitoring, addWalletToMonitor } from "./recipes/multiWalletMonitor.js";
 import { syncWalletBalance } from "./recipes/walletBalanceSync.js";
@@ -314,7 +315,129 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     },
                 });
             }
+        } else if (type === "agent-llm.swap-token-to-token") {
+            const messageId = data?.messageId;
+            const userId = data?.userId;
+            const offerJettonMaster = data?.offerJettonMaster;
+            const askJettonMaster = data?.askJettonMaster;
+            const minimalAskTokenAmount = data?.minimalAskTokenAmount;
+            const swapOfferTokenAmount = data?.swapOfferTokenAmount;
+            const poolAddress = data?.poolAddress as string;
+            const walletAddress = data?.walletAddress;
+            const mnemonic = data?.mnemonic as string[] | undefined;
+            console.log(`[${SERVICE}] swap-token-to-token requested:`, { messageId, userId, offerJettonMaster, askJettonMaster, minimalAskTokenAmount, swapOfferTokenAmount, poolAddress });
+
+            if (!mnemonic || !Array.isArray(mnemonic) || mnemonic.length === 0) {
+                console.error(`[${SERVICE}] swap-token-to-token error: missing or invalid mnemonic for user ${userId}`);
+                publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                    type: "agent-llm.swap-token-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: "User has no wallet or mnemonic not provided",
+                    },
+                });
+                return;
+            }
+
+            const swapOfferTokenAmtNum = Number(swapOfferTokenAmount);
+            if (!Number.isFinite(swapOfferTokenAmtNum) || swapOfferTokenAmtNum <= 0) {
+                console.error(`[${SERVICE}] swap-token-to-token error: invalid swapOfferTokenAmount`, {
+                    swapOfferTokenAmount,
+                    parsed: swapOfferTokenAmtNum,
+                });
+                publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                    type: "agent-llm.swap-token-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: `Invalid swapOfferTokenAmount: ${swapOfferTokenAmount}`,
+                    },
+                });
+                return;
+            }
+
+            try {
+                const res = await doSwapTokenToToken(
+                    Number(userId),
+                    Address.parse(offerJettonMaster),
+                    Address.parse(askJettonMaster),
+                    Number(minimalAskTokenAmount),
+                    swapOfferTokenAmtNum,
+                    poolAddress,
+                    mnemonic,
+                );
+
+                if (res.ok) {
+                    if (walletAddress && userId) {
+                        try {
+                            await syncWalletBalance(walletAddress, userId, ch, exchange);
+                        } catch (syncErr: any) {
+                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-token:`, syncErr?.message);
+                        }
+                    }
+
+                    publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                        type: "agent-llm.swap-token-to-token.result",
+                        occurredAt: new Date().toISOString(),
+                        correlation: { occurredAt },
+                        data: {
+                            messageId,
+                            userId,
+                            success: true,
+                            txId: res.txId,
+                            router: res.router,
+                            pool: res.pool,
+                            pTon: res.pTon,
+                            jettonMinter: res.jettonMinter,
+                            offerNanotons: res.offerNanotons,
+                            minAskNano: res.minAskNano,
+                            requestedOfferJettonMaster: offerJettonMaster,
+                            requestedAskJettonMaster: askJettonMaster,
+                            requestedMinimalAskTokenAmount: minimalAskTokenAmount,
+                            requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
+                        },
+                    });
+                } else {
+                    publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                        type: "agent-llm.swap-token-to-token.result",
+                        occurredAt: new Date().toISOString(),
+                        correlation: { occurredAt },
+                        data: {
+                            messageId,
+                            userId,
+                            success: false,
+                            error: res.error,
+                            details: res.details,
+                            requestedOfferJettonMaster: offerJettonMaster,
+                            requestedAskJettonMaster: askJettonMaster,
+                            requestedMinimalAskTokenAmount: minimalAskTokenAmount,
+                            requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
+                        },
+                    });
+                }
+            } catch (err: any) {
+                console.error(`[${SERVICE}] swap-token-to-token error:`, err);
+                publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                    type: "agent-llm.swap-token-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success: false,
+                        error: String(err?.message || err),
+                    },
+                });
+            }
         } else if (type === "agent-llm.swap-token-to-ton") {
+
             const messageId = data?.messageId;
             const userId = data?.userId;
             const jettonMaster = data?.jettonMaster;

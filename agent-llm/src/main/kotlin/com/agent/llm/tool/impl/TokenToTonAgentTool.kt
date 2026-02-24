@@ -23,7 +23,6 @@ class TokenToTonAgentTool(
 
     override fun payload(args: TokenToTonArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        val (tonPrice, usdPrice) = bcAdapter.getTokenToTon(args.jettonMaster)
-        return "[tonPrice=$tonPrice, usdPrice=$usdPrice]"
+        return bcAdapter.getTokenToTon(args.jettonMaster)
     }
 }

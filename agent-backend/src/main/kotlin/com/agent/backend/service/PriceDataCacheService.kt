@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
+import org.springframework.beans.factory.annotation.Value
 
 /**
  * Caches price data for TON and jettons with rate limiting and Redis persistence.
@@ -21,10 +22,11 @@ import java.time.Duration
 @Service
 class PriceDataCacheService(
     private val redisTemplate: StringRedisTemplate,
-    private val stonfiAssetsCache: StonfiAssetsCacheService
+    private val stonfiAssetsCache: StonfiAssetsCacheService,
+    @Value("\${addressbook.ton}")
+    private val tonAddress: String,
 ) {
     private val logger = KotlinLogging.logger {}
-    private val tonAddress = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
 
     // Redis cache keys
     private val TON_USDT_PRICE_KEY = "price:ton:usdt"

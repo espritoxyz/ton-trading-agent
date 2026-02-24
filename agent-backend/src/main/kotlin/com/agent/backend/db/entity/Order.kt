@@ -28,6 +28,9 @@ class Order(
     @Column(name = "amount", nullable = false)
     var amount: Double,
 
+    @Column(name = "received_jetton_master", nullable = false)
+    var receivedJettonMaster: String,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 

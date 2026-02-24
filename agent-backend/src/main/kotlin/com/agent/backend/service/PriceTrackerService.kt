@@ -23,7 +23,9 @@ class PriceTrackerService(
     private val orderService: OrderService,
     private val notificationEventPublisher: NotificationEventPublisher,
     private val notificationService: NotificationService,
+    private val appUtils: com.agent.backend.AppUtils,
 ) {
+
 
     private val logger = KotlinLogging.logger {}
 
@@ -67,13 +69,22 @@ class PriceTrackerService(
         action: String,
         amount: Double,
         targetPrice: Double,
+        receivedJettonMaster: String,
     ): Order {
+        // Prohibit orders where neither side is a stablecoin (TON/USDT) to avoid unsupported pairs.
+        if (!appUtils.isStablecoin(jettonMaster) && !appUtils.isStablecoin(receivedJettonMaster)) {
+            error("Swap token->token rejected: non-TON/non-USDT pools not supported")
+        }
+
         val order = Order(
+
             userId = userId,
             jettonMaster = jettonMaster,
             action = action,
             amount = amount,
+            receivedJettonMaster = receivedJettonMaster,
         )
+
 
         val saved = orders.save(order)
 
