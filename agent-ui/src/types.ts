@@ -69,12 +69,23 @@ export interface TransactionHistoryResponse {
     total?: number
 }
 
+export interface SwapData {
+    id: number
+    fromAsset: string
+    toAsset: string
+    fromAmount: string
+    toAmount: string
+    transactionId?: string
+    createdAt: string
+}
+
 // Unified Wallet State API types
 export interface WalletStateResponse {
     userId: number
     balance: BalanceData
     assets: AssetData[]
     transactions: TransactionData[]
+    swaps: SwapData[]
     orders: OrderData[]
     metadata: WalletStateMetadata
 }
@@ -134,6 +145,7 @@ export interface WalletStateMetadata {
     cacheAge: number | null
     transactionCount: number
     transactionsLimit: number
+    swapCount: number
     activeOrdersCount: number
     fulfilledOrdersCount: number
 }

@@ -7,6 +7,7 @@ data class WalletStateResponse(
     val balance: BalanceData,
     val assets: List<AssetData>,
     val transactions: List<TransactionData>,
+    val swaps: List<SwapData>,
     val orders: List<OrderData>,
     val metadata: WalletStateMetadata
 )
@@ -55,11 +56,22 @@ data class OrderData(
     val direction: String? // UP or DOWN
 )
 
+data class SwapData(
+    val id: Long,
+    val fromAsset: String,
+    val toAsset: String,
+    val fromAmount: String,
+    val toAmount: String,
+    val transactionId: String?,
+    val createdAt: Instant
+)
+
 data class WalletStateMetadata(
     val fromCache: Boolean,
     val cacheAge: Long?, // milliseconds since cached
     val transactionCount: Int,
     val transactionsLimit: Int?,
+    val swapCount: Int,
     val activeOrdersCount: Int,
     val fulfilledOrdersCount: Int
 )

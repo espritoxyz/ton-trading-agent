@@ -1,7 +1,7 @@
 import {computed, ref} from 'vue'
 import {api} from './useApi.ts'
 import {accessToken} from './useAuth'
-import type {AssetData, WalletStateResponse} from '../types'
+import type {AssetData, SwapData, WalletStateResponse} from '../types'
 
 const TONAPI_BASE_URL = 'https://tonapi.io/v2'
 
@@ -69,6 +69,7 @@ async function enrichAssetsWithImages(assets: AssetData[]): Promise<AssetData[]>
 export const balanceUsd = computed(() => walletState.value?.balance.totalUsd ?? null)
 export const assets = computed(() => walletState.value?.assets ?? [])
 export const transactions = computed(() => walletState.value?.transactions ?? [])
+export const swaps = computed<SwapData[]>(() => walletState.value?.swaps ?? [])
 export const orders = computed(() => walletState.value?.orders ?? [])
 export const metadata = computed(() => walletState.value?.metadata ?? null)
 
@@ -146,6 +147,7 @@ export function useWalletState() {
         balanceUsd,
         assets: sortedAssets,
         transactions,
+        swaps,
         orders,
         metadata,
         loadWalletState,
