@@ -17,8 +17,10 @@ import com.agent.llm.tool.impl.ShowTopUpAgentTool
 import com.agent.llm.tool.impl.SwapTokenToTonAgentTool
 import com.agent.llm.tool.impl.SwapTonToTokenAgentTool
 import com.agent.llm.tool.impl.TokenToTonAgentTool
+import com.agent.llm.tool.impl.FetchUrlAgentTool
 
 class ToolDefinitions(
+
     bcAdapter: BlockchainAdapter
 ) {
     val allTools: List<AgentTool<*>> = listOf(
@@ -34,8 +36,9 @@ class ToolDefinitions(
         DeletePriceTrackersAgentTool(bcAdapter),
         CreateOrderAgentTool(bcAdapter),
         DeleteOrdersAgentTool(bcAdapter),
-
         ListOrdersAgentTool(bcAdapter),
         ShowTopUpAgentTool(bcAdapter),
+        // Generic web fetching tool
+        FetchUrlAgentTool(),
     )
 }
