@@ -11,6 +11,7 @@ import com.agent.backend.dto.NewsletterSubscriptionStatusResponse
 import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
 import com.agent.backend.dto.NewsletterUnsubscribeRequest
 import com.agent.backend.dto.NewsletterUnsubscribeResponse
+import com.agent.backend.db.entity.ConfirmationIssuer
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
@@ -151,7 +152,7 @@ class NewsletterController(
         if (auth == null) return ResponseEntity.status(401).build()
         val userEmail = auth.token.claims["email"] as? String
             ?: return ResponseEntity.status(400).body(NewsletterSubscriptionStatusResponse(subscribed = false))
-        newsletterService.setNewsletterSubscription(userEmail, body.subscribed)
+        newsletterService.setNewsletterSubscription(userEmail, body.subscribed, ConfirmationIssuer.ACCOUNT_SETTINGS)
         logger.info { "User ${auth.token.subject} set newsletter subscription to ${body.subscribed}" }
         return ResponseEntity.ok(NewsletterSubscriptionStatusResponse(subscribed = body.subscribed))
     }

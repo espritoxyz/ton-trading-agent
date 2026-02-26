@@ -10,6 +10,7 @@ import com.agent.backend.dto.ResendVerificationResponse
 import com.agent.backend.dto.VerifyEmailRequest
 import com.agent.backend.dto.VerifyEmailResponse
 import com.agent.backend.security.EncryptionService
+import com.agent.backend.db.entity.ConfirmationIssuer
 import com.agent.backend.service.AuthService
 import com.agent.backend.service.EmailVerificationService
 import com.agent.backend.service.NewsletterService
@@ -112,7 +113,7 @@ class AuthController(
             val resp = authService.register(body)
             if (body.subscribeToNewsletter) {
                 try {
-                    newsletterService.subscribeRegisteredUser(body.email)
+                    newsletterService.subscribeRegisteredUser(body.email, ConfirmationIssuer.REGISTRATION_CHECKBOX)
                 } catch (e: Exception) {
                     logger.warn(e) { "Failed to subscribe ${body.email} to newsletter during registration" }
                 }

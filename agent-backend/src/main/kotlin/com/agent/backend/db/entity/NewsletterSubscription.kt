@@ -2,12 +2,22 @@ package com.agent.backend.db.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.SequenceGenerator
 import jakarta.persistence.Table
 import java.time.Instant
+
+enum class NewsletterStatus {
+    PENDING_VERIFICATION, ACTIVE, UNSUBSCRIBED
+}
+
+enum class ConfirmationIssuer {
+    EMAIL_CONFIRMATION, REGISTRATION_CHECKBOX, ACCOUNT_SETTINGS
+}
 
 @Entity
 @Table(name = "newsletter_subscription")
@@ -28,11 +38,15 @@ class NewsletterSubscription(
     @Column(nullable = false, unique = true)
     var unsubscribeToken: String,
 
-    /** PENDING_VERIFICATION | ACTIVE | UNSUBSCRIBED */
-    @Column(nullable = false)
-    var status: String = "PENDING_VERIFICATION",
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    var status: NewsletterStatus = NewsletterStatus.PENDING_VERIFICATION,
 
     var confirmedAt: Instant? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    var confirmationIssuer: ConfirmationIssuer? = null,
 
     @Column(unique = true)
     var verificationToken: String? = null,

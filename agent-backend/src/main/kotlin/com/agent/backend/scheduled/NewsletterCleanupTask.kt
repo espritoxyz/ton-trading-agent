@@ -1,5 +1,6 @@
 package com.agent.backend.scheduled
 
+import com.agent.backend.db.entity.NewsletterStatus
 import com.agent.backend.db.rep.NewsletterSubscriptionRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
@@ -25,7 +26,7 @@ class NewsletterCleanupTask(
         try {
             val cutoff = Instant.now().minus(pendingTtlDays, ChronoUnit.DAYS)
             logger.info { "Starting newsletter cleanup (pending TTL: $pendingTtlDays days, cutoff: $cutoff)" }
-            val deleted = repository.deleteStalePending(cutoff)
+            val deleted = repository.deleteStalePending(NewsletterStatus.PENDING_VERIFICATION, cutoff)
             logger.info { "Deleted $deleted stale PENDING_VERIFICATION newsletter subscriptions" }
         } catch (e: Exception) {
             logger.error(e) { "Newsletter cleanup task failed" }

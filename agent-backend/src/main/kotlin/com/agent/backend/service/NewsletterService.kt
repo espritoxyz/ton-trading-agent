@@ -1,5 +1,7 @@
 package com.agent.backend.service
 
+import com.agent.backend.db.entity.ConfirmationIssuer
+import com.agent.backend.db.entity.NewsletterStatus
 import com.agent.backend.db.entity.NewsletterSubscription
 import com.agent.backend.db.rep.NewsletterSubscriptionRepository
 import com.agent.backend.dto.NewsletterBroadcastResponse
@@ -39,9 +41,9 @@ class NewsletterService(
 
         if (existing != null) {
             return when (existing.status) {
-                "ACTIVE" -> SubscribeResult.ALREADY_SUBSCRIBED
+                NewsletterStatus.ACTIVE -> SubscribeResult.ALREADY_SUBSCRIBED
 
-                "PENDING_VERIFICATION" -> {
+                NewsletterStatus.PENDING_VERIFICATION -> {
                     val tokenExpired = existing.verificationTokenExpiresAt?.isBefore(Instant.now()) ?: true
                     if (!tokenExpired) {
                         // Token still valid — tell user to check inbox
@@ -53,12 +55,13 @@ class NewsletterService(
                     }
                 }
 
-                else -> {
+                NewsletterStatus.UNSUBSCRIBED -> {
                     // UNSUBSCRIBED — re-subscribe flow
-                    existing.status = "PENDING_VERIFICATION"
+                    existing.status = NewsletterStatus.PENDING_VERIFICATION
                     existing.subscribedAt = Instant.now()
                     existing.unsubscribedAt = null
                     existing.confirmedAt = null
+                    existing.confirmationIssuer = null
                     existing.resendCount = 0
                     existing.lastResentAt = null
                     issueVerificationToken(existing)
@@ -80,14 +83,15 @@ class NewsletterService(
         val sub = repository.findByVerificationToken(token).orElse(null)
             ?: return ConfirmResult.INVALID_TOKEN
 
-        if (sub.status == "ACTIVE") return ConfirmResult.ALREADY_CONFIRMED
+        if (sub.status == NewsletterStatus.ACTIVE) return ConfirmResult.ALREADY_CONFIRMED
 
         if (sub.verificationTokenExpiresAt?.isBefore(Instant.now()) == true) {
             return ConfirmResult.EXPIRED
         }
 
-        sub.status = "ACTIVE"
+        sub.status = NewsletterStatus.ACTIVE
         sub.confirmedAt = Instant.now()
+        sub.confirmationIssuer = ConfirmationIssuer.EMAIL_CONFIRMATION
         sub.verificationToken = null
         sub.verificationTokenExpiresAt = null
         repository.save(sub)
@@ -100,7 +104,7 @@ class NewsletterService(
         val sub = repository.findByEmail(email).orElse(null)
             ?: return ResendResult.NOT_FOUND
 
-        if (sub.status == "ACTIVE") return ResendResult.ALREADY_CONFIRMED
+        if (sub.status == NewsletterStatus.ACTIVE) return ResendResult.ALREADY_CONFIRMED
 
         if (sub.resendCount >= resendMaxCount) return ResendResult.MAX_RESENDS_REACHED
 
@@ -120,9 +124,9 @@ class NewsletterService(
         val sub = repository.findByEmail(email).orElse(null)
             ?: return UnsubscribeResult.NOT_FOUND
 
-        if (sub.status == "UNSUBSCRIBED") return UnsubscribeResult.ALREADY_UNSUBSCRIBED
+        if (sub.status == NewsletterStatus.UNSUBSCRIBED) return UnsubscribeResult.ALREADY_UNSUBSCRIBED
 
-        sub.status = "UNSUBSCRIBED"
+        sub.status = NewsletterStatus.UNSUBSCRIBED
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
         logger.info { "Unsubscribed $email from newsletter" }
@@ -134,9 +138,9 @@ class NewsletterService(
         val sub = repository.findByUnsubscribeToken(token).orElse(null)
             ?: return UnsubscribeResult.NOT_FOUND
 
-        if (sub.status == "UNSUBSCRIBED") return UnsubscribeResult.ALREADY_UNSUBSCRIBED
+        if (sub.status == NewsletterStatus.UNSUBSCRIBED) return UnsubscribeResult.ALREADY_UNSUBSCRIBED
 
-        sub.status = "UNSUBSCRIBED"
+        sub.status = NewsletterStatus.UNSUBSCRIBED
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
         logger.info { "Unsubscribed ${sub.email} from newsletter via token" }
@@ -145,16 +149,24 @@ class NewsletterService(
 
     /**
      * Subscribes a registered user directly to ACTIVE status — no verification email sent.
-     * Registration checkbox and account-settings toggle both constitute explicit consent.
+     * [issuer] records the confirmation mechanism (see [ConfirmationIssuer]).
      */
     @Transactional
-    fun subscribeRegisteredUser(email: String) {
+    fun subscribeRegisteredUser(email: String, issuer: ConfirmationIssuer) {
+        val now = Instant.now()
         val existing = repository.findByEmail(email).orElse(null)
         if (existing != null) {
-            if (existing.status == "ACTIVE") return
-            existing.status = "ACTIVE"
-            existing.confirmedAt = Instant.now()
-            existing.subscribedAt = Instant.now()
+            if (existing.status == NewsletterStatus.ACTIVE) {
+                // Already active — update issuer in case they re-confirmed via a different channel
+                existing.confirmedAt = now
+                existing.confirmationIssuer = issuer
+                repository.save(existing)
+                return
+            }
+            existing.status = NewsletterStatus.ACTIVE
+            existing.confirmedAt = now
+            existing.confirmationIssuer = issuer
+            existing.subscribedAt = now
             existing.unsubscribedAt = null
             existing.verificationToken = null
             existing.verificationTokenExpiresAt = null
@@ -164,12 +176,13 @@ class NewsletterService(
                 NewsletterSubscription(
                     email = email,
                     unsubscribeToken = UUID.randomUUID().toString(),
-                    status = "ACTIVE",
-                    confirmedAt = Instant.now()
+                    status = NewsletterStatus.ACTIVE,
+                    confirmedAt = now,
+                    confirmationIssuer = issuer
                 )
             )
         }
-        logger.info { "Registered user subscribed to newsletter: $email" }
+        logger.info { "Registered user subscribed to newsletter: $email (issuer=$issuer)" }
     }
 
     /**
@@ -177,16 +190,17 @@ class NewsletterService(
      */
     fun getNewsletterStatus(email: String): Boolean {
         val sub = repository.findByEmail(email).orElse(null) ?: return false
-        return sub.status == "ACTIVE"
+        return sub.status == NewsletterStatus.ACTIVE
     }
 
     /**
      * Sets newsletter subscription for a registered user directly (no double opt-in).
+     * [issuer] is recorded when subscribing; ignored on unsubscribe.
      */
     @Transactional
-    fun setNewsletterSubscription(email: String, subscribed: Boolean) {
+    fun setNewsletterSubscription(email: String, subscribed: Boolean, issuer: ConfirmationIssuer) {
         if (subscribed) {
-            subscribeRegisteredUser(email)
+            subscribeRegisteredUser(email, issuer)
         } else {
             unsubscribeByEmail(email)
         }
@@ -202,7 +216,7 @@ class NewsletterService(
     }
 
     fun broadcast(subject: String, htmlContent: String): NewsletterBroadcastResponse {
-        val subscribers = repository.findAllByStatus("ACTIVE")
+        val subscribers = repository.findAllByStatus(NewsletterStatus.ACTIVE)
         val total = subscribers.size
 
         if (subscribers.isEmpty()) {
