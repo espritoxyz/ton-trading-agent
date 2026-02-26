@@ -4,13 +4,12 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
-import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
-import org.springframework.beans.factory.annotation.Value
 
 /**
  * Caches price data for TON and jettons with rate limiting and Redis persistence.
@@ -144,7 +143,7 @@ class PriceDataCacheService(
      * @return Price in USD, or 1.0 as fallback
      */
     fun getJettonPrice(contractAddress: String): Double {
-        return stonfiAssetsCache.getDexUsdPrice(contractAddress) ?: 1.0
+        return stonfiAssetsCache.getAssetByContractAddress(contractAddress)?.dexUsdPrice ?: 1.0
     }
 
     /**
@@ -157,7 +156,7 @@ class PriceDataCacheService(
         return if (address.equals(tonAddress, ignoreCase = true) || address.equals("TON", ignoreCase = true)) {
             9
         } else {
-            stonfiAssetsCache.getDecimals(address) ?: 9
+            stonfiAssetsCache.getAssetByContractAddress(address)?.decimals ?: 9
         }
     }
 

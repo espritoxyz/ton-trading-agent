@@ -1,25 +1,24 @@
 package com.agent.backend.service
 
+import com.agent.backend.AppUtils
 import com.agent.backend.config.StonfiProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
-import org.springframework.beans.factory.annotation.Value
-
 
 @Service
 class StonfiPoolsCacheService(
     private val stonfiProperties: StonfiProperties,
     private val stonfiAssetsCacheService: StonfiAssetsCacheService,
+    private val appUtils: AppUtils,
     @Value("\${addressbook.ton}")
     private val tonAddress: String,
-    @Value("\${addressbook.usdt}")
-    private val usdtAddress: String,
 ) {
 
     private val MIN_TVL_USD: BigDecimal = BigDecimal("20000")
@@ -28,13 +27,14 @@ class StonfiPoolsCacheService(
 
     data class StonfiPool(
         val address: String,
-        val router_address: String,
-        val token0_address: String,
-        val token1_address: String,
-        val token0_balance: String? = null,
-        val token1_balance: String? = null,
-        val reserve0: String? = null,
-        val reserve1: String? = null,
+        @JsonProperty("router_address")
+        val routerAddress: String,
+        @JsonProperty("token0_address")
+        val token0Address: String,
+        @JsonProperty("token1_address")
+        val token1Address: String,
+        val reserve0: String,
+        val reserve1: String,
         val deprecated: Boolean? = null,
     )
 
@@ -111,11 +111,7 @@ class StonfiPoolsCacheService(
         val a = tokenA.lowercase()
         val b = tokenB.lowercase()
 
-        // We only support pools where at least one side is TON or USDT
-        val ton = tonAddress.lowercase()
-        val usdt = usdtAddress.lowercase()
-
-        if (!(a == ton || b == ton || a == usdt || b == usdt)) {
+        if (!(appUtils.isStablecoin(a) || appUtils.isStablecoin(b))) {
             throw NoSupportedPoolException("Pools without TON or USDT are not supported: $a-$b")
         }
 
@@ -127,29 +123,30 @@ class StonfiPoolsCacheService(
         for (p in poolsRef.get()) {
             if (p.deprecated == true) continue
 
-            val t0 = p.token0_address.lowercase()
-            val t1 = p.token1_address.lowercase()
+            val t0 = p.token0Address.lowercase()
+            val t1 = p.token1Address.lowercase()
 
             if (!((t0 == a && t1 == b) || (t0 == b && t1 == a))) {
                 continue
             }
 
-            val r0 = parseBig(p.token0_balance ?: p.reserve0) ?: continue
-            val r1 = parseBig(p.token1_balance ?: p.reserve1) ?: continue
+            val asset0 = stonfiAssetsCacheService.getAssetByContractAddress(p.token0Address) ?: continue
+            val asset1 = stonfiAssetsCacheService.getAssetByContractAddress(p.token1Address) ?: continue
 
-            if (r0 <= BigInteger.ZERO || r1 <= BigInteger.ZERO) {
+            val divider0 = BigInteger.TEN.pow(asset0.decimals)
+            val divider1 = BigInteger.TEN.pow(asset1.decimals)
+            val reserveHuman0 = parseBig(p.reserve0)?.divide(divider0) ?: continue
+            val reserveHuman1 = parseBig(p.reserve1)?.divide(divider1) ?: continue
+
+            if (reserveHuman0 <= BigInteger.ZERO || reserveHuman1 <= BigInteger.ZERO) {
                 hasAnyBelowThreshold = true
                 continue
             }
 
-            val price0 = stonfiAssetsCacheService.getDexUsdPrice(p.token0_address)
-            val price1 = stonfiAssetsCacheService.getDexUsdPrice(p.token1_address)
-            if (price0 == null || price1 == null) {
-                continue
-            }
-
-            val tvl0 = BigDecimal(r0).multiply(BigDecimal.valueOf(price0))
-            val tvl1 = BigDecimal(r1).multiply(BigDecimal.valueOf(price1))
+            val price0 = asset0.dexUsdPrice ?: continue
+            val price1 = asset1.dexUsdPrice ?: continue
+            val tvl0 = BigDecimal(reserveHuman0).multiply(BigDecimal.valueOf(price0))
+            val tvl1 = BigDecimal(reserveHuman1).multiply(BigDecimal.valueOf(price1))
             val tvl = tvl0.add(tvl1)
 
             if (tvl <= MIN_TVL_USD) {

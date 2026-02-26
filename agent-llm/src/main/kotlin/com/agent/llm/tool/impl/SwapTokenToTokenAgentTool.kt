@@ -39,13 +39,13 @@ class SwapTokenToTokenAgentTool(
         return with(serArgs) {
             when {
                 askTokenAmount != null ->
-                    "Swap token $offerJettonMaster to receive at least $askTokenAmount units of $askJettonMaster"
+                    "Swap token $offerJettonTicker to receive at least $askTokenAmount $askJettonTicker"
 
                 offerTokenAmount != null ->
-                    "Swap token $offerJettonMaster offering $offerTokenAmount units to get $askJettonMaster"
+                    "Swap token $offerJettonTicker offering $offerTokenAmount $askJettonTicker"
 
                 else ->
-                    "Swap token $offerJettonMaster to $askJettonMaster (no exact amounts specified)"
+                    "Swap token $offerJettonTicker to $askJettonTicker (no exact amounts specified)"
             }
         }
     }

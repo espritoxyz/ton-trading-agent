@@ -19,7 +19,6 @@ class OrderService(
     private val stonfiPoolsCacheService: StonfiPoolsCacheService,
     private val rabbitTemplate: RabbitTemplate,
     private val walletService: WalletService,
-    private val notificationEventPublisher: NotificationEventPublisher,
     private val appUtils: com.agent.backend.AppUtils,
 ) {
     private val logger = KotlinLogging.logger {}
@@ -86,39 +85,38 @@ class OrderService(
     }
 
 
-    private fun getTokenToTonInternal(jettonMaster: String): Double? =
-        try {
-            val poolAddress = stonfiPoolsCacheService.getBestPoolByTokenAndTon(jettonMaster)?.address
-                ?: error("No pool for $jettonMaster found")
+    private fun getTokenToTonInternal(jettonMaster: String): Double? = try {
+        val poolAddress = stonfiPoolsCacheService.getBestPoolByTokenAndTon(jettonMaster)?.address
+            ?: error("No pool for $jettonMaster found")
 
-            logger.debug { "Pool address for $jettonMaster is $poolAddress" }
+        logger.debug { "Pool address for $jettonMaster is $poolAddress" }
+        val asset = stonfiAssetsCacheService.getAssetByContractAddress(jettonMaster)
 
-            val tokenUsdtPrice = stonfiAssetsCacheService.getDexUsdPrice(jettonMaster)
-            val tonUsdtPrice = AgentBlockchainAdapter.getTonToUSDTStatic() ?: return null
+        val tokenUsdtPrice = asset?.dexUsdPrice
+        val tonUsdtPrice = AgentBlockchainAdapter.getTonToUSDTStatic() ?: return null
 
 
-            logger.debug { "TokenUsdtPrice=$tokenUsdtPrice, tonUsdtPrice=$tonUsdtPrice" }
+        logger.debug { "TokenUsdtPrice=$tokenUsdtPrice, tonUsdtPrice=$tonUsdtPrice" }
 
-            val price = tokenUsdtPrice?.let { price ->
-                if (price > 0.0 && tonUsdtPrice > 0.0) {
-                    (price / tonUsdtPrice).toBigDecimal().setScale(6, RoundingMode.HALF_UP).toDouble()
-                } else null
-            }
-
-            logger.debug { "Calculated price $price in TON of $jettonMaster" }
-
-            price
-        } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
-            logger.warn(e) { "No supported pool for $jettonMaster; orders will not be created/executed" }
-            null
-        } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
-            logger.warn(e) { "Low TVL pool for $jettonMaster; orders will not be created/executed" }
-            null
-        } catch (e: Exception) {
-            logger.debug(e) { "Get token $jettonMaster to TON rate failed with exception" }
-            null
+        val price = tokenUsdtPrice?.let { price ->
+            if (price > 0.0 && tonUsdtPrice > 0.0) {
+                (price / tonUsdtPrice).toBigDecimal().setScale(6, RoundingMode.HALF_UP).toDouble()
+            } else null
         }
 
+        logger.debug { "Calculated price $price in TON of $jettonMaster" }
+
+        price
+    } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
+        logger.warn(e) { "No supported pool for $jettonMaster; orders will not be created/executed" }
+        null
+    } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
+        logger.warn(e) { "Low TVL pool for $jettonMaster; orders will not be created/executed" }
+        null
+    } catch (e: Exception) {
+        logger.debug(e) { "Get token $jettonMaster to TON rate failed with exception" }
+        null
+    }
 
     private fun swapTonToTokenInternal(userId: Long, jettonMaster: String, minimalTokenAmount: Double) {
         val wallet = walletService.getUserWallet(userId)
@@ -146,7 +144,7 @@ class OrderService(
         }
         val poolAddress = bestPool?.address
 
-        val data = mutableMapOf<String, Any?>(
+        val data = mutableMapOf(
 
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
@@ -168,19 +166,19 @@ class OrderService(
     }
 
     private fun swapTokenToTonInternal(userId: Long, jettonMaster: String, minimalTonAmount: Double) {
-
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
         val mnemonicWords =
             walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
+        val asset = stonfiAssetsCacheService.getAssetByContractAddress(jettonMaster)
 
         val swapTokenAmountNano: Long? = tokenToTonRate?.let { rate ->
             val tokens = BigDecimal.valueOf(minimalTonAmount)
                 .divide(BigDecimal.valueOf(rate), 12, RoundingMode.HALF_UP)
 
-            val decimals = stonfiAssetsCacheService.getDecimals(jettonMaster) ?: 9
+            val decimals = asset?.decimals ?: 9
             val factor = BigDecimal.TEN.pow(decimals)
 
             tokens.multiply(factor)
@@ -199,7 +197,7 @@ class OrderService(
         }
         val poolAddress = bestPool?.address
 
-        val data = mutableMapOf<String, Any?>(
+        val data = mutableMapOf(
 
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
@@ -231,6 +229,7 @@ class OrderService(
         val mnemonicWords =
             walletService.decryptMnemonic(wallet).split(" ").map { it.trim() }.filter { it.isNotEmpty() }
 
+        val offerAsset = stonfiAssetsCacheService.getAssetByContractAddress(offerJettonMaster)
         val offerTokenToTonRate = getTokenToTonInternal(offerJettonMaster)
         val askTokenToTonRate = getTokenToTonInternal(askJettonMaster)
 
@@ -247,14 +246,14 @@ class OrderService(
         val slippageSafetyFactor = BigDecimal("1.10")
         val offerTokensWithSlippage = offerTokensHuman.multiply(slippageSafetyFactor)
 
-        val offerDecimals = stonfiAssetsCacheService.getDecimals(offerJettonMaster) ?: 9
+        val offerDecimals = offerAsset?.decimals ?: 9
         val offerFactor = BigDecimal.TEN.pow(offerDecimals)
         val swapOfferTokenAmountNano = offerTokensWithSlippage
             .multiply(offerFactor)
             .setScale(0, RoundingMode.CEILING)
             .toLong()
 
-        val data = mutableMapOf<String, Any?>(
+        val data = mutableMapOf(
             "messageId" to UUID.randomUUID().toString(),
             "userId" to userId,
             "walletAddress" to wallet.walletAddress,

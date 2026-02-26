@@ -26,7 +26,6 @@ class PriceTrackerService(
     private val appUtils: com.agent.backend.AppUtils,
 ) {
 
-
     private val logger = KotlinLogging.logger {}
 
     fun listByUser(userId: Long): List<PriceTracker> =
@@ -37,7 +36,8 @@ class PriceTrackerService(
 
     @Transactional
     fun createTracker(userId: Long, jettonMaster: String, targetPrice: Double): PriceTracker {
-        val currentPrice = stonfiAssetsCacheService.getDexUsdPrice(jettonMaster)
+        val asset = stonfiAssetsCacheService.getAssetByContractAddress(jettonMaster)
+        val currentPrice = asset?.dexUsdPrice
         val direction = when {
             currentPrice == null -> {
                 logger.warn { "No current price for $jettonMaster, defaulting direction to UP" }
@@ -109,7 +109,8 @@ class PriceTrackerService(
         if (untriggered.isEmpty()) return
 
         for (t in untriggered) {
-            val price = stonfiAssetsCacheService.getDexUsdPrice(t.jettonMaster)
+            val asset = stonfiAssetsCacheService.getAssetByContractAddress(t.jettonMaster)
+            val price = asset?.dexUsdPrice
             if (price == null) {
                 logger.warn { "Price was not found for ${t.jettonMaster}" }
                 continue
@@ -182,7 +183,7 @@ class PriceTrackerService(
             .stripTrailingZeros()
             .toPlainString()
 
-    private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
+    private fun nearlyEquals(a: Double, b: Double, absTol: Double = 1e-8): Boolean {
         val diff = abs(a - b)
         return diff <= absTol
     }

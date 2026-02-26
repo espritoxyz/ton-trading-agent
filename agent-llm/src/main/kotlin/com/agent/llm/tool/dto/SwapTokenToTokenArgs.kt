@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SwapTokenToTokenArgs(
     val offerJettonMaster: String,
+    val offerJettonTicker: String,
     val askJettonMaster: String,
+    val askJettonTicker: String,
     val askTokenAmount: Double? = null,
     val offerTokenAmount: Double? = null,
 ) : AgentToolArgs

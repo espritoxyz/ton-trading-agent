@@ -1,6 +1,7 @@
 package com.agent.backend.service
 
 import com.agent.backend.config.StonfiProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -8,15 +9,10 @@ import org.springframework.web.client.RestClient
 import java.text.Normalizer
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
-import org.springframework.beans.factory.annotation.Value
 
 @Service
 class StonfiAssetsCacheService(
     private val stonfiProperties: StonfiProperties,
-    @Value("\${addressbook.ton}")
-    private val tonAddress: String,
-    @Value("\${addressbook.usdt}")
-    private val usdtAddress: String,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -24,14 +20,18 @@ class StonfiAssetsCacheService(
      * Minimal view of STON.fi asset, containing only what we care about.
      */
     data class StonfiAsset(
-        val contract_address: String,
+        @JsonProperty("contract_address")
+        val contractAddress: String,
         val symbol: String,
-        val dex_usd_price: String?,
-        val popularity_index: Double? = null,
-        val decimals: Int? = null,
-    )
-
-
+        @JsonProperty("dex_usd_price")
+        private val dexUsdPriceString: String?,
+        @JsonProperty("popularity_index")
+        val popularityIndex: Double? = null,
+        val decimals: Int,
+    ) {
+        val dexUsdPrice: Double?
+            get() = dexUsdPriceString?.toDoubleOrNull()
+    }
 
     private data class AssetListResponse(
         val asset_list: List<StonfiAsset> = emptyList()
@@ -98,11 +98,11 @@ class StonfiAssetsCacheService(
         val indexed = assets.mapNotNull { a ->
             val norm = normalizeSymbol(a.symbol)
             if (norm.isEmpty()) null else IndexedAsset(
-                contractAddress = a.contract_address,
+                contractAddress = a.contractAddress,
                 symbol = a.symbol,
                 normSymbol = norm,
-                hasPrice = !a.dex_usd_price.isNullOrBlank(),
-                popularityIndex = a.popularity_index,
+                hasPrice = a.dexUsdPrice != null,
+                popularityIndex = a.popularityIndex,
             )
         }
 
@@ -116,15 +116,8 @@ class StonfiAssetsCacheService(
 
     fun getAssetByContractAddress(contractAddress: String): StonfiAsset? {
         val addr = contractAddress.lowercase()
-        return assetsRef.get().firstOrNull { it.contract_address.lowercase() == addr }
+        return assetsRef.get().firstOrNull { it.contractAddress.lowercase() == addr }
     }
-
-    fun getDexUsdPrice(contractAddress: String): Double? =
-        getAssetByContractAddress(contractAddress)?.dex_usd_price?.toDoubleOrNull()
-
-    fun getDecimals(contractAddress: String): Int? =
-        getAssetByContractAddress(contractAddress)?.decimals
-
 
 
     fun findCandidates(symbol: String, limit: Int = 50): List<IndexedAsset> {

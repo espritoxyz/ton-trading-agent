@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SwapTokenToTonArgs(
     val jettonMaster: String,
+    val jettonTicker: String,
     val minimalTonAmount: Double,
 ) : AgentToolArgs
