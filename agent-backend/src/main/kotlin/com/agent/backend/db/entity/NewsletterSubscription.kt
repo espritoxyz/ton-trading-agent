@@ -28,6 +28,19 @@ class NewsletterSubscription(
     @Column(nullable = false, unique = true)
     var unsubscribeToken: String,
 
+    /** PENDING_VERIFICATION | ACTIVE | UNSUBSCRIBED */
     @Column(nullable = false)
-    var active: Boolean = true
+    var status: String = "PENDING_VERIFICATION",
+
+    var confirmedAt: Instant? = null,
+
+    @Column(unique = true)
+    var verificationToken: String? = null,
+
+    var verificationTokenExpiresAt: Instant? = null,
+
+    @Column(nullable = false)
+    var resendCount: Int = 0,
+
+    var lastResentAt: Instant? = null
 )

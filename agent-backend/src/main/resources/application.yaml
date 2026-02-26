@@ -76,3 +76,9 @@ email:
 notification:
   retention:
     days: 90
+
+newsletter:
+  verification-token-ttl-hours: 48
+  pending-verification-ttl-days: 7
+  resend-max-count: 3
+  resend-min-interval-minutes: 5

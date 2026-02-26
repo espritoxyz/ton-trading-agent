@@ -10,7 +10,10 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.transaction.Transactional
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.security.SecureRandom
 import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.Base64
 import java.util.UUID
 
 private const val BATCH_SIZE = 100
@@ -22,26 +25,45 @@ class NewsletterService(
     private val emailTemplateService: EmailTemplateService,
     @Value("\${email.resend.from-email}") private val fromEmail: String,
     @Value("\${email.resend.from-name}") private val fromName: String,
-    @Value("\${email.verification.base-url}") private val baseUrl: String
+    @Value("\${email.verification.base-url}") private val baseUrl: String,
+    @Value("\${newsletter.verification-token-ttl-hours:48}") private val tokenTtlHours: Int,
+    @Value("\${newsletter.resend-max-count:3}") private val resendMaxCount: Int,
+    @Value("\${newsletter.resend-min-interval-minutes:5}") private val resendMinIntervalMinutes: Long
 ) {
     private val logger = KotlinLogging.logger {}
+    private val secureRandom = SecureRandom()
 
     @Transactional
     fun subscribe(email: String): SubscribeResult {
-        val existing = repository.findByEmail(email)
+        val existing = repository.findByEmail(email).orElse(null)
 
-        if (existing.isPresent) {
-            val sub = existing.get()
-            return if (sub.active) {
-                SubscribeResult.ALREADY_SUBSCRIBED
-            } else {
-                sub.active = true
-                sub.subscribedAt = Instant.now()
-                sub.unsubscribedAt = null
-                sub.unsubscribeToken = UUID.randomUUID().toString()
-                repository.save(sub)
-                logger.info { "Re-subscribed $email to newsletter" }
-                SubscribeResult.SUBSCRIBED
+        if (existing != null) {
+            return when (existing.status) {
+                "ACTIVE" -> SubscribeResult.ALREADY_SUBSCRIBED
+
+                "PENDING_VERIFICATION" -> {
+                    val tokenExpired = existing.verificationTokenExpiresAt?.isBefore(Instant.now()) ?: true
+                    if (!tokenExpired) {
+                        // Token still valid — tell user to check inbox
+                        SubscribeResult.PENDING_VERIFICATION
+                    } else {
+                        // Token expired — issue a new one and resend
+                        issueVerificationToken(existing)
+                        SubscribeResult.SUBSCRIBED
+                    }
+                }
+
+                else -> {
+                    // UNSUBSCRIBED — re-subscribe flow
+                    existing.status = "PENDING_VERIFICATION"
+                    existing.subscribedAt = Instant.now()
+                    existing.unsubscribedAt = null
+                    existing.confirmedAt = null
+                    existing.resendCount = 0
+                    existing.lastResentAt = null
+                    issueVerificationToken(existing)
+                    SubscribeResult.SUBSCRIBED
+                }
             }
         }
 
@@ -49,9 +71,48 @@ class NewsletterService(
             email = email,
             unsubscribeToken = UUID.randomUUID().toString()
         )
-        repository.save(subscription)
-        logger.info { "New newsletter subscription: $email" }
+        issueVerificationToken(subscription)
         return SubscribeResult.SUBSCRIBED
+    }
+
+    @Transactional
+    fun confirmSubscription(token: String): ConfirmResult {
+        val sub = repository.findByVerificationToken(token).orElse(null)
+            ?: return ConfirmResult.INVALID_TOKEN
+
+        if (sub.status == "ACTIVE") return ConfirmResult.ALREADY_CONFIRMED
+
+        if (sub.verificationTokenExpiresAt?.isBefore(Instant.now()) == true) {
+            return ConfirmResult.EXPIRED
+        }
+
+        sub.status = "ACTIVE"
+        sub.confirmedAt = Instant.now()
+        sub.verificationToken = null
+        sub.verificationTokenExpiresAt = null
+        repository.save(sub)
+        logger.info { "Newsletter subscription confirmed for ${sub.email}" }
+        return ConfirmResult.CONFIRMED
+    }
+
+    @Transactional
+    fun resendVerification(email: String): ResendResult {
+        val sub = repository.findByEmail(email).orElse(null)
+            ?: return ResendResult.NOT_FOUND
+
+        if (sub.status == "ACTIVE") return ResendResult.ALREADY_CONFIRMED
+
+        if (sub.resendCount >= resendMaxCount) return ResendResult.MAX_RESENDS_REACHED
+
+        sub.lastResentAt?.let { lastResent ->
+            val minutesSince = ChronoUnit.MINUTES.between(lastResent, Instant.now())
+            if (minutesSince < resendMinIntervalMinutes) return ResendResult.TOO_SOON
+        }
+
+        sub.resendCount++
+        sub.lastResentAt = Instant.now()
+        issueVerificationToken(sub)
+        return ResendResult.SENT
     }
 
     @Transactional
@@ -59,9 +120,9 @@ class NewsletterService(
         val sub = repository.findByEmail(email).orElse(null)
             ?: return UnsubscribeResult.NOT_FOUND
 
-        if (!sub.active) return UnsubscribeResult.ALREADY_UNSUBSCRIBED
+        if (sub.status == "UNSUBSCRIBED") return UnsubscribeResult.ALREADY_UNSUBSCRIBED
 
-        sub.active = false
+        sub.status = "UNSUBSCRIBED"
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
         logger.info { "Unsubscribed $email from newsletter" }
@@ -73,9 +134,9 @@ class NewsletterService(
         val sub = repository.findByUnsubscribeToken(token).orElse(null)
             ?: return UnsubscribeResult.NOT_FOUND
 
-        if (!sub.active) return UnsubscribeResult.ALREADY_UNSUBSCRIBED
+        if (sub.status == "UNSUBSCRIBED") return UnsubscribeResult.ALREADY_UNSUBSCRIBED
 
-        sub.active = false
+        sub.status = "UNSUBSCRIBED"
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
         logger.info { "Unsubscribed ${sub.email} from newsletter via token" }
@@ -92,7 +153,7 @@ class NewsletterService(
     }
 
     fun broadcast(subject: String, htmlContent: String): NewsletterBroadcastResponse {
-        val subscribers = repository.findAllByActive(true)
+        val subscribers = repository.findAllByStatus("ACTIVE")
         val total = subscribers.size
 
         if (subscribers.isEmpty()) {
@@ -110,7 +171,7 @@ class NewsletterService(
             .chunked(BATCH_SIZE)
             .forEachIndexed { chunkIndex, chunk ->
                 val emails = chunk.map { sub ->
-                    val unsubscribeLink = "$baseUrl/api/newsletter/unsubscribe/${sub.unsubscribeToken}"
+                    val unsubscribeLink = "$baseUrl/newsletter/unsubscribe/${sub.unsubscribeToken}"
                     val html = emailTemplateService.generateNewsletterEmail(
                         subject = subject,
                         htmlContent = htmlContent,
@@ -137,7 +198,45 @@ class NewsletterService(
         logger.info { "Newsletter broadcast complete: sent=$sent, failed=$failed, total=$total" }
         return NewsletterBroadcastResponse(totalSubscribers = total, sent = sent, failed = failed)
     }
+
+    /**
+     * Generates a new verification token, persists it (inserting if new), and sends the email.
+     * Mutates [sub] in place; saves to repository.
+     */
+    private fun issueVerificationToken(sub: NewsletterSubscription) {
+        val token = generateSecureToken()
+        sub.verificationToken = token
+        sub.verificationTokenExpiresAt = Instant.now().plus(tokenTtlHours.toLong(), ChronoUnit.HOURS)
+        repository.save(sub)
+
+        val confirmationLink = "$baseUrl/newsletter/confirm/$token"
+        val html = emailTemplateService.generateNewsletterVerificationEmail(
+            confirmationLink = confirmationLink,
+            expiresInHours = tokenTtlHours,
+            baseUrl = baseUrl
+        )
+        val from = "$fromName <$fromEmail>"
+        try {
+            resendClient.sendEmail(
+                from = from,
+                to = sub.email,
+                subject = "Confirm your Esprito AI newsletter subscription",
+                htmlBody = html
+            )
+            logger.info { "Sent newsletter verification email to ${sub.email}" }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to send newsletter verification email to ${sub.email}" }
+        }
+    }
+
+    private fun generateSecureToken(): String {
+        val bytes = ByteArray(64)
+        secureRandom.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    }
 }
 
-enum class SubscribeResult { SUBSCRIBED, ALREADY_SUBSCRIBED }
+enum class SubscribeResult { SUBSCRIBED, ALREADY_SUBSCRIBED, PENDING_VERIFICATION }
+enum class ConfirmResult   { CONFIRMED, ALREADY_CONFIRMED, EXPIRED, INVALID_TOKEN }
+enum class ResendResult    { SENT, TOO_SOON, MAX_RESENDS_REACHED, NOT_FOUND, ALREADY_CONFIRMED }
 enum class UnsubscribeResult { UNSUBSCRIBED, ALREADY_UNSUBSCRIBED, NOT_FOUND }

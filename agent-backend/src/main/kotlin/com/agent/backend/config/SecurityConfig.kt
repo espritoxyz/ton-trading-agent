@@ -31,6 +31,8 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/newsletter/subscribe").permitAll()
                     .requestMatchers(HttpMethod.POST, "/newsletter/unsubscribe").permitAll()
                     .requestMatchers(HttpMethod.GET, "/newsletter/unsubscribe/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/newsletter/confirm/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/newsletter/resend-verification").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
                     // WebSocket endpoints (authentication handled at STOMP level)
                     .requestMatchers("/ws/**").permitAll()

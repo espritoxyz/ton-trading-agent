@@ -31,4 +31,12 @@ class EmailTemplateService {
             .replace("{{unsubscribeLink}}", unsubscribeLink)
             .replace("{{baseUrl}}", baseUrl)
     }
+
+    fun generateNewsletterVerificationEmail(confirmationLink: String, expiresInHours: Int, baseUrl: String): String {
+        val template = loadTemplate("templates/email/newsletter-verification-email.html")
+        return template
+            .replace("{{confirmationLink}}", confirmationLink)
+            .replace("{{expiresInHours}}", expiresInHours.toString())
+            .replace("{{baseUrl}}", baseUrl)
+    }
 }

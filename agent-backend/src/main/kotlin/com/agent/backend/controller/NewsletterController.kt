@@ -2,11 +2,16 @@ package com.agent.backend.controller
 
 import com.agent.backend.dto.NewsletterBroadcastRequest
 import com.agent.backend.dto.NewsletterBroadcastResponse
+import com.agent.backend.dto.NewsletterConfirmResponse
+import com.agent.backend.dto.NewsletterResendRequest
+import com.agent.backend.dto.NewsletterResendResponse
 import com.agent.backend.dto.NewsletterSubscribeRequest
 import com.agent.backend.dto.NewsletterSubscribeResponse
 import com.agent.backend.dto.NewsletterUnsubscribeRequest
 import com.agent.backend.dto.NewsletterUnsubscribeResponse
+import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
+import com.agent.backend.service.ResendResult
 import com.agent.backend.service.SubscribeResult
 import com.agent.backend.service.UnsubscribeResult
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -32,10 +37,61 @@ class NewsletterController(
         logger.info { "Newsletter subscribe request for: ${body.email}" }
         return when (newsletterService.subscribe(body.email)) {
             SubscribeResult.SUBSCRIBED -> ResponseEntity.ok(
-                NewsletterSubscribeResponse(subscribed = true, message = "You're subscribed! We'll keep you in the loop.")
+                NewsletterSubscribeResponse(
+                    subscribed = true,
+                    pending = true,
+                    message = "Almost there! We've sent a confirmation email. Please check your inbox and click the link to complete your subscription."
+                )
+            )
+            SubscribeResult.PENDING_VERIFICATION -> ResponseEntity.ok(
+                NewsletterSubscribeResponse(
+                    subscribed = false,
+                    pending = true,
+                    message = "We've already sent you a confirmation email. Please check your inbox (and spam folder) and click the link."
+                )
             )
             SubscribeResult.ALREADY_SUBSCRIBED -> ResponseEntity.ok(
-                NewsletterSubscribeResponse(subscribed = true, message = "You're already subscribed.")
+                NewsletterSubscribeResponse(subscribed = true, pending = false, message = "You're already subscribed.")
+            )
+        }
+    }
+
+    @GetMapping("/confirm/{token}")
+    fun confirm(@PathVariable token: String): ResponseEntity<NewsletterConfirmResponse> {
+        logger.info { "Newsletter confirmation attempt via token" }
+        return when (newsletterService.confirmSubscription(token)) {
+            ConfirmResult.CONFIRMED -> ResponseEntity.ok(
+                NewsletterConfirmResponse(confirmed = true, message = "You're subscribed! You'll start receiving our updates soon.")
+            )
+            ConfirmResult.ALREADY_CONFIRMED -> ResponseEntity.ok(
+                NewsletterConfirmResponse(confirmed = true, message = "You were already subscribed.")
+            )
+            ConfirmResult.EXPIRED -> ResponseEntity.ok(
+                NewsletterConfirmResponse(confirmed = false, message = "This confirmation link has expired. Please subscribe again to receive a new link.")
+            )
+            ConfirmResult.INVALID_TOKEN -> ResponseEntity.ok(
+                // Intentionally vague
+                NewsletterConfirmResponse(confirmed = false, message = "This confirmation link is invalid or has already been used.")
+            )
+        }
+    }
+
+    @PostMapping("/resend-verification")
+    fun resendVerification(@Valid @RequestBody body: NewsletterResendRequest): ResponseEntity<NewsletterResendResponse> {
+        logger.info { "Newsletter resend verification request" }
+        return when (newsletterService.resendVerification(body.email)) {
+            ResendResult.SENT -> ResponseEntity.ok(
+                NewsletterResendResponse(sent = true, message = "Confirmation email resent. Please check your inbox.")
+            )
+            ResendResult.TOO_SOON -> ResponseEntity.ok(
+                NewsletterResendResponse(sent = false, message = "Please wait a few minutes before requesting another email.")
+            )
+            ResendResult.MAX_RESENDS_REACHED -> ResponseEntity.ok(
+                NewsletterResendResponse(sent = false, message = "Maximum resend limit reached. Please subscribe again with a fresh request.")
+            )
+            ResendResult.NOT_FOUND, ResendResult.ALREADY_CONFIRMED -> ResponseEntity.ok(
+                // Intentionally vague to avoid email enumeration
+                NewsletterResendResponse(sent = true, message = "If that email has a pending subscription, we've resent the confirmation.")
             )
         }
     }

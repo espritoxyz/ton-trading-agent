@@ -9,6 +9,7 @@ data class NewsletterSubscribeRequest(
 
 data class NewsletterSubscribeResponse(
     val subscribed: Boolean,
+    val pending: Boolean = false,
     val message: String
 )
 
@@ -30,4 +31,18 @@ data class NewsletterBroadcastResponse(
     val totalSubscribers: Int,
     val sent: Int,
     val failed: Int
+)
+
+data class NewsletterConfirmResponse(
+    val confirmed: Boolean,
+    val message: String
+)
+
+data class NewsletterResendRequest(
+    @field:NotBlank @field:Email val email: String
+)
+
+data class NewsletterResendResponse(
+    val sent: Boolean,
+    val message: String
 )
