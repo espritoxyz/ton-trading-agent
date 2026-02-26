@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import {
   Eye, Send, Loader2, AlertTriangle, CheckCircle2,
   Users, Sun, Moon, ExternalLink, Mail, ShieldCheck,
-  LayoutDashboard, ChevronRight, ArrowRight
+  LayoutDashboard, ChevronRight, ArrowRight, ChevronLeft
 } from 'lucide-vue-next'
 import { api } from '../composables/useApi'
 
@@ -129,11 +129,16 @@ async function send() {
 <template>
   <div class="root">
 
-    <!-- ── Sidebar ─────────────────────────────────────────────── -->
+    <!-- ── Sidebar ──────────────────────────────────────────────── -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <ShieldCheck :size="15" class="text-indigo-400 shrink-0" />
-        <span class="brand">Admin</span>
+        <div class="sidebar-logo">
+          <ShieldCheck :size="15" />
+        </div>
+        <div class="sidebar-title-group">
+          <span class="brand">Esprito AI</span>
+          <span class="brand-sub">Admin Panel</span>
+        </div>
       </div>
 
       <nav class="nav">
@@ -145,14 +150,17 @@ async function send() {
             @click="activeView = item.id"
             :class="['nav-item', activeView === item.id && 'is-active']"
           >
-            <component :is="item.icon" :size="14" class="shrink-0" />
+            <component :is="item.icon" :size="15" class="shrink-0" />
             <span>{{ item.label }}</span>
           </button>
         </template>
       </nav>
 
       <div class="sidebar-footer">
-        <a href="/app" class="back-link">← Back to app</a>
+        <a href="/app" class="back-btn">
+          <ChevronLeft :size="15" class="shrink-0" />
+          <span>Back to App</span>
+        </a>
       </div>
     </aside>
 
@@ -162,8 +170,8 @@ async function send() {
       <!-- Topbar -->
       <header class="topbar">
         <div class="breadcrumb">
-          <span>Admin</span>
-          <ChevronRight :size="11" />
+          <span class="bc-root">Admin</span>
+          <ChevronRight :size="12" class="bc-sep" />
           <span class="bc-current">{{ activeItem?.label }}</span>
         </div>
       </header>
@@ -174,20 +182,20 @@ async function send() {
         <!-- ── Overview ── -->
         <div v-if="activeView === 'overview'" class="overview">
           <div class="overview-header">
-            <h1 class="overview-title">Admin Dashboard</h1>
+            <h1 class="overview-title">Dashboard</h1>
             <p class="overview-sub">Manage Esprito AI platform settings and operations.</p>
           </div>
 
           <div class="module-grid">
             <button class="module-card" @click="activeView = 'newsletter'">
               <div class="module-icon-wrap">
-                <Mail :size="18" class="text-indigo-400" />
+                <Mail :size="19" />
               </div>
               <div class="module-info">
                 <div class="module-name">Newsletter</div>
                 <div class="module-desc">Compose and broadcast emails to active subscribers</div>
               </div>
-              <ArrowRight :size="14" class="text-slate-600 shrink-0" />
+              <ArrowRight :size="15" class="module-arrow" />
             </button>
           </div>
         </div>
@@ -223,39 +231,39 @@ async function send() {
                 </div>
 
                 <div v-if="nlError" class="err-box">
-                  <AlertTriangle :size="13" class="shrink-0 mt-px" />
+                  <AlertTriangle :size="14" class="shrink-0 mt-px" />
                   <span>{{ nlError }}</span>
                 </div>
 
-                <div class="flex gap-2">
-                  <button @click="preview" :disabled="previewLoading || sendLoading" class="btn btn-ghost flex-1">
-                    <Loader2 v-if="previewLoading" :size="13" class="animate-spin" />
-                    <Eye v-else :size="13" />
+                <div class="btn-row">
+                  <button @click="preview" :disabled="previewLoading || sendLoading" class="btn btn-ghost">
+                    <Loader2 v-if="previewLoading" :size="14" class="animate-spin" />
+                    <Eye v-else :size="14" />
                     {{ previewLoading ? 'Loading…' : 'Preview' }}
                   </button>
-                  <button @click="send" :disabled="previewLoading || sendLoading" class="btn btn-primary flex-1">
-                    <Loader2 v-if="sendLoading" :size="13" class="animate-spin" />
-                    <Send v-else :size="13" />
+                  <button @click="send" :disabled="previewLoading || sendLoading" class="btn btn-primary">
+                    <Loader2 v-if="sendLoading" :size="14" class="animate-spin" />
+                    <Send v-else :size="14" />
                     {{ sendLoading ? 'Sending…' : 'Send to all' }}
                   </button>
                 </div>
 
                 <div v-if="sendResult" class="result-box">
-                  <div class="flex items-center gap-2 mb-3">
-                    <CheckCircle2 :size="14" class="text-emerald-400" />
-                    <span class="text-sm font-medium text-emerald-300">Broadcast complete</span>
+                  <div class="result-header">
+                    <CheckCircle2 :size="15" class="result-icon" />
+                    <span class="result-title">Broadcast complete</span>
                   </div>
                   <div class="stats-grid">
                     <div class="stat">
-                      <div class="stat-val text-slate-200">{{ sendResult.totalSubscribers }}</div>
-                      <div class="stat-lbl"><Users :size="9" class="inline mr-0.5" />Total</div>
+                      <div class="stat-val">{{ sendResult.totalSubscribers }}</div>
+                      <div class="stat-lbl"><Users :size="10" class="inline mr-0.5" />Total</div>
                     </div>
                     <div class="stat">
-                      <div class="stat-val text-emerald-400">{{ sendResult.sent }}</div>
+                      <div class="stat-val stat-sent">{{ sendResult.sent }}</div>
                       <div class="stat-lbl">Sent</div>
                     </div>
                     <div class="stat">
-                      <div class="stat-val" :class="sendResult.failed > 0 ? 'text-red-400' : 'text-slate-600'">
+                      <div class="stat-val" :class="sendResult.failed > 0 ? 'stat-failed' : 'stat-zero'">
                         {{ sendResult.failed }}
                       </div>
                       <div class="stat-lbl">Failed</div>
@@ -267,30 +275,30 @@ async function send() {
             </section>
 
             <!-- Preview -->
-            <section class="panel overflow-hidden flex flex-col">
-              <div class="panel-head justify-between">
+            <section class="panel panel-preview">
+              <div class="panel-head panel-head-between">
                 <span class="panel-title">Email Preview</span>
-                <div v-if="previewHtml" class="flex items-center gap-1.5">
+                <div v-if="previewHtml" class="preview-controls">
                   <div class="theme-toggle">
                     <button
                       @click="previewDark = false"
                       :class="['toggle-btn', !previewDark && 'is-active']"
                       title="Light background"
-                    ><Sun :size="12" /></button>
+                    ><Sun :size="13" /></button>
                     <button
                       @click="previewDark = true"
                       :class="['toggle-btn', previewDark && 'is-active']"
                       title="Dark background"
-                    ><Moon :size="12" /></button>
+                    ><Moon :size="13" /></button>
                   </div>
                   <button @click="openPreviewInTab" class="open-btn" title="Open in new tab">
-                    <ExternalLink :size="12" />
+                    <ExternalLink :size="13" />
                   </button>
                 </div>
               </div>
 
               <div v-if="!previewHtml" class="preview-empty">
-                <Eye :size="32" stroke-width="1.5" />
+                <Eye :size="36" stroke-width="1.3" class="preview-empty-icon" />
                 <p>Click <strong>Preview</strong> to render the email</p>
               </div>
 
@@ -299,7 +307,7 @@ async function send() {
                 v-else
                 :key="`preview-${previewDark}`"
                 :srcdoc="previewSrcdoc"
-                class="flex-1 w-full border-none"
+                class="preview-frame"
                 :style="{ background: previewDark ? '#1a1a2e' : '#fff' }"
                 sandbox="allow-same-origin"
               />
@@ -315,46 +323,101 @@ async function send() {
 </template>
 
 <style scoped>
-/* ── Root ──────────────────────────────────────────────────────── */
+/* ── Design tokens ──────────────────────────────────────────────── */
+.root {
+  --bg:          #0e1825;
+  --surface:     #152236;
+  --surface-2:   #1d2f47;
+  --surface-3:   #263c5c;
+  --border:      #2c4260;
+  --border-hi:   #3d5c88;
+  --text:        #dde9f8;
+  --text-2:      #8aabcf;
+  --text-3:      #5c809f;
+  --text-dim:    #3d5a78;
+  --accent:      #5a72e8;
+  --accent-hi:   #4a60d8;
+  --accent-glow: rgba(90, 114, 232, 0.14);
+  --success:     #34d399;
+  --success-bg:  rgba(52, 211, 153, 0.08);
+  --success-bdr: rgba(52, 211, 153, 0.2);
+  --error:       #f87171;
+  --error-bg:    rgba(248, 113, 113, 0.08);
+  --error-bdr:   rgba(248, 113, 113, 0.2);
+  --radius:      8px;
+  --radius-sm:   5px;
+  --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+/* ── Root layout ────────────────────────────────────────────────── */
 .root {
   min-height: 100vh;
   display: flex;
-  background: #080d18;
-  color: #94a3b8;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-2);
+  font-family: var(--font);
   font-size: 13px;
+  line-height: 1.5;
 }
 
-/* ── Sidebar ───────────────────────────────────────────────────── */
+/* ── Sidebar ────────────────────────────────────────────────────── */
 .sidebar {
-  width: 200px;
+  width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid #131c2e;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  background: #0a0f1e;
+  background: var(--surface);
 }
 
 .sidebar-header {
-  height: 50px;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  border-bottom: 1px solid #131c2e;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
+.sidebar-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(90, 114, 232, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.sidebar-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .brand {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--text);
   letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.brand-sub {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
 }
 
 .nav {
   flex: 1;
-  padding: 10px 8px;
+  padding: 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -362,45 +425,76 @@ async function send() {
 }
 
 .nav-group-label {
-  padding: 10px 7px 3px;
+  padding: 12px 8px 4px;
   font-size: 10px;
-  font-weight: 700;
-  color: #253044;
+  font-weight: 600;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 5px;
+  padding: 7px 10px;
+  border-radius: 6px;
   border: none;
   background: none;
-  color: #4b6080;
+  color: var(--text-2);
   font-size: 13px;
+  font-family: var(--font);
+  font-weight: 500;
   cursor: pointer;
   text-align: left;
   transition: background 0.12s, color 0.12s;
 }
-.nav-item:hover  { background: #111c30; color: #7a94b0; }
-.nav-item.is-active { background: #141f35; color: #e2e8f0; }
 
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.nav-item.is-active {
+  background: var(--accent-glow);
+  color: var(--text);
+  border: 1px solid rgba(90, 114, 232, 0.2);
+}
+
+/* ── Sidebar footer / back button ───────────────────────────────── */
 .sidebar-footer {
-  padding: 12px 14px;
-  border-top: 1px solid #131c2e;
+  padding: 14px 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
-.back-link {
-  font-size: 11.5px;
-  color: #2d3f57;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.back-link:hover { color: #4b6080; }
 
-/* ── Right content ─────────────────────────────────────────────── */
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: var(--font);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  box-sizing: border-box;
+}
+
+.back-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-hi);
+  color: var(--text);
+}
+
+/* ── Right content area ─────────────────────────────────────────── */
 .content {
   flex: 1;
   display: flex;
@@ -410,22 +504,25 @@ async function send() {
 }
 
 .topbar {
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 20px;
-  border-bottom: 1px solid #131c2e;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  background: var(--bg);
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #2d3f57;
+  gap: 7px;
+  font-size: 12.5px;
 }
-.bc-current { color: #64748b; }
+
+.bc-root    { color: var(--text-3); font-weight: 500; }
+.bc-sep     { color: var(--text-dim); }
+.bc-current { color: var(--text-2); font-weight: 600; }
 
 .main {
   flex: 1;
@@ -433,50 +530,79 @@ async function send() {
   overflow-x: hidden;
   min-height: 0;
   scrollbar-width: thin;
-  scrollbar-color: #131c2e transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* ── Overview ──────────────────────────────────────────────────── */
+/* ── Overview ───────────────────────────────────────────────────── */
 .overview {
-  padding: 28px 24px;
-  max-width: 680px;
+  padding: 32px 28px;
+  max-width: 720px;
 }
-.overview-header { margin-bottom: 24px; }
-.overview-title { font-size: 17px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
-.overview-sub   { font-size: 12.5px; color: #37506b; }
 
-.module-grid { display: flex; flex-direction: column; gap: 8px; }
+.overview-header { margin-bottom: 28px; }
+
+.overview-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+
+.overview-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+
+.module-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .module-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 15px;
-  background: #0a0f1e;
-  border: 1px solid #131c2e;
-  border-radius: 7px;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: background 0.15s, border-color 0.15s;
+  font-family: var(--font);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.module-card:hover { background: #0f172a; border-color: #1e2d45; }
+
+.module-card:hover {
+  background: var(--surface-2);
+  border-color: var(--border-hi);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+}
 
 .module-icon-wrap {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.18);
-  display: flex; align-items: center; justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(90, 114, 232, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
   flex-shrink: 0;
 }
-.module-info  { flex: 1; min-width: 0; }
-.module-name  { font-size: 13px; font-weight: 600; color: #c4d3e6; }
-.module-desc  { font-size: 11.5px; color: #37506b; margin-top: 2px; }
 
-/* ── Newsletter ────────────────────────────────────────────────── */
+.module-info   { flex: 1; min-width: 0; }
+.module-name   { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.module-desc   { font-size: 12px; color: var(--text-3); }
+.module-arrow  { color: var(--text-3); }
+
+/* ── Newsletter layout ──────────────────────────────────────────── */
 .nl-wrap {
-  padding: 16px;
+  padding: 18px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -486,192 +612,283 @@ async function send() {
 .nl-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 12px;
-  min-height: calc(100vh - 44px - 32px);
+  grid-template-columns: 380px 1fr;
+  gap: 14px;
+  min-height: calc(100vh - 48px - 36px);
 }
 
-/* ── Panel ─────────────────────────────────────────────────────── */
+/* ── Panel ──────────────────────────────────────────────────────── */
 .panel {
-  background: #0a0f1e;
-  border: 1px solid #131c2e;
-  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-preview {
   overflow: hidden;
 }
 
 .panel-head {
   display: flex;
   align-items: center;
-  padding: 8px 13px;
-  border-bottom: 1px solid #131c2e;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  min-height: 40px;
+}
+
+.panel-head-between {
+  justify-content: space-between;
 }
 
 .panel-title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  color: #2d3f57;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
 }
 
 .panel-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
+  gap: 14px;
+  padding: 16px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #131c2e transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* ── Form ──────────────────────────────────────────────────────── */
-.field { display: flex; flex-direction: column; gap: 5px; }
+/* ── Form fields ────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 6px; }
 
 .field-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #2d3f57;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
 }
 
 .inp {
-  background: #060a14;
-  border: 1px solid #131c2e;
-  border-radius: 5px;
-  padding: 7px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
   font-size: 13px;
-  color: #e2e8f0;
+  font-family: var(--font);
+  color: var(--text);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   width: 100%;
+  box-sizing: border-box;
 }
-.inp:focus { border-color: #4f46e5; }
-.inp::placeholder { color: #1e2d45; }
+
+.inp:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.inp::placeholder { color: var(--text-dim); }
 
 .ta {
-  background: #060a14;
-  border: 1px solid #131c2e;
-  border-radius: 5px;
-  padding: 9px 10px;
-  font-size: 11.5px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  color: #c4d3e6;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text-2);
   resize: none;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   min-height: 200px;
-  line-height: 1.65;
+  line-height: 1.7;
+  box-sizing: border-box;
+  width: 100%;
 }
-.ta:focus { border-color: #4f46e5; }
-.ta::placeholder { color: #1a2540; }
 
-/* ── Error ─────────────────────────────────────────────────────── */
+.ta:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.ta::placeholder { color: var(--text-dim); }
+
+/* ── Error ──────────────────────────────────────────────────────── */
 .err-box {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 9px 11px;
-  border-radius: 5px;
-  background: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  font-size: 12px;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--error-bg);
+  border: 1px solid var(--error-bdr);
+  color: var(--error);
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
-/* ── Buttons ───────────────────────────────────────────────────── */
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
 .btn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 12px;
-  border-radius: 5px;
-  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: var(--font);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: none;
   white-space: nowrap;
 }
-.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .btn-ghost {
   background: transparent;
-  border: 1px solid #131c2e;
-  color: #37506b;
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
-.btn-ghost:not(:disabled):hover { background: #0f172a; color: #64748b; border-color: #1e2d45; }
 
-.btn-primary { background: #4f46e5; color: #fff; }
-.btn-primary:not(:disabled):hover { background: #4338ca; }
+.btn-ghost:not(:disabled):hover {
+  background: var(--surface-2);
+  border-color: var(--border-hi);
+  color: var(--text);
+}
 
-/* ── Send result ───────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent);
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.btn-primary:not(:disabled):hover {
+  background: var(--accent-hi);
+  box-shadow: 0 2px 12px rgba(90, 114, 232, 0.35);
+}
+
+/* ── Send result ────────────────────────────────────────────────── */
 .result-box {
-  padding: 12px;
-  border-radius: 5px;
-  background: rgba(16, 185, 129, 0.06);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+  border: 1px solid var(--success-bdr);
 }
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; text-align: center; }
-.stat {
-  padding: 8px 6px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  border: 1px solid #131c2e;
-}
-.stat-val { font-size: 16px; font-weight: 700; line-height: 1.2; }
-.stat-lbl { font-size: 10px; color: #2d3f57; margin-top: 2px; }
 
-/* ── Preview ───────────────────────────────────────────────────── */
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.result-icon  { color: var(--success); }
+.result-title { font-size: 13px; font-weight: 600; color: var(--success); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+
+.stat {
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.stat-val { font-size: 18px; font-weight: 700; line-height: 1.2; color: var(--text); }
+.stat-lbl { font-size: 10px; color: var(--text-3); margin-top: 3px; }
+
+.stat-sent   { color: var(--success); }
+.stat-failed { color: var(--error); }
+.stat-zero   { color: var(--text-dim); }
+
+/* ── Preview ────────────────────────────────────────────────────── */
 .preview-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: #131c2e;
-  font-size: 12px;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 13px;
 }
-.preview-empty strong { color: #1e2d45; }
+
+.preview-empty-icon { color: var(--text-dim); }
+.preview-empty strong { color: var(--text-2); }
+
+.preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .theme-toggle {
   display: flex;
-  background: #060a14;
-  border: 1px solid #131c2e;
-  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
   overflow: hidden;
 }
+
 .toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px 7px;
+  padding: 5px 8px;
   background: none;
   border: none;
-  color: #1e2d45;
+  color: var(--text-3);
   cursor: pointer;
   transition: all 0.15s;
 }
-.toggle-btn:hover { color: #37506b; }
-.toggle-btn.is-active { background: #131c2e; color: #64748b; }
+
+.toggle-btn:hover { color: var(--text-2); }
+
+.toggle-btn.is-active {
+  background: var(--surface-2);
+  color: var(--text);
+}
 
 .open-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px 7px;
-  border-radius: 4px;
+  padding: 5px 8px;
+  border-radius: 5px;
   background: none;
-  border: 1px solid #131c2e;
-  color: #1e2d45;
+  border: 1px solid var(--border);
+  color: var(--text-3);
   cursor: pointer;
   transition: all 0.15s;
 }
-.open-btn:hover { color: #37506b; border-color: #1e2d45; }
+
+.open-btn:hover {
+  color: var(--text-2);
+  border-color: var(--border-hi);
+  background: var(--surface-2);
+}
+
+.preview-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  display: block;
+}
+</style>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
 </style>
