@@ -7,6 +7,8 @@ import com.agent.backend.dto.NewsletterResendRequest
 import com.agent.backend.dto.NewsletterResendResponse
 import com.agent.backend.dto.NewsletterSubscribeRequest
 import com.agent.backend.dto.NewsletterSubscribeResponse
+import com.agent.backend.dto.NewsletterSubscriptionStatusResponse
+import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
 import com.agent.backend.dto.NewsletterUnsubscribeRequest
 import com.agent.backend.dto.NewsletterUnsubscribeResponse
 import com.agent.backend.service.ConfirmResult
@@ -21,6 +23,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -127,6 +130,30 @@ class NewsletterController(
                 NewsletterUnsubscribeResponse(unsubscribed = false, message = "Invalid unsubscribe link.")
             )
         }
+    }
+
+    /** Get newsletter subscription status for the authenticated user. */
+    @GetMapping("/subscription")
+    fun getMySubscription(auth: JwtAuthenticationToken?): ResponseEntity<NewsletterSubscriptionStatusResponse> {
+        if (auth == null) return ResponseEntity.status(401).build()
+        val userEmail = auth.token.claims["email"] as? String
+            ?: return ResponseEntity.status(400).body(NewsletterSubscriptionStatusResponse(subscribed = false))
+        val subscribed = newsletterService.getNewsletterStatus(userEmail)
+        return ResponseEntity.ok(NewsletterSubscriptionStatusResponse(subscribed = subscribed))
+    }
+
+    /** Update newsletter subscription for the authenticated user (no double opt-in for registered users). */
+    @PutMapping("/subscription")
+    fun updateMySubscription(
+        auth: JwtAuthenticationToken?,
+        @RequestBody body: NewsletterSubscriptionUpdateRequest
+    ): ResponseEntity<NewsletterSubscriptionStatusResponse> {
+        if (auth == null) return ResponseEntity.status(401).build()
+        val userEmail = auth.token.claims["email"] as? String
+            ?: return ResponseEntity.status(400).body(NewsletterSubscriptionStatusResponse(subscribed = false))
+        newsletterService.setNewsletterSubscription(userEmail, body.subscribed)
+        logger.info { "User ${auth.token.subject} set newsletter subscription to ${body.subscribed}" }
+        return ResponseEntity.ok(NewsletterSubscriptionStatusResponse(subscribed = body.subscribed))
     }
 
     @PostMapping("/admin/preview", produces = ["text/html;charset=UTF-8"])

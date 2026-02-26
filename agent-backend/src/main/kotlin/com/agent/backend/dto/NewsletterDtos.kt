@@ -46,3 +46,11 @@ data class NewsletterResendResponse(
     val sent: Boolean,
     val message: String
 )
+
+data class NewsletterSubscriptionStatusResponse(
+    val subscribed: Boolean
+)
+
+data class NewsletterSubscriptionUpdateRequest(
+    val subscribed: Boolean
+)

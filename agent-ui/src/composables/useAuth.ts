@@ -53,10 +53,10 @@ export async function login(username: string, password: string) {
     }
 }
 
-export async function register(emailInput: string, passwordInput: string, displayName?: string) {
+export async function register(emailInput: string, passwordInput: string, displayName?: string, subscribeToNewsletter?: boolean) {
     authError.value = null
     try {
-        const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName }, { headers: { Authorization: undefined } })
+        const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName, subscribeToNewsletter: subscribeToNewsletter ?? false }, { headers: { Authorization: undefined } })
         return data
     } catch (e: any) {
         authError.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'

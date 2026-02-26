@@ -143,6 +143,55 @@ class NewsletterService(
         return UnsubscribeResult.UNSUBSCRIBED
     }
 
+    /**
+     * Subscribes a registered user directly to ACTIVE status — no verification email sent.
+     * Registration checkbox and account-settings toggle both constitute explicit consent.
+     */
+    @Transactional
+    fun subscribeRegisteredUser(email: String) {
+        val existing = repository.findByEmail(email).orElse(null)
+        if (existing != null) {
+            if (existing.status == "ACTIVE") return
+            existing.status = "ACTIVE"
+            existing.confirmedAt = Instant.now()
+            existing.subscribedAt = Instant.now()
+            existing.unsubscribedAt = null
+            existing.verificationToken = null
+            existing.verificationTokenExpiresAt = null
+            repository.save(existing)
+        } else {
+            repository.save(
+                NewsletterSubscription(
+                    email = email,
+                    unsubscribeToken = UUID.randomUUID().toString(),
+                    status = "ACTIVE",
+                    confirmedAt = Instant.now()
+                )
+            )
+        }
+        logger.info { "Registered user subscribed to newsletter: $email" }
+    }
+
+    /**
+     * Returns true if the given email has an ACTIVE subscription.
+     */
+    fun getNewsletterStatus(email: String): Boolean {
+        val sub = repository.findByEmail(email).orElse(null) ?: return false
+        return sub.status == "ACTIVE"
+    }
+
+    /**
+     * Sets newsletter subscription for a registered user directly (no double opt-in).
+     */
+    @Transactional
+    fun setNewsletterSubscription(email: String, subscribed: Boolean) {
+        if (subscribed) {
+            subscribeRegisteredUser(email)
+        } else {
+            unsubscribeByEmail(email)
+        }
+    }
+
     fun renderPreview(subject: String, htmlContent: String): String {
         return emailTemplateService.generateNewsletterEmail(
             subject = subject,

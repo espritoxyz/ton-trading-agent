@@ -12,6 +12,7 @@ import com.agent.backend.dto.VerifyEmailResponse
 import com.agent.backend.security.EncryptionService
 import com.agent.backend.service.AuthService
 import com.agent.backend.service.EmailVerificationService
+import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.OfflineTokenService
 import com.agent.backend.service.UserProvisioningService
 import com.agent.backend.service.VerificationResult
@@ -39,6 +40,7 @@ class AuthController(
     private val offlineTokenService: OfflineTokenService,
     private val encryptionService: EncryptionService,
     private val emailVerificationService: EmailVerificationService,
+    private val newsletterService: NewsletterService,
     private val agentUserRepository: AgentUserRepository
 ) {
     /**
@@ -108,6 +110,13 @@ class AuthController(
         logger.info { "register: ${body.email}" }
         return try {
             val resp = authService.register(body)
+            if (body.subscribeToNewsletter) {
+                try {
+                    newsletterService.subscribeRegisteredUser(body.email)
+                } catch (e: Exception) {
+                    logger.warn(e) { "Failed to subscribe ${body.email} to newsletter during registration" }
+                }
+            }
             ResponseEntity.status(201).body(resp)
         } catch (e: IllegalArgumentException) {
             logger.warn(e) { "Registration conflict/validation" }

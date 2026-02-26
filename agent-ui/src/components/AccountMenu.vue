@@ -4,7 +4,8 @@ import { login, logout, loggingIn, accessToken, email, refreshProfile, authError
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
 import RegisterModal from './RegisterModal.vue'
-import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle, ShieldCheck } from 'lucide-vue-next'
+import AccountSettingsModal from './AccountSettingsModal.vue'
+import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle, ShieldCheck, Settings } from 'lucide-vue-next'
 
 const { refreshWalletState, clearWalletState } = useWalletState()
 
@@ -12,6 +13,7 @@ const username = ref('')
 const password = ref('')
 const showDropdown = ref(false)
 const showRegister = ref(false)
+const showSettings = ref(false)
 const containerRef = ref<HTMLElement>()
 const buttonRef = ref<HTMLElement>()
 const dropdownContentRef = ref<HTMLElement>()
@@ -273,6 +275,14 @@ onUnmounted(() => {
           <span>Refresh Profile</span>
         </button>
 
+        <button
+          class="w-full rounded-lg bg-gray-100 dark:bg-white/10 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2"
+          @click="showSettings = true; showDropdown = false"
+        >
+          <Settings :size="16" />
+          <span>Account Settings</span>
+        </button>
+
         <a
           v-if="isAdmin"
           href="/app/admin"
@@ -301,5 +311,6 @@ onUnmounted(() => {
     </Teleport>
 
     <RegisterModal v-if="showRegister" @registered="onRegistered" @close="closeRegister" />
+    <AccountSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>
