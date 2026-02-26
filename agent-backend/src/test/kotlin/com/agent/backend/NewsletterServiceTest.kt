@@ -7,7 +7,6 @@ import com.agent.backend.db.rep.NewsletterSubscriptionRepository
 import com.agent.backend.dto.NewsletterBroadcastResponse
 import com.agent.backend.email.EmailTemplateService
 import com.agent.backend.email.ResendClient
-import com.agent.backend.email.ResendEmailRequest
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
@@ -29,8 +28,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 // Helper functions to work around Mockito/Kotlin nullability issues
 private fun anyString(): String = ArgumentMatchers.anyString() ?: ""

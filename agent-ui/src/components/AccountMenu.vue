@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId, isAdmin } from '../composables/useAuth.ts'
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
