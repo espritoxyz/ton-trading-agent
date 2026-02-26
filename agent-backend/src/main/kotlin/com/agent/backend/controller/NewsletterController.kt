@@ -154,7 +154,8 @@ class NewsletterController(
 
     /**
      * Admin: send the newsletter to all active subscribers asynchronously.
-     * Returns 202 Accepted immediately; the actual sending happens in the background.
+     * The servlet thread is freed immediately; the broadcast runs in a background thread.
+     * The client receives 200 OK with result counts when the broadcast completes.
      * Access restricted to ADMIN role via SecurityConfig.
      */
     @PostMapping("/admin/send")

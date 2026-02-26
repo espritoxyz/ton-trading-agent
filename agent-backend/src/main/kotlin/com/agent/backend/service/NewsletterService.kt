@@ -99,7 +99,7 @@ class NewsletterService(
         sub.verificationToken = null
         sub.verificationTokenExpiresAt = null
         repository.save(sub)
-        logger.info { "Newsletter subscription confirmed for ${sub.email}" }
+        logger.info { "Newsletter subscription confirmed for id=${sub.id}" }
         return ConfirmResult.CONFIRMED
     }
 
@@ -134,7 +134,7 @@ class NewsletterService(
         sub.status = NewsletterStatus.UNSUBSCRIBED
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
-        logger.info { "Unsubscribed $email from newsletter" }
+        logger.debug { "Unsubscribed id=${sub.id} from newsletter" }
         return UnsubscribeResult.UNSUBSCRIBED
     }
 
@@ -148,7 +148,7 @@ class NewsletterService(
         sub.status = NewsletterStatus.UNSUBSCRIBED
         sub.unsubscribedAt = Instant.now()
         repository.save(sub)
-        logger.info { "Unsubscribed ${sub.email} from newsletter via token" }
+        logger.debug { "Unsubscribed id=${sub.id} from newsletter via token" }
         return UnsubscribeResult.UNSUBSCRIBED
     }
 
