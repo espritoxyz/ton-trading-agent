@@ -11,6 +11,7 @@ import CareersPage from './pages/CareersPage.vue'
 import EmailVerificationPage from './components/EmailVerificationPage.vue'
 import Dashboard from "./pages/Dashboard.vue";
 import AdminPage from "./pages/AdminPage.vue";
+import { isAdmin } from './composables/useAuth'
 import NewsletterConfirmPage from "./pages/NewsletterConfirmPage.vue";
 import NewsletterUnsubscribePage from "./pages/NewsletterUnsubscribePage.vue";
 
@@ -88,11 +89,7 @@ onMounted(() => {
     <component v-else-if="verificationToken" :is="EmailVerificationPage" :token="verificationToken"/>
     <component v-else-if="newsletterConfirmToken" :is="NewsletterConfirmPage" :token="newsletterConfirmToken"/>
     <component v-else-if="newsletterUnsubscribeToken" :is="NewsletterUnsubscribePage" :token="newsletterUnsubscribeToken"/>
-    <component v-else-if="route === '/app/admin'" :is="AppLayout">
-      <template v-slot>
-        <AdminPage/>
-      </template>
-    </component>
+    <AdminPage v-else-if="route === '/app/admin' && isAdmin"/>
     <component v-else-if="route.startsWith('/app')" :is="AppLayout">
       <template v-slot>
         <Dashboard/>

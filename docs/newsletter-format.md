@@ -77,10 +77,12 @@ Returns:
 Your content is placed inside this container in the template:
 
 ```html
-<div style="color: #1a1a1a; font-size: 16px; line-height: 1.7;">
+<div class="text-dark" style="color: #1a1a1a; font-size: 16px; line-height: 1.7;">
     <!-- YOUR htmlContent GOES HERE -->
 </div>
 ```
+
+The `text-dark` class is what the template uses to flip the text color in dark mode. Content that inherits color from this wrapper adapts automatically.
 
 This means:
 - Do **not** include `<html>`, `<head>`, `<body>`, or `<style>` tags
@@ -98,12 +100,14 @@ Email clients strip external stylesheets. All styling must be **inline** via the
 ### Headings
 
 ```html
-<h2 style="color: #1a1a1a; font-size: 22px; font-weight: 700; margin: 0 0 16px 0; line-height: 1.3;">
+<h2 style="font-size: 22px; font-weight: 700; margin: 0 0 16px 0; line-height: 1.3;">
   What's New in February
 </h2>
 ```
 
 Use `<h2>` and `<h3>` for section headings (the template header already acts as `<h1>`).
+
+> **Do not add `style="color: ..."` to headings.** Color is inherited from the template wrapper and adapts automatically in dark mode. See the [Dark Mode Compatibility](#dark-mode-compatibility) section.
 
 ### Body text / paragraphs
 
@@ -180,7 +184,7 @@ Use `#6366f1` (Esprito indigo) as the link color for brand consistency.
 ### Bullet list
 
 ```html
-<ul style="margin: 0 0 16px 0; padding-left: 20px; color: #1a1a1a;">
+<ul style="margin: 0 0 16px 0; padding-left: 20px;">
   <li style="margin-bottom: 8px;">Limit orders for TON/USDT and TON/NOT pairs</li>
   <li style="margin-bottom: 8px;">Price alert notifications via Telegram</li>
   <li style="margin-bottom: 8px;">Improved swap route optimization on Ston.fi</li>
@@ -189,12 +193,65 @@ Use `#6366f1` (Esprito indigo) as the link color for brand consistency.
 
 ---
 
+## Dark Mode Compatibility
+
+The template supports dark mode via `@media (prefers-color-scheme: dark)`. Understanding how this works is important for writing content that renders correctly in both modes.
+
+### How the template handles dark mode
+
+Your `htmlContent` is placed inside this wrapper in the template:
+
+```html
+<div class="text-dark" style="color: #1a1a1a; font-size: 16px; line-height: 1.7;">
+    <!-- your content -->
+</div>
+```
+
+In dark mode, the template applies:
+
+```css
+.text-dark   { color: #f1f5f9 !important; }   /* content wrapper → light text */
+.bg-white    { background-color: #2d2d2d !important; }  /* card background */
+.bg-light    { background-color: #1a1a1a !important; }  /* page background */
+.footer-bg   { background-color: #1e1e1e !important; }
+```
+
+### The critical rule: do not hardcode text colors
+
+CSS `color` is inherited. If a child element has **no own `color` declaration**, it inherits from the `.text-dark` wrapper, which the template adapts for dark mode.
+
+If a child element **does** have `style="color: #1a1a1a"`, that inline value wins over CSS inheritance — the element will display dark text on a dark card.
+
+| Pattern | Light mode | Dark mode |
+|---|---|---|
+| `<h2 style="font-size: 22px; ...">` | ✅ inherits `#1a1a1a` | ✅ inherits `#f1f5f9` |
+| `<h2 style="color: #1a1a1a; font-size: 22px; ...">` | ✅ `#1a1a1a` | ❌ `#1a1a1a` on dark card |
+| `<ul style="margin: 0; padding-left: 20px;">` | ✅ inherits | ✅ inherits |
+| `<ul style="margin: 0; padding-left: 20px; color: #1a1a1a;">` | ✅ | ❌ dark on dark |
+
+**Rule:** Omit `color` from inline styles on general text elements (`<h2>`, `<h3>`, `<p>`, `<ul>`, `<li>`, `<strong>`, `<em>`). Let them inherit from the wrapper.
+
+### What does not adapt to dark mode
+
+These elements use explicit colors for intentional reasons and will render the same in both modes:
+
+- **Info boxes** — `background-color: #eef2ff` with `color: #3730a3`. The light indigo background against a dark card is still readable and recognisable as a callout.
+- **CTA buttons** — `background-color: #6366f1` with `color: #ffffff`. Always visually distinct.
+- **Links** — `color: #6366f1`. Still visible on both card backgrounds.
+- **Muted footer text** — handled via `.text-muted` class in the template.
+
+### Preview both modes before sending
+
+Use the **Light / Dark toggle** in the admin panel preview to verify the email looks correct in both themes before broadcasting.
+
+---
+
 ## Complete Example
 
 Below is a full `htmlContent` value for a feature announcement newsletter:
 
 ```html
-<h2 style="color: #1a1a1a; font-size: 22px; font-weight: 700; margin: 0 0 16px 0; line-height: 1.3;">
+<h2 style="font-size: 22px; font-weight: 700; margin: 0 0 16px 0; line-height: 1.3;">
   Limit Orders Are Live on Esprito AI
 </h2>
 
@@ -213,11 +270,11 @@ Below is a full `htmlContent` value for a feature announcement newsletter:
   </tr>
 </table>
 
-<h3 style="color: #1a1a1a; font-size: 17px; font-weight: 600; margin: 0 0 12px 0;">
+<h3 style="font-size: 17px; font-weight: 600; margin: 0 0 12px 0;">
   What's included in this release
 </h3>
 
-<ul style="margin: 0 0 24px 0; padding-left: 20px; color: #1a1a1a;">
+<ul style="margin: 0 0 24px 0; padding-left: 20px;">
   <li style="margin-bottom: 8px;">Limit buy and sell orders via natural language</li>
   <li style="margin-bottom: 8px;">Order status tracking in the transaction history</li>
   <li style="margin-bottom: 8px;">Automatic cancellation on expiry</li>
@@ -264,7 +321,9 @@ Below is a full `htmlContent` value for a feature announcement newsletter:
 
 ## Checklist Before Sending
 
-- [ ] Reviewed the rendered output via admin panel preview
+- [ ] Previewed in **light mode** — content is readable and correctly styled
+- [ ] Previewed in **dark mode** — text is visible (no dark-on-dark), layout holds
+- [ ] No `color: #1a1a1a` (or similar dark colors) on general text elements — inherited colors used instead
 - [ ] All links use `https://` and point to the correct destination
 - [ ] No `<html>`, `<head>`, `<body>`, or `<script>` tags in `htmlContent`
 - [ ] All styles are inline (`style="..."`)
