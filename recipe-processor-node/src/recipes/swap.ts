@@ -16,6 +16,7 @@ export interface SuccessReport {
     jettonMinter: string; // friendly address of requested jetton
     offerNanotons: string; // string to avoid bigint JSON issues
     minAskNano: string;    // string
+    askNano: number;
 }
 
 export interface ErrorReport {
@@ -78,7 +79,7 @@ export async function swapTokenToToken(
 
         console.log("[swap] simulationResult (jetton -> jetton)", simulationResult);
 
-        const { router: routerInfo, offerUnits, minAskUnits } = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -90,6 +91,7 @@ export async function swapTokenToToken(
         }
 
         const minAsk = String(minAskUnits ?? "0");
+        const askAmount = Number(askUnits ?? "0")
         console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> jetton)", { offerUnits, minAsk });
 
         const dexContracts = dexFactory(routerInfo);
@@ -137,6 +139,7 @@ export async function swapTokenToToken(
             jettonMinter: askAddrStr,
             offerNanotons: String(offerUnits ?? offerJettons.toString()),
             minAskNano: minAsk,
+            askNano: askAmount,
         };
 
     } catch (e: any) {
@@ -200,7 +203,7 @@ export async function swapTokenToTon(
 
         console.log("[swap] simulationResult (jetton -> TON)", simulationResult);
 
-        const { router: routerInfo, offerUnits, minAskUnits } = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -213,6 +216,7 @@ export async function swapTokenToTon(
 
         // Recommended by STON.fi: reuse offerUnits and minAskUnits from simulation
         const minAsk = String(minAskUnits ?? "0");
+        const askAmount = Number(askUnits ?? "0")
         console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> TON)", { offerUnits, minAsk });
 
         // 2. Build DEX contracts from router metadata
@@ -261,6 +265,7 @@ export async function swapTokenToTon(
             pTon: routerInfo.ptonMasterAddress,
             jettonMinter: jettonAddrStr,
             offerNanotons: String(offerUnits ?? offerJettons.toString()),
+            askNano: askAmount,
             minAskNano: minAsk,
         };
 
@@ -323,7 +328,7 @@ export async function swapTonToToken(
 
         console.log("[swap] simulationResult", simulationResult);
 
-        const { router: routerInfo, offerUnits, minAskUnits, askAddress } = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits, askAddress } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -336,6 +341,7 @@ export async function swapTonToToken(
 
         // Recommended by STON.fi: reuse offerUnits and minAskUnits from simulation
         const minAsk = String(minAskUnits ?? "0");
+        const askAmount = Number(askUnits ?? "0")
         console.log("[swap] Using simulation-based offerUnits/minAskUnits", { offerUnits, minAsk });
 
         // 2. Build DEX contracts from router metadata
@@ -386,6 +392,7 @@ export async function swapTonToToken(
             pTon: routerInfo.ptonMasterAddress,
             jettonMinter: jettonAddrStr,
             offerNanotons: String(offerUnits ?? offerTON.toString()),
+            askNano: askAmount,
             minAskNano: minAsk,
         };
 

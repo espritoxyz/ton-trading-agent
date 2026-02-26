@@ -424,9 +424,13 @@ class AgentBlockchainAdapter(
 
     override fun getCandidateAssets(symbol: String): String {
         val candidates = assetsCache.findCandidates(symbol)
-        if (candidates.isEmpty()) return ""
+        if (candidates.isEmpty()) {
+            logger.warn { "Candidates list for $symbol is empty" }
+            return ""
+        }
 
         val best = candidates.maxByOrNull { it.popularityIndex ?: Double.NEGATIVE_INFINITY }
+        logger.debug { "Best candidate asser for $symbol is $best" }
         return best?.toString() ?: ""
     }
 

@@ -226,7 +226,7 @@ class AgentEventsListener(
                     val offerJettonMaster = data["requestedOfferJettonMaster"] as? String
                     val askJettonMaster = data["requestedAskJettonMaster"] as? String
                     val swapOfferTokenAmountNano = data["requestedSwapOfferTokenAmount"] as? Number
-                    val askTokenAmount = data["requestedMinimalAskTokenAmount"] as? Number
+                    val askTokenAmount = data["askNano"] as? Number
                     val error = data["error"] as? String
 
                     logger.info { "[agent-events] Processing swap-token-to-token result for user $userId: success=$success" }
@@ -357,6 +357,7 @@ class AgentEventsListener(
             val askSymbol = askAsset?.symbol ?: "unknown"
 
             val offerDecimals = offerAsset?.decimals ?: 9
+            val askDecimals = askAsset?.decimals ?: 9
             val offerAmountHuman = swapOfferTokenAmountNano?.let { nano ->
                 BigDecimal(nano.toLong())
                     .divide(BigDecimal.TEN.pow(offerDecimals), offerDecimals, RoundingMode.HALF_UP)
@@ -366,7 +367,7 @@ class AgentEventsListener(
 
             val askAmountHuman = askTokenAmountNano?.let { nano ->
                 BigDecimal(nano.toLong())
-                    .divide(BigDecimal.TEN.pow(offerDecimals), offerDecimals, RoundingMode.HALF_UP)
+                    .divide(BigDecimal.TEN.pow(askDecimals), askDecimals, RoundingMode.HALF_UP)
                     .stripTrailingZeros()
                     .toPlainString()
             } ?: "unknown"

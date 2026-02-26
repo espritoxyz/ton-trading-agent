@@ -383,6 +383,31 @@ await startConsumer(ch, queue, async (_msg, body) => {
                         }
                     }
 
+                    console.log(`${SERVICE} token-to-token result`,
+                        {
+                            type: "agent-llm.swap-token-to-token.result",
+                            occurredAt: new Date().toISOString(),
+                            correlation: { occurredAt },
+                            data: {
+                                messageId,
+                                userId,
+                                success: true,
+                                txId: res.txId,
+                                router: res.router,
+                                pool: res.pool,
+                                pTon: res.pTon,
+                                jettonMinter: res.jettonMinter,
+                                offerNanotons: res.offerNanotons,
+                                minAskNano: res.minAskNano,
+                                askNano: res.askNano,
+                                requestedOfferJettonMaster: offerJettonMaster,
+                                requestedAskJettonMaster: askJettonMaster,
+                                requestedMinimalAskTokenAmount: minimalAskTokenAmount,
+                                requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
+                            },
+                        }
+                        )
+
                     publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
                         type: "agent-llm.swap-token-to-token.result",
                         occurredAt: new Date().toISOString(),
@@ -398,6 +423,7 @@ await startConsumer(ch, queue, async (_msg, body) => {
                             jettonMinter: res.jettonMinter,
                             offerNanotons: res.offerNanotons,
                             minAskNano: res.minAskNano,
+                            askNano: res.askNano,
                             requestedOfferJettonMaster: offerJettonMaster,
                             requestedAskJettonMaster: askJettonMaster,
                             requestedMinimalAskTokenAmount: minimalAskTokenAmount,
