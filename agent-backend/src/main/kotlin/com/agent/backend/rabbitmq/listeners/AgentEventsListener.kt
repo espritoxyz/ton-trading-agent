@@ -276,7 +276,7 @@ class AgentEventsListener(
     ) {
         try {
             val asset = jettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
-            val tokenSymbol = asset?.symbol ?: "unknown"
+            val tokenSymbol = asset?.symbol ?: jettonMaster ?: "unknown"
             val swapTonAmountHuman = swapTonAmount?.toString() ?: "unknown"
             val minimalTokenAmountHuman = minimalTokenAmount?.toString() ?: "unknown"
             val metadata = mapOf<String, Any>(
@@ -311,7 +311,7 @@ class AgentEventsListener(
     ) {
         try {
             val asset = jettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
-            val tokenSymbol = asset?.symbol ?: "unknown"
+            val tokenSymbol = asset?.symbol ?: jettonMaster ?:  "unknown"
             val decimals = asset?.decimals ?: 9
             val swapTokenAmountHuman = swapTokenAmountNano?.let { nano ->
                 BigDecimal(nano.toLong())
@@ -353,8 +353,8 @@ class AgentEventsListener(
         try {
             val offerAsset = offerJettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
             val askAsset = askJettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
-            val offerSymbol = offerAsset?.symbol ?: "unknown"
-            val askSymbol = askAsset?.symbol ?: "unknown"
+            val offerSymbol = offerAsset?.symbol ?: offerJettonMaster ?: "unknown"
+            val askSymbol = askAsset?.symbol ?: askJettonMaster ?: "unknown"
 
             val offerDecimals = offerAsset?.decimals ?: 9
             val askDecimals = askAsset?.decimals ?: 9
