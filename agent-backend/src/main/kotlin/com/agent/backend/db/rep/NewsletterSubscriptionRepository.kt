@@ -9,13 +9,17 @@ import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.Optional
+import java.util.stream.Stream
 
 @Repository
 interface NewsletterSubscriptionRepository : JpaRepository<NewsletterSubscription, Long> {
     fun findByEmail(email: String): Optional<NewsletterSubscription>
     fun findByUnsubscribeToken(token: String): Optional<NewsletterSubscription>
     fun findByVerificationToken(token: String): Optional<NewsletterSubscription>
-    fun findAllByStatus(status: NewsletterStatus): List<NewsletterSubscription>
+    fun countByStatus(status: NewsletterStatus): Long
+
+    @Query("SELECT s FROM NewsletterSubscription s WHERE s.status = :status")
+    fun streamAllByStatus(@Param("status") status: NewsletterStatus): Stream<NewsletterSubscription>
 
     @Modifying
     @Query("DELETE FROM NewsletterSubscription s WHERE s.status = :status AND s.subscribedAt < :cutoff")

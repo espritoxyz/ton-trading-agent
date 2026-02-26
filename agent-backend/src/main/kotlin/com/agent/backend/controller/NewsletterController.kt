@@ -9,7 +9,6 @@ import com.agent.backend.dto.NewsletterSubscribeRequest
 import com.agent.backend.dto.NewsletterSubscribeResponse
 import com.agent.backend.dto.NewsletterSubscriptionStatusResponse
 import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
-import com.agent.backend.dto.NewsletterUnsubscribeRequest
 import com.agent.backend.dto.NewsletterUnsubscribeResponse
 import com.agent.backend.db.entity.ConfirmationIssuer
 import com.agent.backend.service.ConfirmResult
@@ -28,6 +27,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.concurrent.CompletableFuture
 
 @RestController
 @RequestMapping("/newsletter")
@@ -38,7 +38,7 @@ class NewsletterController(
 
     @PostMapping("/subscribe")
     fun subscribe(@Valid @RequestBody body: NewsletterSubscribeRequest): ResponseEntity<NewsletterSubscribeResponse> {
-        logger.info { "Newsletter subscribe request for: ${body.email}" }
+        logger.debug { "Newsletter subscribe request for: ${body.email}" }
         return when (newsletterService.subscribe(body.email)) {
             SubscribeResult.SUBSCRIBED -> ResponseEntity.ok(
                 NewsletterSubscribeResponse(
@@ -100,23 +100,6 @@ class NewsletterController(
         }
     }
 
-    @PostMapping("/unsubscribe")
-    fun unsubscribeByEmail(@Valid @RequestBody body: NewsletterUnsubscribeRequest): ResponseEntity<NewsletterUnsubscribeResponse> {
-        logger.info { "Newsletter unsubscribe request for: ${body.email}" }
-        return when (newsletterService.unsubscribeByEmail(body.email)) {
-            UnsubscribeResult.UNSUBSCRIBED -> ResponseEntity.ok(
-                NewsletterUnsubscribeResponse(unsubscribed = true, message = "You have been unsubscribed.")
-            )
-            UnsubscribeResult.ALREADY_UNSUBSCRIBED -> ResponseEntity.ok(
-                NewsletterUnsubscribeResponse(unsubscribed = true, message = "You were already unsubscribed.")
-            )
-            UnsubscribeResult.NOT_FOUND -> ResponseEntity.ok(
-                // Intentionally vague to avoid email enumeration
-                NewsletterUnsubscribeResponse(unsubscribed = true, message = "If that email was subscribed, it is now unsubscribed.")
-            )
-        }
-    }
-
     @GetMapping("/unsubscribe/{token}")
     fun unsubscribeByToken(@PathVariable token: String): ResponseEntity<NewsletterUnsubscribeResponse> {
         logger.info { "Newsletter unsubscribe via token" }
@@ -147,7 +130,7 @@ class NewsletterController(
     @PutMapping("/subscription")
     fun updateMySubscription(
         auth: JwtAuthenticationToken?,
-        @RequestBody body: NewsletterSubscriptionUpdateRequest
+        @Valid @RequestBody body: NewsletterSubscriptionUpdateRequest
     ): ResponseEntity<NewsletterSubscriptionStatusResponse> {
         if (auth == null) return ResponseEntity.status(401).build()
         val userEmail = auth.token.claims["email"] as? String
@@ -157,41 +140,30 @@ class NewsletterController(
         return ResponseEntity.ok(NewsletterSubscriptionStatusResponse(subscribed = body.subscribed))
     }
 
+    /**
+     * Admin: render the newsletter HTML for preview without sending.
+     * Access restricted to ADMIN role via SecurityConfig.
+     */
     @PostMapping("/admin/preview", produces = ["text/html;charset=UTF-8"])
     fun previewNewsletter(
-        auth: JwtAuthenticationToken?,
         @Valid @RequestBody body: NewsletterBroadcastRequest
     ): ResponseEntity<String> {
-        if (auth == null) return ResponseEntity.status(401).build()
-
-        @Suppress("UNCHECKED_CAST")
-        val roles = (auth.token.claims["realm_access"] as? Map<String, Any>)
-            ?.get("roles") as? List<String> ?: emptyList()
-
-        if ("ADMIN" !in roles) return ResponseEntity.status(403).build()
-
         val html = newsletterService.renderPreview(body.subject, body.htmlContent)
         return ResponseEntity.ok(html)
     }
 
+    /**
+     * Admin: send the newsletter to all active subscribers asynchronously.
+     * Returns 202 Accepted immediately; the actual sending happens in the background.
+     * Access restricted to ADMIN role via SecurityConfig.
+     */
     @PostMapping("/admin/send")
     fun sendNewsletter(
-        auth: JwtAuthenticationToken?,
+        auth: JwtAuthenticationToken,
         @Valid @RequestBody body: NewsletterBroadcastRequest
-    ): ResponseEntity<NewsletterBroadcastResponse> {
-        if (auth == null) return ResponseEntity.status(401).build()
-
-        @Suppress("UNCHECKED_CAST")
-        val roles = (auth.token.claims["realm_access"] as? Map<String, Any>)
-            ?.get("roles") as? List<String> ?: emptyList()
-
-        if ("ADMIN" !in roles) {
-            logger.warn { "Forbidden newsletter broadcast attempt by subject=${auth.token.subject}" }
-            return ResponseEntity.status(403).build()
-        }
-
+    ): CompletableFuture<ResponseEntity<NewsletterBroadcastResponse>> {
         logger.info { "Newsletter broadcast initiated by subject=${auth.token.subject}: \"${body.subject}\"" }
-        val result = newsletterService.broadcast(body.subject, body.htmlContent)
-        return ResponseEntity.ok(result)
+        return newsletterService.broadcast(body.subject, body.htmlContent)
+            .thenApply { result -> ResponseEntity.ok(result) }
     }
 }

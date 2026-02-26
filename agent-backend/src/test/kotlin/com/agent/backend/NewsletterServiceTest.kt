@@ -367,6 +367,28 @@ class NewsletterServiceTest {
     }
 
     @Test
+    fun `resendVerification should return not found for unsubscribed user`() {
+        // Given
+        val email = "unsub@example.com"
+        val sub = NewsletterSubscription(
+            id = 1L,
+            email = email,
+            unsubscribeToken = UUID.randomUUID().toString(),
+            status = NewsletterStatus.UNSUBSCRIBED,
+            unsubscribedAt = Instant.now().minus(1, ChronoUnit.DAYS)
+        )
+        `when`(repository.findByEmail(email)).thenReturn(Optional.of(sub))
+
+        // When
+        val result = service.resendVerification(email)
+
+        // Then: NOT_FOUND so the caller returns a vague response (no token re-issued, no email sent)
+        assertEquals(ResendResult.NOT_FOUND, result)
+        verify(repository, never()).save(any(NewsletterSubscription::class.java))
+        verify(resendClient, never()).sendEmail(anyString(), anyString(), anyString(), anyString())
+    }
+
+    @Test
     fun `unsubscribeByEmail should unsubscribe active subscription`() {
         // Given
         val email = "a@example.com"
@@ -428,10 +450,10 @@ class NewsletterServiceTest {
     @Test
     fun `broadcast should return zeros when no active subscribers`() {
         // Given
-        `when`(repository.findAllByStatus(NewsletterStatus.ACTIVE)).thenReturn(emptyList())
+        `when`(repository.countByStatus(NewsletterStatus.ACTIVE)).thenReturn(0L)
 
-        // When
-        val result = service.broadcast("Sub", "<p>x</p>")
+        // When — @Async is not applied in unit tests (no Spring proxy), so get() resolves immediately
+        val result = service.broadcast("Sub", "<p>x</p>").get()
 
         // Then
         assertEquals(NewsletterBroadcastResponse(0, 0, 0), result)
@@ -449,16 +471,42 @@ class NewsletterServiceTest {
                 status = NewsletterStatus.ACTIVE
             )
         }
-        `when`(repository.findAllByStatus(NewsletterStatus.ACTIVE)).thenReturn(subs)
+        `when`(repository.countByStatus(NewsletterStatus.ACTIVE)).thenReturn(3L)
+        `when`(repository.streamAllByStatus(NewsletterStatus.ACTIVE)).thenReturn(subs.stream())
         `when`(resendClient.sendBatch(ArgumentMatchers.anyList())).thenReturn(2)
 
         // When
-        val result = service.broadcast("Sub", "<p>x</p>")
+        val result = service.broadcast("Sub", "<p>x</p>").get()
 
         // Then
         assertEquals(3, result.totalSubscribers)
         assertEquals(2, result.sent)
         assertEquals(1, result.failed)
         verify(resendClient, times(1)).sendBatch(ArgumentMatchers.anyList())
+    }
+
+    @Test
+    fun `broadcast should process multiple batches`() {
+        // Given — 250 subscribers triggers 3 batches (100 + 100 + 50)
+        val subs = (1..250).map {
+            NewsletterSubscription(
+                id = it.toLong(),
+                email = "u$it@example.com",
+                unsubscribeToken = "tok-$it",
+                status = NewsletterStatus.ACTIVE
+            )
+        }
+        `when`(repository.countByStatus(NewsletterStatus.ACTIVE)).thenReturn(250L)
+        `when`(repository.streamAllByStatus(NewsletterStatus.ACTIVE)).thenReturn(subs.stream())
+        `when`(resendClient.sendBatch(ArgumentMatchers.anyList())).thenReturn(100).thenReturn(100).thenReturn(50)
+
+        // When
+        val result = service.broadcast("Sub", "<p>x</p>").get()
+
+        // Then
+        assertEquals(250, result.totalSubscribers)
+        assertEquals(250, result.sent)
+        assertEquals(0, result.failed)
+        verify(resendClient, times(3)).sendBatch(ArgumentMatchers.anyList())
     }
 }

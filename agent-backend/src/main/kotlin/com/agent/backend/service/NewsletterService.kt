@@ -9,14 +9,18 @@ import com.agent.backend.email.EmailTemplateService
 import com.agent.backend.email.ResendEmailRequest
 import com.agent.backend.email.ResendClient
 import io.github.oshai.kotlinlogging.KotlinLogging
-import jakarta.transaction.Transactional
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.security.SecureRandom
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 
 private const val BATCH_SIZE = 100
 
@@ -105,6 +109,7 @@ class NewsletterService(
             ?: return ResendResult.NOT_FOUND
 
         if (sub.status == NewsletterStatus.ACTIVE) return ResendResult.ALREADY_CONFIRMED
+        if (sub.status == NewsletterStatus.UNSUBSCRIBED) return ResendResult.NOT_FOUND
 
         if (sub.resendCount >= resendMaxCount) return ResendResult.MAX_RESENDS_REACHED
 
@@ -182,7 +187,7 @@ class NewsletterService(
                 )
             )
         }
-        logger.info { "Registered user subscribed to newsletter: $email (issuer=$issuer)" }
+        logger.info { "Registered user subscribed to newsletter (issuer=$issuer)" }
     }
 
     /**
@@ -215,13 +220,19 @@ class NewsletterService(
         )
     }
 
-    fun broadcast(subject: String, htmlContent: String): NewsletterBroadcastResponse {
-        val subscribers = repository.findAllByStatus(NewsletterStatus.ACTIVE)
-        val total = subscribers.size
+    /**
+     * Sends the newsletter to all ACTIVE subscribers using paginated streaming to avoid
+     * loading all records into memory. Runs asynchronously — the caller receives a
+     * [CompletableFuture] that resolves when the broadcast completes.
+     */
+    @Async
+    @Transactional(readOnly = true)
+    fun broadcast(subject: String, htmlContent: String): CompletableFuture<NewsletterBroadcastResponse> {
+        val total = repository.countByStatus(NewsletterStatus.ACTIVE)
 
-        if (subscribers.isEmpty()) {
+        if (total == 0L) {
             logger.info { "Newsletter broadcast skipped: no active subscribers" }
-            return NewsletterBroadcastResponse(totalSubscribers = 0, sent = 0, failed = 0)
+            return CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 0, sent = 0, failed = 0))
         }
 
         logger.info { "Starting newsletter broadcast to $total subscribers: \"$subject\"" }
@@ -230,41 +241,47 @@ class NewsletterService(
         var sent = 0
         var failed = 0
 
-        subscribers
-            .chunked(BATCH_SIZE)
-            .forEachIndexed { chunkIndex, chunk ->
-                val emails = chunk.map { sub ->
-                    val unsubscribeLink = "$baseUrl/newsletter/unsubscribe/${sub.unsubscribeToken}"
-                    val html = emailTemplateService.generateNewsletterEmail(
-                        subject = subject,
-                        htmlContent = htmlContent,
-                        unsubscribeLink = unsubscribeLink,
-                        baseUrl = baseUrl
-                    )
-                    ResendEmailRequest(from = from, to = listOf(sub.email), subject = subject, html = html)
-                }
-
-                try {
-                    val accepted = resendClient.sendBatch(emails)
-                    sent += accepted
-                    val skipped = chunk.size - accepted
-                    if (skipped > 0) {
-                        logger.warn { "Batch $chunkIndex: $accepted accepted, $skipped not accepted by Resend" }
-                        failed += skipped
+        repository.streamAllByStatus(NewsletterStatus.ACTIVE).use { stream ->
+            val iterator = stream.iterator()
+            generateSequence { if (iterator.hasNext()) iterator.next() else null }
+                .chunked(BATCH_SIZE)
+                .forEachIndexed { chunkIndex, chunk ->
+                    val emails = chunk.map { sub ->
+                        val unsubscribeLink = "$baseUrl/newsletter/unsubscribe/${sub.unsubscribeToken}"
+                        val html = emailTemplateService.generateNewsletterEmail(
+                            subject = subject,
+                            htmlContent = htmlContent,
+                            unsubscribeLink = unsubscribeLink,
+                            baseUrl = baseUrl
+                        )
+                        ResendEmailRequest(from = from, to = listOf(sub.email), subject = subject, html = html)
                     }
-                } catch (e: Exception) {
-                    logger.error(e) { "Batch $chunkIndex failed (${chunk.size} emails)" }
-                    failed += chunk.size
+
+                    try {
+                        val accepted = resendClient.sendBatch(emails)
+                        sent += accepted
+                        val skipped = chunk.size - accepted
+                        if (skipped > 0) {
+                            logger.warn { "Batch $chunkIndex: $accepted accepted, $skipped not accepted by Resend" }
+                            failed += skipped
+                        }
+                    } catch (e: Exception) {
+                        logger.error(e) { "Batch $chunkIndex failed (${chunk.size} emails)" }
+                        failed += chunk.size
+                    }
                 }
-            }
+        }
 
         logger.info { "Newsletter broadcast complete: sent=$sent, failed=$failed, total=$total" }
-        return NewsletterBroadcastResponse(totalSubscribers = total, sent = sent, failed = failed)
+        return CompletableFuture.completedFuture(
+            NewsletterBroadcastResponse(totalSubscribers = total.toInt(), sent = sent, failed = failed)
+        )
     }
 
     /**
-     * Generates a new verification token, persists it (inserting if new), and sends the email.
-     * Mutates [sub] in place; saves to repository.
+     * Generates a new verification token, persists it (inserting if new), and schedules the
+     * confirmation email to be sent after the enclosing transaction commits. If called outside
+     * a transaction (e.g. in tests), the email is sent immediately.
      */
     private fun issueVerificationToken(sub: NewsletterSubscription) {
         val token = generateSecureToken()
@@ -272,6 +289,7 @@ class NewsletterService(
         sub.verificationTokenExpiresAt = Instant.now().plus(tokenTtlHours.toLong(), ChronoUnit.HOURS)
         repository.save(sub)
 
+        val email = sub.email
         val confirmationLink = "$baseUrl/newsletter/confirm/$token"
         val html = emailTemplateService.generateNewsletterVerificationEmail(
             confirmationLink = confirmationLink,
@@ -279,16 +297,27 @@ class NewsletterService(
             baseUrl = baseUrl
         )
         val from = "$fromName <$fromEmail>"
-        try {
-            resendClient.sendEmail(
-                from = from,
-                to = sub.email,
-                subject = "Confirm your Esprito AI newsletter subscription",
-                htmlBody = html
-            )
-            logger.info { "Sent newsletter verification email to ${sub.email}" }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to send newsletter verification email to ${sub.email}" }
+
+        val sendEmail = {
+            try {
+                resendClient.sendEmail(
+                    from = from,
+                    to = email,
+                    subject = "Confirm your Esprito AI newsletter subscription",
+                    htmlBody = html
+                )
+                logger.info { "Sent newsletter verification email" }
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to send newsletter verification email to $email" }
+            }
+        }
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                override fun afterCommit() = sendEmail()
+            })
+        } else {
+            sendEmail()
         }
     }
 

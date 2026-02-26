@@ -2,15 +2,14 @@ package com.agent.backend
 
 import com.agent.backend.controller.NewsletterController
 import com.agent.backend.dto.NewsletterBroadcastRequest
+import com.agent.backend.dto.NewsletterBroadcastResponse
 import com.agent.backend.dto.NewsletterResendRequest
 import com.agent.backend.dto.NewsletterSubscribeRequest
 import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
-import com.agent.backend.dto.NewsletterUnsubscribeRequest
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
 import com.agent.backend.service.SubscribeResult
-import com.agent.backend.service.UnsubscribeResult
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -22,6 +21,7 @@ import org.mockito.Mockito.`when`
 import org.springframework.http.HttpStatus
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
+import java.util.concurrent.CompletableFuture
 
 class NewsletterControllerTest {
 
@@ -34,12 +34,11 @@ class NewsletterControllerTest {
         controller = NewsletterController(newsletterService)
     }
 
-    private fun jwtAuth(email: String?, roles: List<String> = emptyList()): JwtAuthenticationToken {
+    private fun jwtAuth(email: String?): JwtAuthenticationToken {
         val jwt = mock(Jwt::class.java)
         `when`(jwt.subject).thenReturn("test-subject")
 
-        val realmAccess: Map<String, Any> = mapOf("roles" to roles)
-        val claims = mutableMapOf<String, Any>("realm_access" to realmAccess)
+        val claims = mutableMapOf<String, Any>()
         if (email != null) claims["email"] = email
 
         `when`(jwt.claims).thenReturn(claims)
@@ -93,21 +92,6 @@ class NewsletterControllerTest {
     }
 
     @Test
-    fun `unsubscribe endpoint should be vague on not found`() {
-        // Given
-        val email = "x@example.com"
-        `when`(newsletterService.unsubscribeByEmail(email)).thenReturn(UnsubscribeResult.NOT_FOUND)
-
-        // When
-        val response = controller.unsubscribeByEmail(NewsletterUnsubscribeRequest(email))
-
-        // Then
-        assertEquals(HttpStatus.OK, response.statusCode)
-        assertNotNull(response.body)
-        assertEquals(true, response.body!!.unsubscribed)
-    }
-
-    @Test
     fun `getMySubscription should return 401 when no auth`() {
         val response = controller.getMySubscription(null)
         assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
@@ -141,24 +125,28 @@ class NewsletterControllerTest {
     }
 
     @Test
-    fun `admin preview should return 403 when not admin`() {
-        val response = controller.previewNewsletter(
-            jwtAuth(email = "a@example.com", roles = listOf("USER")),
-            NewsletterBroadcastRequest(subject = "s", htmlContent = "c")
-        )
-        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+    fun `admin preview should return 200 with rendered html`() {
+        // Admin authorization is enforced at the Spring Security filter layer (SecurityConfig),
+        // not in the controller itself, so the controller simply renders and returns.
+        `when`(newsletterService.renderPreview("s", "c")).thenReturn("<html>preview</html>")
+
+        val response = controller.previewNewsletter(NewsletterBroadcastRequest(subject = "s", htmlContent = "c"))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals("<html>preview</html>", response.body)
     }
 
     @Test
-    fun `admin send should return 200 when admin`() {
+    fun `admin send should return 200 with broadcast result`() {
         // Given
-        val auth = jwtAuth(email = "a@example.com", roles = listOf("ADMIN"))
+        val auth = jwtAuth(email = "admin@example.com")
         `when`(newsletterService.broadcast("s", "c")).thenReturn(
-            com.agent.backend.dto.NewsletterBroadcastResponse(totalSubscribers = 1, sent = 1, failed = 0)
+            CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 1, sent = 1, failed = 0))
         )
 
-        // When
-        val response = controller.sendNewsletter(auth, NewsletterBroadcastRequest(subject = "s", htmlContent = "c"))
+        // When — @Async is not applied in unit tests, CompletableFuture resolves immediately
+        val futureResponse = controller.sendNewsletter(auth, NewsletterBroadcastRequest(subject = "s", htmlContent = "c"))
+        val response = futureResponse.get()
 
         // Then
         assertEquals(HttpStatus.OK, response.statusCode)
