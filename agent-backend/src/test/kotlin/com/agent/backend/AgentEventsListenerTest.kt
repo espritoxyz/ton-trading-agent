@@ -67,9 +67,9 @@ class AgentEventsListenerTest {
         val jettonMaster = "EQAsset123"
         `when`(assetsCache.getAssetByContractAddress(jettonMaster)).thenReturn(
             StonfiAssetsCacheService.StonfiAsset(
-                contract_address = jettonMaster,
+                contractAddress = jettonMaster,
                 symbol = "USDT",
-                dex_usd_price = "5.0",
+                dexUsdPriceString = "5.0",
                 decimals = 6
             )
         )
@@ -119,13 +119,12 @@ class AgentEventsListenerTest {
         val jettonMaster = "EQUsdt789"
         `when`(assetsCache.getAssetByContractAddress(jettonMaster)).thenReturn(
             StonfiAssetsCacheService.StonfiAsset(
-                contract_address = jettonMaster,
+                contractAddress = jettonMaster,
                 symbol = "USDT",
-                dex_usd_price = "1.0",
+                dexUsdPriceString = "1.0",
                 decimals = 6
             )
         )
-        `when`(assetsCache.getDecimals(jettonMaster)).thenReturn(6)
 
         listener.onEvent(
             swapTokenToTonResult(
@@ -151,7 +150,6 @@ class AgentEventsListenerTest {
     fun `publishSwapTokenToTonNotification defaults to 9 decimals when asset decimals unknown`() {
         val jettonMaster = "EQJetton"
         `when`(assetsCache.getAssetByContractAddress(jettonMaster)).thenReturn(null)
-        `when`(assetsCache.getDecimals(jettonMaster)).thenReturn(null)
 
         listener.onEvent(
             swapTokenToTonResult(
