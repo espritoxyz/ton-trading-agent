@@ -76,3 +76,7 @@ email:
 notification:
   retention:
     days: 90
+
+addressbook:
+  ton: EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c
+  usdt: EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs
