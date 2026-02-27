@@ -21,7 +21,7 @@ class DeleteOrdersAgentTool(
 
     override val argsSerializer = serializer<DeleteOrdersArgs>()
 
-    override fun payload(args: DeleteOrdersArgs): String {
+    override suspend fun payload(args: DeleteOrdersArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.deleteOrders(args.orderIds)
 

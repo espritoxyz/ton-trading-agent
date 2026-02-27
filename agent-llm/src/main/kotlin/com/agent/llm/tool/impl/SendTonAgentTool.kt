@@ -23,7 +23,7 @@ class SendTonAgentTool(
 
     override val argsSerializer = serializer<SendTonArgs>()
 
-    override fun payload(args: SendTonArgs): String {
+    override suspend fun payload(args: SendTonArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.sendTonToAddress(args.tonAmount, args.receiverAddress)
 

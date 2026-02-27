@@ -11,6 +11,8 @@ private val logger = KotlinLogging.logger {}
 
 class SimpleFetchTool {
 
+    class FetchSecurityException(override val message: String?) : Throwable(message)
+
     private val urlNormalizer = UrlNormalizerImpl()
     private val htmlExtractor = HtmlExtractorImpl()
 

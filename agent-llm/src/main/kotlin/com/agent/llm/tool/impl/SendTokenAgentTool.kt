@@ -23,7 +23,7 @@ class SendTokenAgentTool(
 
     override val argsSerializer = serializer<SendTokenArgs>()
 
-    override fun payload(args: SendTokenArgs): String {
+    override suspend fun payload(args: SendTokenArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.sendTokenToAddress(args.tokenAmount, args.jettonMaster, args.receiverAddress)
 

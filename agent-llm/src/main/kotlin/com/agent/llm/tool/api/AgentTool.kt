@@ -10,7 +10,7 @@ abstract class AgentTool<ToolArgs> {
 
     abstract val argsSerializer: KSerializer<ToolArgs>
 
-    abstract fun payload(args: ToolArgs): String
+    abstract suspend fun payload(args: ToolArgs): String
 
     companion object {
         fun fromToolCall(allTools: List<AgentTool<*>>, toolCall: ToolCall): AgentTool<*>? {

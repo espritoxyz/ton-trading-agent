@@ -1,14 +1,14 @@
 package com.agent.llm.web.fetch
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Headers
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
-import org.springframework.web.reactive.function.client.awaitExchange
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 
 private val logger = KotlinLogging.logger {}
@@ -21,10 +21,13 @@ class FetchRouter(
     val providers: List<FetchProvider>,
     private val urlNormalizer: UrlNormalizer,
 ) {
-    private val webClient: WebClient = WebClient.builder()
-        .codecs { it.defaultCodecs().maxInMemorySize(50 * 1024 * 1024) }
-        .build()
 
+    private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     init {
         logger.info { "FetchRouter initialized with providers: ${providers.map { it::class.simpleName }}" }
@@ -93,27 +96,29 @@ class FetchRouter(
 
     private suspend fun downloadContent(url: HttpUrl): Triple<ByteArray, Headers?, HttpUrl> =
         withContext(Dispatchers.IO) {
-            webClient.get()
-                .uri(urlNormalizer.toRequestUrl(url))
-                .awaitExchange { clientResponse ->
-                    // Get response as byte array in a non-blocking way
-                    val bodyBytes: ByteArray = clientResponse.awaitBody()
+            val requestUrl = urlNormalizer.toRequestUrl(url)
+            val request = Request.Builder()
+                .url(requestUrl)
+                .build()
 
-                    // Convert Spring headers to OkHttp headers
-                    val okHttpHeaders = Headers.Builder().apply {
-                        clientResponse.headers().asHttpHeaders().forEach { (name, values) ->
-                            values.forEach { value ->
-                                add(name, value)
-                            }
-                        }
-                    }.build()
+            try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IOException("Unexpected HTTP code ${response.code} for $requestUrl")
+                    }
 
-                    // Get the final URL from the response URI (after any redirects)
-                    val responseUrl = clientResponse.request().uri.toString()
-                    val finalHttpUrl = responseUrl.toHttpUrlOrNull() ?: url
+                    val body = response.body
+                        ?: throw IOException("Empty response body for $requestUrl")
+                    val bodyBytes = body.bytes()
 
-                    Triple(bodyBytes, okHttpHeaders, finalHttpUrl)
+                    val headers = response.headers
+                    val finalHttpUrl = response.request.url
+
+                    Triple(bodyBytes, headers, finalHttpUrl)
                 }
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to download content from $requestUrl" }
+                throw e
+            }
         }
-
 }

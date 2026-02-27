@@ -20,7 +20,7 @@ class ListOrdersAgentTool(
 
     override val argsSerializer = serializer<ListOrdersArgs>()
 
-    override fun payload(args: ListOrdersArgs): String {
+    override suspend fun payload(args: ListOrdersArgs): String {
         return bcAdapter.listOrders(args.showOnlyActiveOrders)
     }
 }

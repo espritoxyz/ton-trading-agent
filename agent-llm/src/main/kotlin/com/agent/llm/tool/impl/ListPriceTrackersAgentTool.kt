@@ -21,7 +21,7 @@ class ListPriceTrackersAgentTool(
 
     override val argsSerializer = serializer<ListPriceTrackersArgs>()
 
-    override fun payload(args: ListPriceTrackersArgs): String {
+    override suspend fun payload(args: ListPriceTrackersArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
 
         return bcAdapter.listPriceTrackers()

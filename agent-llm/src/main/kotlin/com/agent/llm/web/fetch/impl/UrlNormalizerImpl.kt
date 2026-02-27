@@ -1,11 +1,12 @@
 package com.agent.llm.web.fetch.impl
 
+import com.agent.llm.web.fetch.SimpleFetchTool
 import com.agent.llm.web.fetch.UrlNormalizer
 import io.github.oshai.kotlinlogging.KotlinLogging
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 private val logger = KotlinLogging.logger {}
 
@@ -23,6 +24,13 @@ class UrlNormalizerImpl : UrlNormalizer {
 
         val url = raw.toHttpUrlOrNull()
             ?: throw IllegalArgumentException("Invalid URL: $raw")
+
+        // Security measure: forbid URLs with an explicit non-default port to avoid access to internal network
+        if (url.port != 80 && url.port != 443) {
+            logger.warn { "Blocked URL with non-standard port ${url.port}: $raw" }
+            throw SimpleFetchTool.FetchSecurityException("URLs with non-standard ports are not allowed for security reasons")
+        }
+
 
         val builder = url.newBuilder()
 
@@ -64,18 +72,18 @@ class UrlNormalizerImpl : UrlNormalizer {
         // Only preserve fragments that point to content sections
         // These are typically meaningful for understanding document structure
         return fragment.startsWith("section") ||
-            fragment.startsWith("heading") ||
-            fragment.startsWith("chapter") ||
-            fragment.startsWith("introduction") ||
-            fragment.startsWith("conclusion") ||
-            fragment.startsWith("summary") ||
-            fragment.startsWith("overview") ||
-            fragment.startsWith("technical") ||
-            // Consider fragments with separators as meaningful
-            fragment.contains("-") ||
-            fragment.contains("_") ||
-            // Allow common meaningful single-word fragments
-            fragment in setOf("about", "contact", "features", "documentation", "tutorial", "examples")
+                fragment.startsWith("heading") ||
+                fragment.startsWith("chapter") ||
+                fragment.startsWith("introduction") ||
+                fragment.startsWith("conclusion") ||
+                fragment.startsWith("summary") ||
+                fragment.startsWith("overview") ||
+                fragment.startsWith("technical") ||
+                // Consider fragments with separators as meaningful
+                fragment.contains("-") ||
+                fragment.contains("_") ||
+                // Allow common meaningful single-word fragments
+                fragment in setOf("about", "contact", "features", "documentation", "tutorial", "examples")
     }
 
     companion object {
