@@ -23,13 +23,14 @@ class CreateOrderAgentTool(
 
     override fun payload(args: CreateOrderArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        bcAdapter.createOrder(
+        val result = bcAdapter.createOrder(
             jettonMaster = args.jettonMaster,
             action = args.action,
             amount = args.amount,
             targetPrice = args.targetPrice,
+            receivedJettonMaster = args.receivedJettonMaster,
         )
-        return "Order created for ${args.jettonMaster}: action=${args.action}, amount=${args.amount} at target price ${args.targetPrice} USD"
 
+        return result
     }
 }
