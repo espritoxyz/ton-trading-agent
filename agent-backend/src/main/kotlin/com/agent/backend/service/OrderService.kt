@@ -5,12 +5,12 @@ import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.llm.AgentBlockchainAdapter
 import com.agent.backend.rabbitmq.RabbitConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.util.*
+import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.stereotype.Service
 
 @Service
 class OrderService(
@@ -126,8 +126,7 @@ class OrderService(
 
         val tokenToTonRate = getTokenToTonInternal(jettonMaster)
         val swapTonAmount = tokenToTonRate?.let {
-            val slippageSafetyFactor = 1.1
-            (minimalTokenAmount * it * slippageSafetyFactor)
+            (minimalTokenAmount * it)
                 .toBigDecimal()
                 .setScale(6, RoundingMode.HALF_UP)
                 .toDouble()
@@ -243,12 +242,9 @@ class OrderService(
             .multiply(BigDecimal.valueOf(askTokenToTonRate))
             .divide(BigDecimal.valueOf(offerTokenToTonRate), 12, RoundingMode.HALF_UP)
 
-        val slippageSafetyFactor = BigDecimal("1.10")
-        val offerTokensWithSlippage = offerTokensHuman.multiply(slippageSafetyFactor)
-
         val offerDecimals = offerAsset?.decimals ?: 9
         val offerFactor = BigDecimal.TEN.pow(offerDecimals)
-        val swapOfferTokenAmountNano = offerTokensWithSlippage
+        val swapOfferTokenAmountNano = offerTokensHuman
             .multiply(offerFactor)
             .setScale(0, RoundingMode.CEILING)
             .toLong()
