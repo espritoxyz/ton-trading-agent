@@ -1,11 +1,15 @@
 package com.agent.backend.service
 
 import com.agent.backend.db.entity.Asset
+import com.agent.backend.db.entity.Notification
+import com.agent.backend.db.entity.NotificationType
 import com.agent.backend.db.entity.WalletTransaction
+import com.agent.backend.db.rep.NotificationRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
 import com.agent.backend.dto.AssetData
 import com.agent.backend.dto.BalanceData
 import com.agent.backend.dto.OrderData
+import com.agent.backend.dto.SwapData
 import com.agent.backend.dto.TransactionData
 import com.agent.backend.dto.WalletStateMetadata
 import com.agent.backend.dto.WalletStateResponse
@@ -38,6 +42,7 @@ class WalletStateService(
     private val priceDataCache: PriceDataCacheService,
     private val orderService: OrderService,
     private val priceTrackerRepository: PriceTrackerRepository,
+    private val notificationRepository: NotificationRepository,
     private val redisTemplate: StringRedisTemplate,
     private val objectMapper: ObjectMapper
 ) {
@@ -164,6 +169,11 @@ class WalletStateService(
         val transactions = walletService.getUserTransactionHistory(userId)
             .take(transactionsLimit)
 
+        // Fetch swap notifications
+        val swapNotifications = notificationRepository
+            .findByUser_IdAndTypeOrderByCreatedAtDesc(userId, NotificationType.SWAP_EXECUTED)
+            .take(transactionsLimit)
+
         // Fetch all orders for the user
         val allOrders = orderService.listAllOrdersByUser(userId)
 
@@ -181,6 +191,9 @@ class WalletStateService(
         // Map transactions to DTOs
         val transactionDtos = transactions.map { mapTransactionToDto(it) }
 
+        // Map swap notifications to DTOs
+        val swapDtos = swapNotifications.mapNotNull { mapSwapNotificationToDto(it) }
+
         // Map orders to DTOs and enrich with symbols
         val orderDtos = allOrders.map { mapOrderToDto(it, priceTrackers) }
 
@@ -195,12 +208,14 @@ class WalletStateService(
             ),
             assets = enrichedAssets,
             transactions = transactionDtos,
+            swaps = swapDtos,
             orders = orderDtos,
             metadata = WalletStateMetadata(
                 fromCache = false,
                 cacheAge = null,
                 transactionCount = transactionDtos.size,
                 transactionsLimit = transactionsLimit,
+                swapCount = swapDtos.size,
                 activeOrdersCount = orderDtos.count { !it.fulfilled },
                 fulfilledOrdersCount = orderDtos.count { it.fulfilled }
             )
@@ -267,6 +282,29 @@ class WalletStateService(
             recipientAddress = tx.recipientAddress,
             comment = tx.comment,
             createdAt = tx.createdAt
+        )
+    }
+
+    /**
+     * Map SWAP_EXECUTED notification to SwapData DTO.
+     * Returns null if the notification metadata is malformed.
+     */
+    private fun mapSwapNotificationToDto(notification: Notification): SwapData? {
+        val metadata = notification.metadata
+        val fromAsset = metadata["fromAsset"] as? String ?: return null
+        val toAsset = metadata["toAsset"] as? String ?: return null
+        val fromAmount = metadata["fromAmount"]?.toString() ?: "unknown"
+        val toAmount = metadata["toAmount"]?.toString() ?: "unknown"
+        val transactionId = (metadata["transactionId"] as? String)?.takeIf { it.isNotEmpty() }
+
+        return SwapData(
+            id = notification.id!!,
+            fromAsset = fromAsset,
+            toAsset = toAsset,
+            fromAmount = fromAmount,
+            toAmount = toAmount,
+            transactionId = transactionId,
+            createdAt = notification.createdAt
         )
     }
 

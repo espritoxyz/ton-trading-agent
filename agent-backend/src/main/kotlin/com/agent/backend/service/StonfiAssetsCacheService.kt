@@ -1,6 +1,7 @@
 package com.agent.backend.service
 
 import com.agent.backend.config.StonfiProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -13,21 +14,27 @@ import kotlin.math.abs
 class StonfiAssetsCacheService(
     private val stonfiProperties: StonfiProperties,
 ) {
-
     private val logger = KotlinLogging.logger {}
+
+    /** Map of known lowercase symbol -> jetton master address loaded from known_tokens.csv (if present on classpath). */
+    private val knownTokens: Map<String, String> = loadKnownTokens()
 
     /**
      * Minimal view of STON.fi asset, containing only what we care about.
      */
     data class StonfiAsset(
-        val contract_address: String,
+        @JsonProperty("contract_address")
+        val contractAddress: String,
         val symbol: String,
-        val dex_usd_price: String?,
-        val popularity_index: Double? = null,
-        val decimals: Int? = null,
-    )
-
-
+        @JsonProperty("dex_usd_price")
+        private val dexUsdPriceString: String?,
+        @JsonProperty("popularity_index")
+        val popularityIndex: Double? = null,
+        val decimals: Int,
+    ) {
+        val dexUsdPrice: Double?
+            get() = dexUsdPriceString?.toDoubleOrNull()
+    }
 
     private data class AssetListResponse(
         val asset_list: List<StonfiAsset> = emptyList()
@@ -36,6 +43,36 @@ class StonfiAssetsCacheService(
     private val client: RestClient = RestClient.builder()
         .baseUrl(stonfiProperties.baseUrl)
         .build()
+
+    private fun loadKnownTokens(): Map<String, String> {
+        return try {
+            val resourceName = "known_tokens.csv"
+            val stream = javaClass.classLoader.getResourceAsStream(resourceName)
+            if (stream == null) {
+                logger.warn { "[stonfi] Resource $resourceName not found on classpath, knownTokens map will be empty" }
+                emptyMap()
+            } else {
+                stream.bufferedReader().useLines { linesSequence ->
+                    linesSequence
+                        .drop(1) // skip header
+                        .mapNotNull { line ->
+                            val parts = line.split(',')
+                            if (parts.size < 2) return@mapNotNull null
+
+                            val rawSymbol = parts[0].trim()
+                            val jettonMaster = parts[1].trim()
+                            val symbolKey = normalizeSymbol(rawSymbol)
+                            if (symbolKey.isEmpty() || jettonMaster.isEmpty()) null else symbolKey to jettonMaster
+                        }
+                        .toMap()
+                        .also { logger.info { "[stonfi] Loaded ${it.size} known tokens from $resourceName" } }
+                }
+            }
+        } catch (e: Exception) {
+            throw IllegalStateException("[stonfi] Failed to load known_tokens.csv", e)
+        }
+    }
+
 
     /**
      * Indexed view for fast matching.
@@ -94,11 +131,11 @@ class StonfiAssetsCacheService(
         val indexed = assets.mapNotNull { a ->
             val norm = normalizeSymbol(a.symbol)
             if (norm.isEmpty()) null else IndexedAsset(
-                contractAddress = a.contract_address,
+                contractAddress = a.contractAddress,
                 symbol = a.symbol,
                 normSymbol = norm,
-                hasPrice = !a.dex_usd_price.isNullOrBlank(),
-                popularityIndex = a.popularity_index,
+                hasPrice = a.dexUsdPrice != null,
+                popularityIndex = a.popularityIndex,
             )
         }
 
@@ -112,15 +149,8 @@ class StonfiAssetsCacheService(
 
     fun getAssetByContractAddress(contractAddress: String): StonfiAsset? {
         val addr = contractAddress.lowercase()
-        return assetsRef.get().firstOrNull { it.contract_address.lowercase() == addr }
+        return assetsRef.get().firstOrNull { it.contractAddress.lowercase() == addr }
     }
-
-    fun getDexUsdPrice(contractAddress: String): Double? =
-        getAssetByContractAddress(contractAddress)?.dex_usd_price?.toDoubleOrNull()
-
-    fun getDecimals(contractAddress: String): Int? =
-        getAssetByContractAddress(contractAddress)?.decimals
-
 
 
     fun findCandidates(symbol: String, limit: Int = 50): List<IndexedAsset> {
@@ -129,6 +159,13 @@ class StonfiAssetsCacheService(
 
         val all = indexedAssetsRef.get()
         if (all.isEmpty()) return emptyList()
+
+        knownTokens[q]?.let { jettonMaster ->
+            return@findCandidates all.find { it.contractAddress == jettonMaster}?.let { listOf(it) } ?: run {
+                logger.error { "Known token $q was not found in stonfi assets cache" }
+                emptyList()
+            }
+        }
 
         val exact = all.asSequence()
             .filter { it.normSymbol == q }
@@ -170,15 +207,15 @@ class StonfiAssetsCacheService(
 
     /**
      * Normalization designed for ticker-like strings:
-     * - uppercases
+     * - lowercases
      * - strips $, spaces, separators
      * - removes diacritics
-     * - keeps only A-Z0-9 (and optionally ':' if you want)
+     * - keeps only a-z0-9
      */
     fun normalizeSymbol(input: String): String {
         if (input.isBlank()) return ""
 
-        var s = input.trim().uppercase()
+        var s = input.trim().lowercase()
 
         // Unicode normalize + strip diacritics
         s = Normalizer.normalize(s, Normalizer.Form.NFKD)
@@ -189,9 +226,10 @@ class StonfiAssetsCacheService(
             .replace("$", "")
             .replace(Regex("[\\s\\-._/\\\\]+"), "")
 
-        // Keep only alnum (tickers are usually this)
-        s = s.replace(Regex("[^A-Z0-9]"), "")
+        // Keep only lowercase alnum (tickers are usually this)
+        s = s.replace(Regex("[^a-z0-9]"), "")
 
         return s
     }
+
 }

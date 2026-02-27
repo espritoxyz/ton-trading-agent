@@ -1,5 +1,6 @@
 package com.agent.backend.llm
 
+import com.agent.backend.AppUtils
 import com.agent.backend.dto.ChatMessageRequest
 import com.agent.backend.dto.ChatMessageResponse
 import com.agent.backend.dto.ChatMessageStatusResponse
@@ -59,7 +60,8 @@ class ChatJobService(
     private val orderService: OrderService,
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
-    private val notificationService: NotificationService
+    private val notificationService: NotificationService,
+    private val appUtils: AppUtils,
 ) {
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
@@ -132,7 +134,8 @@ class ChatJobService(
                 priceTrackerService,
                 orderService,
                 externalToolResultService,
-                notificationService
+                notificationService,
+                appUtils
             )
         )
 

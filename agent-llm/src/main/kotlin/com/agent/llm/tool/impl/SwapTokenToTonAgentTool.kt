@@ -28,13 +28,13 @@ class SwapTokenToTonAgentTool(
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.swapTokenToTon(jettonMaster, minimalTonAmount)
 
-        return "Swap of $jettonMaster to receive at least $minimalTonAmount TON initiated"
+        return "Swap of $jettonTicker to receive at least $minimalTonAmount TON initiated"
     }
 
     override fun confirmationText(args: String): String {
         val serArgs = Json.decodeFromString(argsSerializer, args)
         return with(serArgs) {
-            "Swap token $jettonMaster to receive at least $minimalTonAmount TON"
+            "Swap token $jettonTicker to receive at least $minimalTonAmount TON"
         }
     }
 }

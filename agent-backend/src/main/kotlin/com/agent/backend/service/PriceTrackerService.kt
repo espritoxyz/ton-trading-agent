@@ -23,6 +23,7 @@ class PriceTrackerService(
     private val orderService: OrderService,
     private val notificationEventPublisher: NotificationEventPublisher,
     private val notificationService: NotificationService,
+    private val appUtils: com.agent.backend.AppUtils,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -35,7 +36,8 @@ class PriceTrackerService(
 
     @Transactional
     fun createTracker(userId: Long, jettonMaster: String, targetPrice: Double): PriceTracker {
-        val currentPrice = stonfiAssetsCacheService.getDexUsdPrice(jettonMaster)
+        val asset = stonfiAssetsCacheService.getAssetByContractAddress(jettonMaster)
+        val currentPrice = asset?.dexUsdPrice
         val direction = when {
             currentPrice == null -> {
                 logger.warn { "No current price for $jettonMaster, defaulting direction to UP" }
@@ -67,13 +69,22 @@ class PriceTrackerService(
         action: String,
         amount: Double,
         targetPrice: Double,
+        receivedJettonMaster: String,
     ): Order {
+        // Prohibit orders where neither side is a stablecoin (TON/USDT) to avoid unsupported pairs.
+        if (!appUtils.isStablecoin(jettonMaster) && !appUtils.isStablecoin(receivedJettonMaster)) {
+            error("Swap token->token rejected: non-TON/non-USDT pools not supported")
+        }
+
         val order = Order(
+
             userId = userId,
             jettonMaster = jettonMaster,
             action = action,
             amount = amount,
+            receivedJettonMaster = receivedJettonMaster,
         )
+
 
         val saved = orders.save(order)
 
@@ -98,7 +109,8 @@ class PriceTrackerService(
         if (untriggered.isEmpty()) return
 
         for (t in untriggered) {
-            val price = stonfiAssetsCacheService.getDexUsdPrice(t.jettonMaster)
+            val asset = stonfiAssetsCacheService.getAssetByContractAddress(t.jettonMaster)
+            val price = asset?.dexUsdPrice
             if (price == null) {
                 logger.warn { "Price was not found for ${t.jettonMaster}" }
                 continue
@@ -171,7 +183,7 @@ class PriceTrackerService(
             .stripTrailingZeros()
             .toPlainString()
 
-    private fun nearlyEquals(a: Double, b: Double, relTol: Double = 1e-4, absTol: Double = 1e-8): Boolean {
+    private fun nearlyEquals(a: Double, b: Double, absTol: Double = 1e-8): Boolean {
         val diff = abs(a - b)
         return diff <= absTol
     }

@@ -6,24 +6,36 @@
     </div>
 
     <!-- Filters -->
-    <div class="filters flex flex-wrap gap-2 mb-4">
-      <select
-          v-model="filters.assetType"
-          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
-      >
-        <option value="ALL">All Assets</option>
-        <option value="TON">TON</option>
-        <option value="JETTON">Tokens</option>
-      </select>
+    <div class="filters flex flex-wrap gap-3 mb-4">
+      <!-- Asset Type -->
+      <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800/70 rounded-lg p-1">
+        <button
+            v-for="opt in assetOptions"
+            :key="opt.value"
+            @click="filters.assetType = opt.value"
+            :class="[
+              'px-3 py-1 text-sm font-medium rounded-md transition-all duration-200',
+              filters.assetType === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            ]"
+        >{{ opt.label }}</button>
+      </div>
 
-      <select
-          v-model="filters.direction"
-          class="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
-      >
-        <option value="ALL">All Directions</option>
-        <option value="INCOMING">Incoming</option>
-        <option value="OUTGOING">Outgoing</option>
-      </select>
+      <!-- Kind -->
+      <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800/70 rounded-lg p-1">
+        <button
+            v-for="opt in kindOptions"
+            :key="opt.value"
+            @click="filters.kind = opt.value"
+            :class="[
+              'px-3 py-1 text-sm font-medium rounded-md transition-all duration-200',
+              filters.kind === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            ]"
+        >{{ opt.label }}</button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -37,7 +49,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredTransactions.length === 0" class="text-gray-600 dark:text-gray-400 text-sm text-center py-8">
+    <div v-else-if="filteredActivity.length === 0" class="text-gray-600 dark:text-gray-400 text-sm text-center py-8">
       <div class="flex flex-col items-center gap-2">
         <svg class="w-12 h-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -46,74 +58,116 @@
       </div>
     </div>
 
-    <!-- Transactions List -->
-    <div v-else class="space-y-2">
-      <div
-          v-for="tx in paginatedTransactions"
-          :key="tx.id"
-          class="transaction-item p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition-colors"
-      >
-        <div class="flex items-start gap-3">
-          <!-- Direction Icon -->
-          <div class="flex-shrink-0 mt-1">
+    <!-- Activity List -->
+    <div v-else class="space-y-1">
+      <template v-for="item in paginatedActivity" :key="item.itemType + '-' + item.id">
+
+        <!-- Swap item -->
+        <div
+            v-if="item.itemType === 'swap'"
+            class="transaction-item flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+        >
+          <!-- Date -->
+          <div class="w-28 flex-shrink-0 text-xs text-gray-500 dark:text-gray-500 tabular-nums">
+            {{ formatDate(item.createdAt) }}
+          </div>
+
+          <!-- Icon + Label -->
+          <div class="flex items-center gap-2.5 w-44 flex-shrink-0">
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-purple-500/20 text-purple-400">
+              <ArrowLeftRight class="w-3.5 h-3.5" />
+            </div>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">Swap tokens</span>
+          </div>
+
+          <!-- Counterparty -->
+          <div class="flex-1 min-w-0">
+            <span class="text-sm text-cyan-400 font-medium">Ston.fi</span>
+          </div>
+
+          <!-- Amounts: – X TON › +Y TOKEN -->
+          <div class="flex-shrink-0 flex items-center gap-1.5 font-mono text-sm">
+            <span class="text-gray-400 dark:text-gray-400">–{{ item.fromAmount }} {{ item.fromAsset }}</span>
+            <span class="text-gray-600 dark:text-gray-600 text-xs">›</span>
+            <span class="text-cyan-400">+{{ item.toAmount }} {{ item.toAsset }}</span>
+          </div>
+
+          <!-- View link -->
+          <a
+              v-if="item.transactionId"
+              :href="getTonViewerUrl(item.transactionId)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex-shrink-0 ml-1 text-gray-500 hover:text-cyan-400 transition-colors"
+              title="View on explorer"
+          >
+            <ExternalLink :size="14" />
+          </a>
+          <div v-else class="flex-shrink-0 ml-1 w-3.5" />
+        </div>
+
+        <!-- Transaction item -->
+        <div
+            v-else
+            class="transaction-item flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+        >
+          <!-- Date -->
+          <div class="w-28 flex-shrink-0 text-xs text-gray-500 dark:text-gray-500 tabular-nums">
+            {{ formatDate(item.createdAt) }}
+          </div>
+
+          <!-- Icon + Label -->
+          <div class="flex items-center gap-2.5 w-44 flex-shrink-0">
             <div
                 :class="[
-                  'w-8 h-8 rounded-full flex items-center justify-center',
-                  tx.direction === 'INCOMING' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  'w-7 h-7 rounded-lg flex items-center justify-center',
+                  item.direction === 'INCOMING' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                 ]"
             >
-              <svg v-if="tx.direction === 'INCOMING'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              <svg v-if="item.direction === 'INCOMING'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
               </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
               </svg>
             </div>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ item.direction === 'INCOMING' ? 'Received' : 'Sent' }}
+              {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
+            </span>
           </div>
 
-          <!-- Transaction Details -->
+          <!-- Address + optional comment -->
           <div class="flex-1 min-w-0">
-            <!-- Amount and Asset -->
-            <div class="flex items-baseline gap-2 mb-1">
-              <span class="font-mono font-semibold text-gray-900 dark:text-white">
-                {{ tx.direction === 'INCOMING' ? '+' : '-' }}{{ formatAmount(tx.amountNano, tx.jettonDecimals || 9) }}
-              </span>
-              <span class="text-sm text-gray-600 dark:text-gray-400">
-                {{ tx.assetType === 'TON' ? 'TON' : (tx.jettonSymbol || 'Token') }}
-              </span>
+            <div class="text-sm text-cyan-400 font-medium truncate">
+              {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
             </div>
-
-            <!-- Addresses -->
-            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
-              <span class="truncate">
-                {{ tx.direction === 'INCOMING' ? 'From:' : 'To:' }}
-                {{ formatAddress(tx.direction === 'INCOMING' ? tx.senderAddress : tx.recipientAddress) }}
-              </span>
-            </div>
-
-            <!-- Comment (if exists) -->
-            <div v-if="tx.comment" class="text-xs text-gray-500 dark:text-gray-500 italic mb-1 truncate">
-              "{{ tx.comment }}"
-            </div>
-
-            <!-- Date and Link -->
-            <div class="flex items-center gap-3 text-xs">
-              <span class="text-gray-500 dark:text-gray-500">{{ formatDate(tx.createdAt) }}</span>
-              <a
-                  :href="getTonViewerUrl(tx.transactionHash)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
-              >
-                <span>View</span>
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>
-              </a>
+            <div v-if="item.comment" class="text-xs text-gray-500 dark:text-gray-500 italic truncate mt-0.5">
+              "{{ item.comment }}"
             </div>
           </div>
+
+          <!-- Amount -->
+          <div class="flex-shrink-0 font-mono text-sm">
+            <span :class="item.direction === 'INCOMING' ? 'text-green-400' : 'text-gray-300 dark:text-gray-300'">
+              {{ item.direction === 'INCOMING' ? '+' : '–' }}{{ formatAmount(item.amountNano, item.jettonDecimals || 9) }}
+              {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
+            </span>
+          </div>
+
+          <!-- View link -->
+          <a
+              :href="getTonViewerUrl(item.transactionHash)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex-shrink-0 ml-1 text-gray-500 hover:text-cyan-400 transition-colors"
+              title="View on explorer"
+          >
+            <ExternalLink :size="14" />
+          </a>
         </div>
-      </div>
+
+      </template>
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="flex items-center justify-center gap-4 pt-4">
@@ -152,8 +206,9 @@
 </template>
 
 <script setup lang="ts">
-import {computed, inject, ref} from 'vue'
-import type {Transaction} from '../types'
+import {computed, inject, ref, watch} from 'vue'
+import {ArrowLeftRight, ExternalLink} from 'lucide-vue-next'
+import type {SwapData, Transaction} from '../types'
 
 // Inject wallet state from parent
 const walletState = inject<any>('walletState')
@@ -163,9 +218,15 @@ if (!walletState) {
 
 const {
   transactions,
+  swaps,
   loadingWalletState: loadingTransactions,
   walletStateError: transactionsError
 } = walletState
+
+// Discriminated union for combined activity items
+type TransactionActivity = (Transaction & { itemType: 'transaction' })
+type SwapActivity = (SwapData & { itemType: 'swap' })
+type ActivityItem = TransactionActivity | SwapActivity
 
 /**
  * Format amount from nano to readable format
@@ -198,38 +259,80 @@ const getTonViewerUrl = (hash: string): string => {
 }
 
 /**
- * Format date to readable format
+ * Format date to "18 Feb 14:57" style
  */
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const day = date.getDate()
+  const month = date.toLocaleString('en-US', {month: 'short'})
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${day} ${month} ${hh}:${mm}`
 }
+
+// Filter options
+const assetOptions = [
+  {value: 'ALL', label: 'All'},
+  {value: 'TON', label: 'TON'},
+  {value: 'JETTON', label: 'Tokens'},
+] as const
+
+const kindOptions = [
+  {value: 'ALL', label: 'All'},
+  {value: 'INCOMING', label: 'Incoming'},
+  {value: 'OUTGOING', label: 'Outgoing'},
+  {value: 'SWAP', label: 'Swaps'},
+] as const
 
 // Filters
 const filters = ref({
   assetType: 'ALL' as 'ALL' | 'TON' | 'JETTON',
-  direction: 'ALL' as 'ALL' | 'INCOMING' | 'OUTGOING'
+  kind: 'ALL' as 'ALL' | 'INCOMING' | 'OUTGOING' | 'SWAP'
 })
 
 // Pagination
 const currentPage = ref(1)
 const pageSize = 20
 
-// Filtered transactions
-const filteredTransactions = computed(() => {
-  return transactions.value.filter((tx: Transaction) => {
-    // Filter by asset type
-    if (filters.value.assetType !== 'ALL' && tx.assetType !== filters.value.assetType) {
-      return false
+// Combined and sorted activity list
+const allActivity = computed<ActivityItem[]>(() => {
+  const txItems: ActivityItem[] = (transactions.value as Transaction[]).map(
+      (tx) => ({...tx, itemType: 'transaction' as const})
+  )
+  const swapItems: ActivityItem[] = (swaps.value as SwapData[]).map(
+      (sw) => ({...sw, itemType: 'swap' as const})
+  )
+  return [...txItems, ...swapItems].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+})
+
+// Filtered activity
+const filteredActivity = computed<ActivityItem[]>(() => {
+  return allActivity.value.filter((item) => {
+    if (item.itemType === 'swap') {
+      // Swaps are excluded when filtering for INCOMING or OUTGOING only
+      if (filters.value.kind === 'INCOMING' || filters.value.kind === 'OUTGOING') return false
+
+      // Asset type filter for swaps: match if either leg involves the asset type
+      if (filters.value.assetType === 'TON') {
+        return item.fromAsset === 'TON' || item.toAsset === 'TON'
+      }
+      if (filters.value.assetType === 'JETTON') {
+        return item.fromAsset !== 'TON' || item.toAsset !== 'TON'
+      }
+
+      return true
     }
 
-    // Filter by direction
-    if (filters.value.direction !== 'ALL' && tx.direction !== filters.value.direction) {
+    // Transaction item
+    // Exclude when SWAP filter is active
+    if (filters.value.kind === 'SWAP') return false
+
+    if (filters.value.assetType !== 'ALL' && item.assetType !== filters.value.assetType) {
+      return false
+    }
+    if (filters.value.kind !== 'ALL' && item.direction !== filters.value.kind) {
       return false
     }
 
@@ -237,24 +340,21 @@ const filteredTransactions = computed(() => {
   })
 })
 
-// Paginated transactions
-const paginatedTransactions = computed(() => {
+// Paginated activity
+const paginatedActivity = computed<ActivityItem[]>(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
-  return filteredTransactions.value.slice(start, end)
+  return filteredActivity.value.slice(start, end)
 })
 
 // Total pages
 const totalPages = computed(() => {
-  return Math.ceil(filteredTransactions.value.length / pageSize)
+  return Math.ceil(filteredActivity.value.length / pageSize)
 })
 
 // Reset to page 1 when filters change
-const resetPagination = () => {
-  currentPage.value = 1
-}
+watch(filters, () => { currentPage.value = 1 }, {deep: true})
 
-// Watch filters
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
@@ -266,40 +366,18 @@ const nextPage = () => {
     currentPage.value++
   }
 }
-
-// Watch for filter changes
-const unwatchAssetType = ref(filters.value.assetType)
-const unwatchDirection = ref(filters.value.direction)
-
-const checkFilters = () => {
-  if (unwatchAssetType.value !== filters.value.assetType || unwatchDirection.value !== filters.value.direction) {
-    resetPagination()
-    unwatchAssetType.value = filters.value.assetType
-    unwatchDirection.value = filters.value.direction
-  }
-}
-
-// Simple reactive watcher using computed
-computed(() => {
-  checkFilters()
-  return null
-})
 </script>
 
 <style scoped>
 .transaction-item {
-  border: 1px solid rgba(99, 102, 241, 0.15);
-}
-
-:global(.dark) .transaction-item {
-  border-color: rgba(99, 102, 241, 0.1);
+  border: 1px solid transparent;
 }
 
 .transaction-item:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(99, 102, 241, 0.2);
 }
 
 :global(.dark) .transaction-item:hover {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.15);
 }
 </style>

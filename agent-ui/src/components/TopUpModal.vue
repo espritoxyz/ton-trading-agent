@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { initiateDeposit, type DepositSession } from '../composables/useDeposit'
-import { Wallet, Copy, CheckCircle, Loader, AlertCircle, Clock } from 'lucide-vue-next'
+import { Wallet, Copy, CheckCircle, Loader, AlertCircle, Clock, AlertTriangle, Info, Zap } from 'lucide-vue-next'
 
 const emits = defineEmits(['close'])
 
@@ -99,13 +99,16 @@ onMounted(() => {
                 </div>
 
                 <div v-else-if="deposit" class="space-y-6">
-                    <!-- Session Info -->
-                    <div class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-xl p-4">
-                        <div class="flex gap-3">
-                            <Clock :size="20" class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                            <div class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                                <p><strong>Active Session:</strong> This deposit session is active for {{ timeRemaining }}</p>
-                                <p><strong>Fast Detection:</strong> Transactions are detected automatically within 12-24 seconds</p>
+                    <!-- Gas Reserve Warning -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-xl px-4 py-3">
+                        <div class="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+                            <AlertTriangle :size="14" class="text-amber-500 dark:text-amber-400 flex-shrink-0" />
+                            <span>Keep at least <strong>0.3 TON</strong> for gas fees</span>
+                            <div class="relative group ml-1">
+                                <Info :size="13" class="text-amber-500 dark:text-amber-400 cursor-help" />
+                                <div class="tooltip-box absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-xl leading-relaxed">
+                                    The TON blockchain requires a small amount of TON to pay for network transaction fees (gas). Without this reserve, swaps and other operations may fail. This is a blockchain requirement — not a service fee.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -146,22 +149,27 @@ onMounted(() => {
                                 <span class="font-bold">3.</span>
                                 <span>Send TON or any supported Jettons to this address</span>
                             </li>
-                            <li class="flex gap-2">
-                                <span class="font-bold">4.</span>
-                                <span>Your balance will update automatically within 12-24 seconds</span>
-                            </li>
-                            <li class="flex gap-2">
-                                <span class="font-bold">5.</span>
-                                <span>You can make multiple deposits within the 24-hour session</span>
-                            </li>
                         </ol>
                     </div>
 
-                    <!-- Session Expiry Info -->
-                    <div class="text-xs text-gray-600 dark:text-gray-400 text-center">
-                        <p>Session expires in <strong>{{ timeRemaining }}</strong></p>
-                        <p class="mt-1">After expiry, click "Deposit" again to start a new session</p>
+                    <!-- Session Stats -->
+                    <div class="flex gap-3">
+                        <div class="flex-1 flex items-center gap-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5">
+                            <Zap :size="16" class="text-emerald-500 flex-shrink-0" />
+                            <div class="text-xs leading-tight">
+                                <p class="font-semibold text-gray-900 dark:text-white">12–24 sec</p>
+                                <p class="text-gray-500 dark:text-gray-400 mt-0.5">detection time</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex items-center gap-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5">
+                            <Clock :size="16" class="text-blue-500 flex-shrink-0" />
+                            <div class="text-xs leading-tight">
+                                <p class="font-semibold text-gray-900 dark:text-white">{{ timeRemaining }}</p>
+                                <p class="text-gray-500 dark:text-gray-400 mt-0.5">session remaining</p>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -178,5 +186,15 @@ onMounted(() => {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.tooltip-box::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #111827;
 }
 </style>
