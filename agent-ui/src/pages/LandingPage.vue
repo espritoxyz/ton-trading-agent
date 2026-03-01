@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import {
   MessageSquare,
@@ -11,28 +11,63 @@ import {
   TrendingDown,
   Hexagon,
   Sun,
-  Network
+  Network,
+  Loader2
 } from 'lucide-vue-next'
+import axios from 'axios'
+
+const apiBase = (import.meta as any).env?.VITE_BACKEND_URL || '/api'
 
 const email = ref('')
 const subscribed = ref(false)
+const pendingVerification = ref(false)
 const loading = ref(false)
+const subscribeError = ref('')
+const resendLoading = ref(false)
+const resendMessage = ref('')
+const pendingEmail = ref('')
 
 const handleSubscribe = async () => {
   if (!email.value || !email.value.includes('@')) return
 
   loading.value = true
-  // TODO: Implement actual email subscription API call
-  setTimeout(() => {
-    subscribed.value = true
-    loading.value = false
+  subscribeError.value = ''
+
+  try {
+    const response = await axios.post(`${apiBase}/newsletter/subscribe`, { email: email.value })
+    const data = response.data
+    if (data.pending) {
+      pendingEmail.value = email.value
+      pendingVerification.value = true
+    } else {
+      subscribed.value = true
+    }
     email.value = ''
-  }, 1000)
+  } catch (e: any) {
+    subscribeError.value = e?.response?.data?.message || 'Something went wrong. Please try again.'
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleImageError = (e) => {
-  console.log('Image failed to load:', e.target.src)
-  // Keep the image element but it will show broken image icon
+const handleResend = async () => {
+  if (!pendingEmail.value) return
+
+  resendLoading.value = true
+  resendMessage.value = ''
+
+  try {
+    const response = await axios.post(`${apiBase}/newsletter/resend-verification`, { email: pendingEmail.value })
+    resendMessage.value = response.data.message
+  } catch (e: any) {
+    resendMessage.value = e?.response?.data?.message || 'Something went wrong. Please try again.'
+  } finally {
+    resendLoading.value = false
+  }
+}
+
+const handleImageError = (e: Event) => {
+  console.log('Image failed to load:', (e.target as HTMLImageElement).src)
 }
 
 // Generate random stars
@@ -450,7 +485,8 @@ onMounted(() => {
               Get updates on new features, blockchain integrations, and exclusive trading insights.
             </p>
 
-            <form v-if="!subscribed" @submit.prevent="handleSubscribe" class="max-w-md mx-auto">
+            <!-- Subscribe form -->
+            <form v-if="!subscribed && !pendingVerification" @submit.prevent="handleSubscribe" class="max-w-md mx-auto">
               <div class="flex flex-col sm:flex-row gap-4">
                 <input
                   v-model="email"
@@ -462,15 +498,37 @@ onMounted(() => {
                 <button
                   type="submit"
                   :disabled="loading"
-                  class="px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold disabled:opacity-50"
+                  class="px-8 py-4 bg-gradient-to-r from-cosmic-500 to-purple-600 rounded-full hover:opacity-90 transition font-semibold disabled:opacity-50 flex items-center gap-2 justify-center"
                 >
-                  {{ loading ? 'Subscribing...' : 'Subscribe' }}
+                  <Loader2 v-if="loading" :size="18" class="animate-spin" />
+                  {{ loading ? 'Sending…' : 'Subscribe' }}
                 </button>
               </div>
+              <p v-if="subscribeError" class="mt-3 text-red-400 text-sm text-center">{{ subscribeError }}</p>
             </form>
 
-            <div v-else class="glass-card p-6 max-w-md mx-auto bg-green-500/20 border-green-500/50">
-              <p class="text-green-400 font-semibold">✅ Successfully subscribed! Check your email for confirmation.</p>
+            <!-- Pending verification state -->
+            <div v-else-if="pendingVerification" class="glass-card p-6 max-w-md mx-auto bg-indigo-500/20 border border-indigo-500/40">
+              <p class="text-indigo-200 font-semibold mb-2">Check your inbox!</p>
+              <p class="text-gray-300 text-sm mb-4">
+                We sent a confirmation email to <strong>{{ pendingEmail }}</strong>.
+                Click the link in the email to complete your subscription.
+                Don't forget to check your spam folder.
+              </p>
+              <button
+                @click="handleResend"
+                :disabled="resendLoading"
+                class="inline-flex items-center gap-1.5 text-sm text-indigo-300 hover:text-indigo-200 transition underline underline-offset-2 disabled:opacity-50"
+              >
+                <Loader2 v-if="resendLoading" :size="14" class="animate-spin" />
+                {{ resendLoading ? 'Sending…' : "Didn't receive it? Resend confirmation email" }}
+              </button>
+              <p v-if="resendMessage" class="mt-2 text-sm text-gray-300">{{ resendMessage }}</p>
+            </div>
+
+            <!-- Full success state -->
+            <div v-else class="glass-card p-6 max-w-md mx-auto bg-green-500/20 border border-green-500/50">
+              <p class="text-green-400 font-semibold">Successfully subscribed! We'll keep you in the loop.</p>
             </div>
 
             <p class="text-sm text-gray-400 mt-6">

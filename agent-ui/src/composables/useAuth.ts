@@ -1,4 +1,4 @@
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 import {api, refreshToken} from './useApi.ts'
 
 export const accessToken = ref<string | null>(sessionStorage.getItem('access_token'))
@@ -9,6 +9,18 @@ export const loggingIn = ref(false)
 export const authError = ref<string | null>(null)
 export const needsVerification = ref(false)
 export const verificationEmail = ref<string | null>(null)
+export const isAdmin = ref(false)
+
+watch(accessToken, (token) => {
+    if (!token) { isAdmin.value = false; return }
+    try {
+        const payload = parseJwt(token)
+        const roles: string[] = payload?.realm_access?.roles ?? []
+        isAdmin.value = roles.includes('ADMIN')
+    } catch {
+        isAdmin.value = false
+    }
+}, { immediate: true })
 
 export async function login(username: string, password: string) {
     loggingIn.value = true
@@ -41,10 +53,10 @@ export async function login(username: string, password: string) {
     }
 }
 
-export async function register(emailInput: string, passwordInput: string, displayName?: string) {
+export async function register(emailInput: string, passwordInput: string, displayName?: string, subscribeToNewsletter?: boolean) {
     authError.value = null
     try {
-        const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName }, { headers: { Authorization: undefined } })
+        const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName, subscribeToNewsletter: subscribeToNewsletter ?? false }, { headers: { Authorization: undefined } })
         return data
     } catch (e: any) {
         authError.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
