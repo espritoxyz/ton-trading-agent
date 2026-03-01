@@ -7,8 +7,8 @@ import {
 } from '../composables/useAuth'
 import { useWalletState } from '../composables/useWalletState'
 import {
-  Mail, Lock, User, AlertTriangle, Loader, CheckCircle,
-  Bell, Bot, ArrowLeftRight, ListOrdered, ShieldCheck, TrendingUp,
+  Mail, Lock, AlertTriangle, Loader, CheckCircle,
+  Bot, ArrowLeftRight, ListOrdered, ShieldCheck, TrendingUp,
   ChevronRight
 } from 'lucide-vue-next'
 
@@ -22,8 +22,7 @@ const loginUsername = ref('')
 const loginPassword = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
-const regDisplayName = ref('')
-const subscribeToNewsletter = ref(false)
+const subscribeToNewsletter = ref(true)
 
 const submitting = ref(false)
 const regSuccess = ref(false)
@@ -70,7 +69,7 @@ async function onRegister() {
   submitting.value = true
   regSuccess.value = false
   try {
-    await register(regEmail.value, regPassword.value, regDisplayName.value, subscribeToNewsletter.value)
+    await register(regEmail.value, regPassword.value, undefined, subscribeToNewsletter.value)
     regSuccessEmail.value = regEmail.value
     regSuccess.value = true
   } catch {
@@ -294,24 +293,13 @@ onMounted(() => {
                 <label class="text-xs font-medium text-white/45 mb-1.5 flex items-center gap-1.5"><Lock :size="11" />Password</label>
                 <input v-model="regPassword" type="password" placeholder="••••••••" required autocomplete="new-password" class="auth-input" />
               </div>
-              <div>
-                <label class="text-xs font-medium text-white/45 mb-1.5 flex items-center gap-1.5">
-                  <User :size="11" />Display Name <span class="text-white/20 ml-0.5">(optional)</span>
-                </label>
-                <input v-model="regDisplayName" type="text" placeholder="Your Name" autocomplete="name" class="auth-input" />
-              </div>
-
-              <!-- Newsletter opt-in -->
-              <label class="flex items-start gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:border-indigo-500/35 cursor-pointer transition">
+              <!-- Newsletter opt-in — subtle footnote style -->
+              <label class="flex items-center gap-2 cursor-pointer group py-0.5 select-none">
                 <input v-model="subscribeToNewsletter" type="checkbox"
-                  class="mt-0.5 w-4 h-4 rounded border-white/25 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer flex-shrink-0 bg-white/10" />
-                <div class="flex-1">
-                  <div class="flex items-center gap-1.5 mb-0.5">
-                    <Bell :size="11" class="text-indigo-400 flex-shrink-0" />
-                    <span class="text-xs font-semibold text-white/70">Subscribe to newsletter</span>
-                  </div>
-                  <p class="text-xs text-white/30 leading-snug">Product news, features, and trading insights. Unsubscribe any time.</p>
-                </div>
+                  class="w-3 h-3 rounded-sm border-white/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer flex-shrink-0 bg-white/8 checked:bg-indigo-600 checked:border-indigo-600 transition-colors" />
+                <span class="text-[11px] text-white/30 group-hover:text-white/45 transition-colors leading-none">
+                  Send me product updates and news
+                </span>
               </label>
 
               <!-- Error -->

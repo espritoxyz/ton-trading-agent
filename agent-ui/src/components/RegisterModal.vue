@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { register } from '../composables/useAuth'
-import { Sparkles, Mail, Lock, User, AlertTriangle, Loader, CheckCircle, Bell } from 'lucide-vue-next'
+import { Sparkles, Mail, Lock, AlertTriangle, Loader, CheckCircle } from 'lucide-vue-next'
 
 const emits = defineEmits(['registered','close'])
 
 const email = ref('')
 const password = ref('')
-const displayName = ref('')
-const subscribeToNewsletter = ref(false)
+const subscribeToNewsletter = ref(true)
 const submitting = ref(false)
 const success = ref(false)
 const error = ref<string | null>(null)
@@ -18,7 +17,7 @@ async function onSubmit() {
   submitting.value = true
   success.value = false
   try {
-    const data = await register(email.value, password.value, displayName.value, subscribeToNewsletter.value)
+    const data = await register(email.value, password.value, undefined, subscribeToNewsletter.value)
     success.value = true
     emits('registered', data)
 
@@ -125,35 +124,16 @@ function onClose() {
             />
           </div>
 
-          <div>
-            <label class="text-xs font-semibold text-gray-800 dark:text-gray-300 mb-2 block flex items-center gap-1.5">
-              <User :size="14" />
-              <span>Display Name (Optional)</span>
-            </label>
-            <input
-              v-model="displayName"
-              type="text"
-              placeholder="Your Name"
-              class="w-full rounded-xl bg-gray-50 dark:bg-white/10 border-2 border-gray-300 dark:border-white/20 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cosmic-500 focus:border-cosmic-500 focus:bg-white dark:focus:bg-white/15 transition shadow-sm"
-            />
-          </div>
-
-          <!-- Newsletter subscription opt-in -->
-          <label class="flex items-start gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-white/5 border-2 border-gray-200 dark:border-white/10 hover:border-cosmic-400 dark:hover:border-cosmic-500/50 cursor-pointer transition-colors group">
+          <!-- Newsletter subscription opt-in — subtle -->
+          <label class="flex items-center gap-2 cursor-pointer group select-none py-0.5">
             <input
               v-model="subscribeToNewsletter"
               type="checkbox"
-              class="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 dark:border-white/30 text-cosmic-500 focus:ring-cosmic-500 focus:ring-offset-0 cursor-pointer flex-shrink-0"
+              class="w-3 h-3 rounded-sm border-gray-400 dark:border-white/20 text-cosmic-500 focus:ring-0 focus:ring-offset-0 cursor-pointer flex-shrink-0"
             />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <Bell :size="13" class="text-cosmic-500 dark:text-cosmic-400 flex-shrink-0" />
-                <span class="text-xs font-semibold text-gray-800 dark:text-gray-200">Subscribe to newsletter updates</span>
-              </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 leading-snug">
-                Get product news, feature announcements, and trading insights. Unsubscribe any time.
-              </p>
-            </div>
+            <span class="text-[11px] text-gray-400 dark:text-white/30 group-hover:text-gray-600 dark:group-hover:text-white/45 transition-colors leading-none">
+              Send me product updates and news
+            </span>
           </label>
 
           <div v-if="error" class="flex items-start gap-3 p-4 rounded-xl bg-red-100 dark:bg-red-500/10 border-2 border-red-400 dark:border-red-500/30 shadow-sm">
