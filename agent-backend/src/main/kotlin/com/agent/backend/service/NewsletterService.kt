@@ -274,7 +274,7 @@ class NewsletterService(
 
         logger.info { "Newsletter broadcast complete: sent=$sent, failed=$failed, total=$total" }
         return CompletableFuture.completedFuture(
-            NewsletterBroadcastResponse(totalSubscribers = total.toInt(), sent = sent, failed = failed)
+            NewsletterBroadcastResponse(totalSubscribers = total, sent = sent, failed = failed)
         )
     }
 

@@ -15,7 +15,4 @@ CREATE TABLE newsletter_subscription (
     last_resent_at                TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_newsletter_email              ON newsletter_subscription (email);
-CREATE INDEX idx_newsletter_unsubscribe        ON newsletter_subscription (unsubscribe_token);
-CREATE INDEX idx_newsletter_status             ON newsletter_subscription (status);
-CREATE INDEX idx_newsletter_verification_token ON newsletter_subscription (verification_token);
+CREATE INDEX idx_newsletter_status ON newsletter_subscription (status);

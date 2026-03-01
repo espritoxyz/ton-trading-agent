@@ -13,10 +13,6 @@ data class NewsletterSubscribeResponse(
     val message: String
 )
 
-data class NewsletterUnsubscribeRequest(
-    @field:NotBlank @field:Email val email: String
-)
-
 data class NewsletterUnsubscribeResponse(
     val unsubscribed: Boolean,
     val message: String
@@ -28,7 +24,7 @@ data class NewsletterBroadcastRequest(
 )
 
 data class NewsletterBroadcastResponse(
-    val totalSubscribers: Int,
+    val totalSubscribers: Long,
     val sent: Int,
     val failed: Int
 )

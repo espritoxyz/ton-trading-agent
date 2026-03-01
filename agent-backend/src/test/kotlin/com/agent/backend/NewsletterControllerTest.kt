@@ -92,12 +92,6 @@ class NewsletterControllerTest {
     }
 
     @Test
-    fun `getMySubscription should return 401 when no auth`() {
-        val response = controller.getMySubscription(null)
-        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
-    }
-
-    @Test
     fun `getMySubscription should return 400 when email claim missing`() {
         val response = controller.getMySubscription(jwtAuth(email = null))
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
@@ -119,12 +113,6 @@ class NewsletterControllerTest {
     }
 
     @Test
-    fun `updateMySubscription should return 401 when no auth`() {
-        val response = controller.updateMySubscription(null, NewsletterSubscriptionUpdateRequest(subscribed = true))
-        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
-    }
-
-    @Test
     fun `admin preview should return 200 with rendered html`() {
         // Admin authorization is enforced at the Spring Security filter layer (SecurityConfig),
         // not in the controller itself, so the controller simply renders and returns.
@@ -141,7 +129,7 @@ class NewsletterControllerTest {
         // Given
         val auth = jwtAuth(email = "admin@example.com")
         `when`(newsletterService.broadcast("s", "c")).thenReturn(
-            CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 1, sent = 1, failed = 0))
+            CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 1L, sent = 1, failed = 0))
         )
 
         // When — @Async is not applied in unit tests, CompletableFuture resolves immediately

@@ -118,8 +118,7 @@ class NewsletterController(
 
     /** Get newsletter subscription status for the authenticated user. */
     @GetMapping("/subscription")
-    fun getMySubscription(auth: JwtAuthenticationToken?): ResponseEntity<NewsletterSubscriptionStatusResponse> {
-        if (auth == null) return ResponseEntity.status(401).build()
+    fun getMySubscription(auth: JwtAuthenticationToken): ResponseEntity<NewsletterSubscriptionStatusResponse> {
         val userEmail = auth.token.claims["email"] as? String
             ?: return ResponseEntity.status(400).body(NewsletterSubscriptionStatusResponse(subscribed = false))
         val subscribed = newsletterService.getNewsletterStatus(userEmail)
@@ -129,10 +128,9 @@ class NewsletterController(
     /** Update newsletter subscription for the authenticated user (no double opt-in for registered users). */
     @PutMapping("/subscription")
     fun updateMySubscription(
-        auth: JwtAuthenticationToken?,
+        auth: JwtAuthenticationToken,
         @Valid @RequestBody body: NewsletterSubscriptionUpdateRequest
     ): ResponseEntity<NewsletterSubscriptionStatusResponse> {
-        if (auth == null) return ResponseEntity.status(401).build()
         val userEmail = auth.token.claims["email"] as? String
             ?: return ResponseEntity.status(400).body(NewsletterSubscriptionStatusResponse(subscribed = false))
         newsletterService.setNewsletterSubscription(userEmail, body.subscribed, ConfirmationIssuer.ACCOUNT_SETTINGS)

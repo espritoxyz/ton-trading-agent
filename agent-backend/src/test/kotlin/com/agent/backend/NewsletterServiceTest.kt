@@ -456,7 +456,7 @@ class NewsletterServiceTest {
         val result = service.broadcast("Sub", "<p>x</p>").get()
 
         // Then
-        assertEquals(NewsletterBroadcastResponse(0, 0, 0), result)
+        assertEquals(NewsletterBroadcastResponse(0L, 0, 0), result)
         verify(resendClient, never()).sendBatch(ArgumentMatchers.anyList())
     }
 
@@ -479,7 +479,7 @@ class NewsletterServiceTest {
         val result = service.broadcast("Sub", "<p>x</p>").get()
 
         // Then
-        assertEquals(3, result.totalSubscribers)
+        assertEquals(3L, result.totalSubscribers)
         assertEquals(2, result.sent)
         assertEquals(1, result.failed)
         verify(resendClient, times(1)).sendBatch(ArgumentMatchers.anyList())
@@ -504,7 +504,7 @@ class NewsletterServiceTest {
         val result = service.broadcast("Sub", "<p>x</p>").get()
 
         // Then
-        assertEquals(250, result.totalSubscribers)
+        assertEquals(250L, result.totalSubscribers)
         assertEquals(250, result.sent)
         assertEquals(0, result.failed)
         verify(resendClient, times(3)).sendBatch(ArgumentMatchers.anyList())
