@@ -164,7 +164,14 @@ function onClose() {
             </div>
           </div>
 
-          <div class="flex gap-3 pt-3">
+          <p class="text-xs text-center text-gray-500 dark:text-gray-400">
+            By creating an account, you agree to our
+            <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-cosmic-500 hover:text-cosmic-400 underline transition">Terms of Service</a>
+            and
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-cosmic-500 hover:text-cosmic-400 underline transition">Privacy Policy</a>.
+          </p>
+
+          <div class="flex gap-3 pt-1">
             <button
               type="button"
               class="flex-1 rounded-xl bg-gray-200 dark:bg-white/10 px-4 py-3 text-sm font-bold text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-white/20 transition border-2 border-gray-400 dark:border-white/20 shadow-sm"
