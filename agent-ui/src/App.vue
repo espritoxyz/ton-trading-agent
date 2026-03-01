@@ -11,6 +11,7 @@ import CareersPage from './pages/CareersPage.vue'
 import EmailVerificationPage from './components/EmailVerificationPage.vue'
 import Dashboard from "./pages/Dashboard.vue";
 import AdminPage from "./pages/AdminPage.vue";
+import AuthPage from "./pages/AuthPage.vue";
 import { isAdmin } from './composables/useAuth'
 import NewsletterConfirmPage from "./pages/NewsletterConfirmPage.vue";
 import NewsletterUnsubscribePage from "./pages/NewsletterUnsubscribePage.vue";
@@ -80,6 +81,8 @@ onMounted(() => {
 <template>
   <div>
     <component v-if="route === '/'" :is="LandingApp"/>
+    <AuthPage v-else-if="route === '/login'" mode="login"/>
+    <AuthPage v-else-if="route === '/register'" mode="register"/>
     <component v-else-if="route === '/roadmap'" :is="RoadmapPage"/>
     <component v-else-if="route === '/privacy'" :is="PrivacyPage"/>
     <component v-else-if="route === '/blog'" :is="BlogPage"/>
