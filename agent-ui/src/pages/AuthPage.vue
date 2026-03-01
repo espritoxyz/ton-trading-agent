@@ -8,7 +8,7 @@ import {
 import { useWalletState } from '../composables/useWalletState'
 import {
   Mail, Lock, AlertTriangle, Loader, CheckCircle,
-  Bot, ArrowLeftRight, ListOrdered, ShieldCheck, TrendingUp,
+  Bot, ArrowLeftRight, ListOrdered, Link2, TrendingUp,
   ChevronRight, Pencil
 } from 'lucide-vue-next'
 
@@ -124,7 +124,7 @@ const features = [
   { icon: Bot, title: 'AI trading in plain language', desc: 'Just type what you want — the agent handles the rest' },
   { icon: ArrowLeftRight, title: 'Instant token swaps', desc: 'Trade any token pair via Ston.fi DEX at best rates' },
   { icon: ListOrdered, title: 'Automated limit orders', desc: 'Set price targets and let orders execute automatically' },
-  { icon: ShieldCheck, title: 'Non-custodial security', desc: 'Your keys, encrypted and stored only on your device' },
+  { icon: Link2, title: 'On-chain transparency', desc: 'Every transaction verifiable on Tonviewer instantly' },
   { icon: TrendingUp, title: 'Real-time market data', desc: 'Live TON ecosystem prices and portfolio tracking' },
 ]
 
