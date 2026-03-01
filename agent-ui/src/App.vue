@@ -49,6 +49,7 @@ function navigate(to: string) {
   if (to === route.value) return
   history.pushState({}, '', to)
   route.value = to
+  window.scrollTo(0, 0)
 }
 
 onMounted(() => {
