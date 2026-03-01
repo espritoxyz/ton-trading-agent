@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, provide } from 'vue'
 import { APP_VERSION } from '../config'
-import { useTheme } from '../composables/useTheme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import AccountMenu from '../components/AccountMenu.vue'
@@ -11,7 +10,6 @@ import NotificationToast from '../components/NotificationToast.vue'
 const navigationTabs = ref<any[]>([])
 const activeTab = ref<any>(null)
 
-// Provide a function for child components to set navigation tabs
 provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
   navigationTabs.value = tabs
   activeTab.value = activeTabRef
@@ -99,22 +97,22 @@ provide('setNavigationTabs', (tabs: any[], activeTabRef: any) => {
           </div>
         </div>
 
-        <!-- Mobile Navigation Tabs (shown only below lg) -->
+        <!-- Mobile Navigation — Segmented Pill (shown only below lg) -->
         <div v-if="navigationTabs.length > 0 && activeTab" class="lg:hidden border-t border-gray-200 dark:border-white/10 px-3 pb-3 pt-2">
-          <div class="flex gap-1.5 overflow-x-auto scrollbar-none">
+          <div class="flex rounded-xl bg-black/5 dark:bg-white/[0.06] p-1 gap-0.5">
             <button
               v-for="tab in navigationTabs"
               :key="tab.id"
               @click="activeTab.value = tab.id"
               :class="[
-                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 shrink-0',
+                'flex flex-1 items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
                 activeTab.value === tab.id
-                  ? 'bg-gradient-to-r from-cosmic-500 to-purple-600 text-white shadow-md shadow-cosmic-500/30'
-                  : 'bg-gray-200 dark:bg-white/5 text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-white/10 border border-gray-300 dark:border-white/10'
+                  ? 'bg-gradient-to-r from-cosmic-500 to-purple-600 text-white shadow-sm shadow-cosmic-500/30'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5'
               ]"
             >
-              <component :is="tab.icon" :size="15" />
-              <span>{{ tab.label }}</span>
+              <component :is="tab.icon" :size="14" />
+              <span>{{ tab.mobileLabel ?? tab.label }}</span>
             </button>
           </div>
         </div>

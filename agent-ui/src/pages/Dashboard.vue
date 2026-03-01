@@ -57,10 +57,10 @@ onUnmounted(() => {
 })
 
 const tabs = [
-  {id: 'overview' as const, label: 'Overview', icon: MessageSquare},
-  {id: 'assets' as const, label: 'Assets', icon: Wallet},
-  {id: 'transactions' as const, label: 'Transactions', icon: Receipt},
-  {id: 'orders' as const, label: 'Orders', icon: ClipboardList}
+  {id: 'overview' as const, label: 'Overview', mobileLabel: 'Chat', icon: MessageSquare},
+  {id: 'assets' as const, label: 'Assets', mobileLabel: 'Assets', icon: Wallet},
+  {id: 'transactions' as const, label: 'Transactions', mobileLabel: 'History', icon: Receipt},
+  {id: 'orders' as const, label: 'Orders', mobileLabel: 'Orders', icon: ClipboardList}
 ]
 
 // Provide tabs to AppLayout
@@ -106,8 +106,8 @@ const mobileBalance = computed(() => {
       </div>
 
       <!-- Content grid: ChatPanel always visible, BalanceCard only on desktop -->
-      <div class="flex-1 min-h-0 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div class="flex h-full flex-col min-h-0">
+      <div class="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div class="flex h-full flex-col min-h-0 min-w-0">
           <ChatPanel/>
         </div>
         <div class="hidden lg:flex h-full flex-col gap-4">
