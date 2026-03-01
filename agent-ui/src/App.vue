@@ -10,6 +10,10 @@ import AboutPage from './pages/AboutPage.vue'
 import CareersPage from './pages/CareersPage.vue'
 import EmailVerificationPage from './components/EmailVerificationPage.vue'
 import Dashboard from "./pages/Dashboard.vue";
+import AdminPage from "./pages/AdminPage.vue";
+import { isAdmin } from './composables/useAuth'
+import NewsletterConfirmPage from "./pages/NewsletterConfirmPage.vue";
+import NewsletterUnsubscribePage from "./pages/NewsletterUnsubscribePage.vue";
 
 const route = ref(window.location.pathname || '/')
 const instance = getCurrentInstance()
@@ -18,6 +22,18 @@ const metrika = instance?.appContext.config.globalProperties.$metrika
 // Extract verification token from URL
 const verificationToken = computed(() => {
   const match = route.value.match(/^\/verify-email\/(.+)$/)
+  return match ? match[1] : null
+})
+
+// Extract newsletter confirmation token from URL
+const newsletterConfirmToken = computed(() => {
+  const match = route.value.match(/^\/newsletter\/confirm\/(.+)$/)
+  return match ? match[1] : null
+})
+
+// Extract newsletter unsubscribe token from URL
+const newsletterUnsubscribeToken = computed(() => {
+  const match = route.value.match(/^\/newsletter\/unsubscribe\/(.+)$/)
   return match ? match[1] : null
 })
 
@@ -71,6 +87,9 @@ onMounted(() => {
     <component v-else-if="route === '/about'" :is="AboutPage"/>
     <component v-else-if="route === '/careers'" :is="CareersPage"/>
     <component v-else-if="verificationToken" :is="EmailVerificationPage" :token="verificationToken"/>
+    <component v-else-if="newsletterConfirmToken" :is="NewsletterConfirmPage" :token="newsletterConfirmToken"/>
+    <component v-else-if="newsletterUnsubscribeToken" :is="NewsletterUnsubscribePage" :token="newsletterUnsubscribeToken"/>
+    <AdminPage v-else-if="route === '/app/admin' && isAdmin"/>
     <component v-else-if="route.startsWith('/app')" :is="AppLayout">
       <template v-slot>
         <Dashboard/>
