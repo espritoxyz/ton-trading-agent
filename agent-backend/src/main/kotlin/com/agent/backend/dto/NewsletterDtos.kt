@@ -2,6 +2,7 @@ package com.agent.backend.dto
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import java.time.Instant
 
 data class NewsletterSubscribeRequest(
     @field:NotBlank @field:Email val email: String
@@ -27,6 +28,18 @@ data class NewsletterBroadcastResponse(
     val totalSubscribers: Long,
     val sent: Int,
     val failed: Int
+)
+
+data class NewsletterBroadcastStartedResponse(val jobId: String)
+
+enum class BroadcastJobState { RUNNING, COMPLETED, FAILED }
+
+data class NewsletterBroadcastStatusResponse(
+    val jobId: String,
+    val state: BroadcastJobState,
+    val startedAt: Instant,
+    val completedAt: Instant? = null,
+    val result: NewsletterBroadcastResponse? = null
 )
 
 data class NewsletterConfirmResponse(

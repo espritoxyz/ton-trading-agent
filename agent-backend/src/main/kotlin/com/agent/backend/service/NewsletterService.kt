@@ -20,8 +20,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Base64
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
-
 private const val BATCH_SIZE = 100
 
 @Service
@@ -29,6 +27,7 @@ class NewsletterService(
     private val repository: NewsletterSubscriptionRepository,
     private val resendClient: ResendClient,
     private val emailTemplateService: EmailTemplateService,
+    private val broadcastJobStore: BroadcastJobStore,
     @Value("\${email.resend.from-email}") private val fromEmail: String,
     @Value("\${email.resend.from-name}") private val fromName: String,
     @Value("\${email.verification.base-url}") private val baseUrl: String,
@@ -222,60 +221,64 @@ class NewsletterService(
 
     /**
      * Sends the newsletter to all ACTIVE subscribers using paginated streaming to avoid
-     * loading all records into memory. Runs asynchronously — the caller receives a
-     * [CompletableFuture] that resolves when the broadcast completes.
+     * loading all records into memory. Runs asynchronously via {@code @Async}; the caller
+     * receives a jobId immediately (202) and polls [BroadcastJobStore] for status.
      */
     @Async
     @Transactional(readOnly = true)
-    fun broadcast(subject: String, htmlContent: String): CompletableFuture<NewsletterBroadcastResponse> {
-        val total = repository.countByStatus(NewsletterStatus.ACTIVE)
+    fun broadcast(jobId: String, subject: String, htmlContent: String) {
+        try {
+            val total = repository.countByStatus(NewsletterStatus.ACTIVE)
 
-        if (total == 0L) {
-            logger.info { "Newsletter broadcast skipped: no active subscribers" }
-            return CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 0, sent = 0, failed = 0))
-        }
+            if (total == 0L) {
+                logger.info { "Newsletter broadcast skipped: no active subscribers" }
+                broadcastJobStore.complete(jobId, NewsletterBroadcastResponse(totalSubscribers = 0, sent = 0, failed = 0))
+                return
+            }
 
-        logger.info { "Starting newsletter broadcast to $total subscribers: \"$subject\"" }
+            logger.info { "Starting newsletter broadcast to $total subscribers: \"$subject\"" }
 
-        val from = "$fromName <$fromEmail>"
-        var sent = 0
-        var failed = 0
+            val from = "$fromName <$fromEmail>"
+            var sent = 0
+            var failed = 0
 
-        repository.streamAllByStatus(NewsletterStatus.ACTIVE).use { stream ->
-            val iterator = stream.iterator()
-            generateSequence { if (iterator.hasNext()) iterator.next() else null }
-                .chunked(BATCH_SIZE)
-                .forEachIndexed { chunkIndex, chunk ->
-                    val emails = chunk.map { sub ->
-                        val unsubscribeLink = "$baseUrl/newsletter/unsubscribe/${sub.unsubscribeToken}"
-                        val html = emailTemplateService.generateNewsletterEmail(
-                            subject = subject,
-                            htmlContent = htmlContent,
-                            unsubscribeLink = unsubscribeLink,
-                            baseUrl = baseUrl
-                        )
-                        ResendEmailRequest(from = from, to = listOf(sub.email), subject = subject, html = html)
-                    }
-
-                    try {
-                        val accepted = resendClient.sendBatch(emails)
-                        sent += accepted
-                        val skipped = chunk.size - accepted
-                        if (skipped > 0) {
-                            logger.warn { "Batch $chunkIndex: $accepted accepted, $skipped not accepted by Resend" }
-                            failed += skipped
+            repository.streamAllByStatus(NewsletterStatus.ACTIVE).use { stream ->
+                val iterator = stream.iterator()
+                generateSequence { if (iterator.hasNext()) iterator.next() else null }
+                    .chunked(BATCH_SIZE)
+                    .forEachIndexed { chunkIndex, chunk ->
+                        val emails = chunk.map { sub ->
+                            val unsubscribeLink = "$baseUrl/newsletter/unsubscribe/${sub.unsubscribeToken}"
+                            val html = emailTemplateService.generateNewsletterEmail(
+                                subject = subject,
+                                htmlContent = htmlContent,
+                                unsubscribeLink = unsubscribeLink,
+                                baseUrl = baseUrl
+                            )
+                            ResendEmailRequest(from = from, to = listOf(sub.email), subject = subject, html = html)
                         }
-                    } catch (e: Exception) {
-                        logger.error(e) { "Batch $chunkIndex failed (${chunk.size} emails)" }
-                        failed += chunk.size
-                    }
-                }
-        }
 
-        logger.info { "Newsletter broadcast complete: sent=$sent, failed=$failed, total=$total" }
-        return CompletableFuture.completedFuture(
-            NewsletterBroadcastResponse(totalSubscribers = total, sent = sent, failed = failed)
-        )
+                        try {
+                            val accepted = resendClient.sendBatch(emails)
+                            sent += accepted
+                            val skipped = chunk.size - accepted
+                            if (skipped > 0) {
+                                logger.warn { "Batch $chunkIndex: $accepted accepted, $skipped not accepted by Resend" }
+                                failed += skipped
+                            }
+                        } catch (e: Exception) {
+                            logger.error(e) { "Batch $chunkIndex failed (${chunk.size} emails)" }
+                            failed += chunk.size
+                        }
+                    }
+            }
+
+            logger.info { "Newsletter broadcast complete: sent=$sent, failed=$failed, total=$total" }
+            broadcastJobStore.complete(jobId, NewsletterBroadcastResponse(totalSubscribers = total, sent = sent, failed = failed))
+        } catch (e: Exception) {
+            logger.error(e) { "Newsletter broadcast job=$jobId failed with unexpected error" }
+            broadcastJobStore.fail(jobId)
+        }
     }
 
     /**

@@ -113,16 +113,34 @@ async function send() {
   nlError.value = ''
   sendResult.value = null
   try {
-    const { data } = await api.post('/newsletter/admin/send', {
+    const { data: started } = await api.post('/newsletter/admin/send', {
       subject: subject.value,
       htmlContent: htmlContent.value,
     })
-    sendResult.value = data
+    await pollBroadcastStatus(started.jobId)
   } catch (e: any) {
     nlError.value = e?.response?.data?.message ?? e?.message ?? 'Send failed'
   } finally {
     sendLoading.value = false
   }
+}
+
+async function pollBroadcastStatus(jobId: string) {
+  const POLL_INTERVAL_MS = 2_000
+  const MAX_POLLS = 300 // bail out after ~10 minutes
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+    const { data } = await api.get(`/newsletter/admin/status/${jobId}`)
+    if (data.state === 'COMPLETED') {
+      sendResult.value = data.result
+      return
+    }
+    if (data.state === 'FAILED') {
+      throw new Error('Broadcast failed on the server. Check backend logs for details.')
+    }
+    // RUNNING — keep polling
+  }
+  throw new Error('Broadcast is taking too long. It may still be running — check backend logs.')
 }
 </script>
 

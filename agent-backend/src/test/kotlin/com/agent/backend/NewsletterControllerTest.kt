@@ -1,11 +1,13 @@
 package com.agent.backend
 
 import com.agent.backend.controller.NewsletterController
+import com.agent.backend.dto.BroadcastJobState
 import com.agent.backend.dto.NewsletterBroadcastRequest
 import com.agent.backend.dto.NewsletterBroadcastResponse
+import com.agent.backend.dto.NewsletterBroadcastStatusResponse
 import com.agent.backend.dto.NewsletterResendRequest
 import com.agent.backend.dto.NewsletterSubscribeRequest
-import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
+import com.agent.backend.service.BroadcastJobStore
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
@@ -15,23 +17,26 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.http.HttpStatus
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
-import java.util.concurrent.CompletableFuture
+import java.time.Instant
 
 class NewsletterControllerTest {
 
     private lateinit var newsletterService: NewsletterService
+    private lateinit var broadcastJobStore: BroadcastJobStore
     private lateinit var controller: NewsletterController
 
     @BeforeEach
     fun setup() {
         newsletterService = mock(NewsletterService::class.java)
-        controller = NewsletterController(newsletterService)
+        broadcastJobStore = mock(BroadcastJobStore::class.java)
+        controller = NewsletterController(newsletterService, broadcastJobStore)
     }
 
     private fun jwtAuth(email: String?): JwtAuthenticationToken {
@@ -125,21 +130,56 @@ class NewsletterControllerTest {
     }
 
     @Test
-    fun `admin send should return 200 with broadcast result`() {
+    fun `admin send should return 202 Accepted with a jobId`() {
         // Given
         val auth = jwtAuth(email = "admin@example.com")
-        `when`(newsletterService.broadcast("s", "c")).thenReturn(
-            CompletableFuture.completedFuture(NewsletterBroadcastResponse(totalSubscribers = 1L, sent = 1, failed = 0))
-        )
+        val request = NewsletterBroadcastRequest(subject = "s", htmlContent = "c")
 
-        // When — @Async is not applied in unit tests, CompletableFuture resolves immediately
-        val futureResponse = controller.sendNewsletter(auth, NewsletterBroadcastRequest(subject = "s", htmlContent = "c"))
-        val response = futureResponse.get()
+        // When
+        val response = controller.sendNewsletter(auth, request)
+
+        // Then
+        assertEquals(HttpStatus.ACCEPTED, response.statusCode)
+        assertNotNull(response.body)
+        assertTrue(response.body!!.jobId.isNotBlank())
+
+        val jobId = response.body!!.jobId
+        verify(broadcastJobStore).create(jobId)
+        verify(newsletterService).broadcast(jobId, "s", "c")
+    }
+
+    @Test
+    fun `getBroadcastStatus should return 200 with status when job exists`() {
+        // Given
+        val jobId = "test-job-id"
+        val status = NewsletterBroadcastStatusResponse(
+            jobId = jobId,
+            state = BroadcastJobState.COMPLETED,
+            startedAt = Instant.now().minusSeconds(10),
+            completedAt = Instant.now(),
+            result = NewsletterBroadcastResponse(totalSubscribers = 5L, sent = 5, failed = 0)
+        )
+        `when`(broadcastJobStore.get(jobId)).thenReturn(status)
+
+        // When
+        val response = controller.getBroadcastStatus(jobId)
 
         // Then
         assertEquals(HttpStatus.OK, response.statusCode)
         assertNotNull(response.body)
-        assertEquals(1, response.body!!.sent)
-        verify(newsletterService).broadcast("s", "c")
+        assertEquals(BroadcastJobState.COMPLETED, response.body!!.state)
+        assertEquals(5, response.body!!.result!!.sent)
+    }
+
+    @Test
+    fun `getBroadcastStatus should return 404 when job does not exist`() {
+        // Given
+        `when`(broadcastJobStore.get(anyString())).thenReturn(null)
+
+        // When
+        val response = controller.getBroadcastStatus("unknown-job")
+
+        // Then
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
     }
 }

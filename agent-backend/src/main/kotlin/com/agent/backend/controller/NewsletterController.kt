@@ -1,7 +1,8 @@
 package com.agent.backend.controller
 
 import com.agent.backend.dto.NewsletterBroadcastRequest
-import com.agent.backend.dto.NewsletterBroadcastResponse
+import com.agent.backend.dto.NewsletterBroadcastStartedResponse
+import com.agent.backend.dto.NewsletterBroadcastStatusResponse
 import com.agent.backend.dto.NewsletterConfirmResponse
 import com.agent.backend.dto.NewsletterResendRequest
 import com.agent.backend.dto.NewsletterResendResponse
@@ -11,6 +12,7 @@ import com.agent.backend.dto.NewsletterSubscriptionStatusResponse
 import com.agent.backend.dto.NewsletterSubscriptionUpdateRequest
 import com.agent.backend.dto.NewsletterUnsubscribeResponse
 import com.agent.backend.db.entity.ConfirmationIssuer
+import com.agent.backend.service.BroadcastJobStore
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
@@ -27,12 +29,13 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.concurrent.CompletableFuture
+import java.util.UUID
 
 @RestController
 @RequestMapping("/newsletter")
 class NewsletterController(
-    private val newsletterService: NewsletterService
+    private val newsletterService: NewsletterService,
+    private val broadcastJobStore: BroadcastJobStore
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -151,18 +154,32 @@ class NewsletterController(
     }
 
     /**
-     * Admin: send the newsletter to all active subscribers asynchronously.
-     * The servlet thread is freed immediately; the broadcast runs in a background thread.
-     * The client receives 200 OK with result counts when the broadcast completes.
+     * Admin: start a newsletter broadcast to all active subscribers.
+     * Returns 202 Accepted immediately with a jobId; the broadcast runs in a background thread.
+     * Poll [getBroadcastStatus] for progress and final result.
      * Access restricted to ADMIN role via SecurityConfig.
      */
     @PostMapping("/admin/send")
     fun sendNewsletter(
         auth: JwtAuthenticationToken,
         @Valid @RequestBody body: NewsletterBroadcastRequest
-    ): CompletableFuture<ResponseEntity<NewsletterBroadcastResponse>> {
-        logger.info { "Newsletter broadcast initiated by subject=${auth.token.subject}: \"${body.subject}\"" }
-        return newsletterService.broadcast(body.subject, body.htmlContent)
-            .thenApply { result -> ResponseEntity.ok(result) }
+    ): ResponseEntity<NewsletterBroadcastStartedResponse> {
+        val jobId = UUID.randomUUID().toString()
+        logger.info { "Newsletter broadcast initiated by subject=${auth.token.subject}: \"${body.subject}\" (jobId=$jobId)" }
+        broadcastJobStore.create(jobId)
+        newsletterService.broadcast(jobId, body.subject, body.htmlContent)
+        return ResponseEntity.accepted().body(NewsletterBroadcastStartedResponse(jobId = jobId))
+    }
+
+    /**
+     * Admin: poll the status of a newsletter broadcast job.
+     * Returns 200 with current state, or 404 if the jobId is unknown.
+     * Access restricted to ADMIN role via SecurityConfig.
+     */
+    @GetMapping("/admin/status/{jobId}")
+    fun getBroadcastStatus(@PathVariable jobId: String): ResponseEntity<NewsletterBroadcastStatusResponse> {
+        val status = broadcastJobStore.get(jobId)
+            ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(status)
     }
 }

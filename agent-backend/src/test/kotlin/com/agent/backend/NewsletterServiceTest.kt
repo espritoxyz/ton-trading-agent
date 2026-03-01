@@ -7,6 +7,7 @@ import com.agent.backend.db.rep.NewsletterSubscriptionRepository
 import com.agent.backend.dto.NewsletterBroadcastResponse
 import com.agent.backend.email.EmailTemplateService
 import com.agent.backend.email.ResendClient
+import com.agent.backend.service.BroadcastJobStore
 import com.agent.backend.service.ConfirmResult
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.ResendResult
@@ -39,6 +40,7 @@ class NewsletterServiceTest {
     private lateinit var repository: NewsletterSubscriptionRepository
     private lateinit var resendClient: ResendClient
     private lateinit var emailTemplateService: EmailTemplateService
+    private lateinit var broadcastJobStore: BroadcastJobStore
 
     private lateinit var service: NewsletterService
 
@@ -51,11 +53,13 @@ class NewsletterServiceTest {
         repository = mock(NewsletterSubscriptionRepository::class.java)
         resendClient = mock(ResendClient::class.java)
         emailTemplateService = mock(EmailTemplateService::class.java)
+        broadcastJobStore = mock(BroadcastJobStore::class.java)
 
         service = NewsletterService(
             repository = repository,
             resendClient = resendClient,
             emailTemplateService = emailTemplateService,
+            broadcastJobStore = broadcastJobStore,
             fromEmail = fromEmail,
             fromName = fromName,
             baseUrl = baseUrl,
@@ -448,21 +452,23 @@ class NewsletterServiceTest {
     }
 
     @Test
-    fun `broadcast should return zeros when no active subscribers`() {
+    fun `broadcast should complete with zeros when no active subscribers`() {
         // Given
+        val jobId = "job-zero"
         `when`(repository.countByStatus(NewsletterStatus.ACTIVE)).thenReturn(0L)
 
-        // When — @Async is not applied in unit tests (no Spring proxy), so get() resolves immediately
-        val result = service.broadcast("Sub", "<p>x</p>").get()
+        // When — @Async is not applied in unit tests (no Spring proxy), so call is synchronous
+        service.broadcast(jobId, "Sub", "<p>x</p>")
 
         // Then
-        assertEquals(NewsletterBroadcastResponse(0L, 0, 0), result)
+        verify(broadcastJobStore).complete(jobId, NewsletterBroadcastResponse(0L, 0, 0))
         verify(resendClient, never()).sendBatch(ArgumentMatchers.anyList())
     }
 
     @Test
-    fun `broadcast should send batch and count accepted and failed`() {
+    fun `broadcast should send batch and call complete with accepted and failed counts`() {
         // Given
+        val jobId = "job-batch"
         val subs = (1..3).map {
             NewsletterSubscription(
                 id = it.toLong(),
@@ -476,18 +482,17 @@ class NewsletterServiceTest {
         `when`(resendClient.sendBatch(ArgumentMatchers.anyList())).thenReturn(2)
 
         // When
-        val result = service.broadcast("Sub", "<p>x</p>").get()
+        service.broadcast(jobId, "Sub", "<p>x</p>")
 
         // Then
-        assertEquals(3L, result.totalSubscribers)
-        assertEquals(2, result.sent)
-        assertEquals(1, result.failed)
+        verify(broadcastJobStore).complete(jobId, NewsletterBroadcastResponse(totalSubscribers = 3L, sent = 2, failed = 1))
         verify(resendClient, times(1)).sendBatch(ArgumentMatchers.anyList())
     }
 
     @Test
     fun `broadcast should process multiple batches`() {
         // Given — 250 subscribers triggers 3 batches (100 + 100 + 50)
+        val jobId = "job-multi"
         val subs = (1..250).map {
             NewsletterSubscription(
                 id = it.toLong(),
@@ -501,12 +506,24 @@ class NewsletterServiceTest {
         `when`(resendClient.sendBatch(ArgumentMatchers.anyList())).thenReturn(100).thenReturn(100).thenReturn(50)
 
         // When
-        val result = service.broadcast("Sub", "<p>x</p>").get()
+        service.broadcast(jobId, "Sub", "<p>x</p>")
 
         // Then
-        assertEquals(250L, result.totalSubscribers)
-        assertEquals(250, result.sent)
-        assertEquals(0, result.failed)
+        verify(broadcastJobStore).complete(jobId, NewsletterBroadcastResponse(totalSubscribers = 250L, sent = 250, failed = 0))
         verify(resendClient, times(3)).sendBatch(ArgumentMatchers.anyList())
+    }
+
+    @Test
+    fun `broadcast should call fail on unexpected exception`() {
+        // Given
+        val jobId = "job-fail"
+        `when`(repository.countByStatus(NewsletterStatus.ACTIVE)).thenThrow(RuntimeException("DB down"))
+
+        // When
+        service.broadcast(jobId, "Sub", "<p>x</p>")
+
+        // Then
+        verify(broadcastJobStore).fail(jobId)
+        verify(broadcastJobStore, never()).complete(ArgumentMatchers.anyString(), any(NewsletterBroadcastResponse::class.java))
     }
 }
