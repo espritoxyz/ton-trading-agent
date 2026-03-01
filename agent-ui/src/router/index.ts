@@ -3,6 +3,7 @@ import LandingApp from '../pages/LandingPage.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import ChatPanel from '../components/ChatPanel.vue'
 import EmailVerificationPage from '../components/EmailVerificationPage.vue'
+import NewsletterConfirmPage from '../pages/NewsletterConfirmPage.vue'
 import PrivacyPage from '../pages/PrivacyPage.vue'
 import TermsPage from '../pages/TermsPage.vue'
 import RoadmapPage from '../pages/RoadmapPage.vue'
@@ -50,6 +51,12 @@ const routes = [
     path: '/verify-email/:token',
     name: 'EmailVerification',
     component: EmailVerificationPage,
+    props: true
+  },
+  {
+    path: '/newsletter/confirm/:token',
+    name: 'NewsletterConfirm',
+    component: NewsletterConfirmPage,
     props: true
   },
   {

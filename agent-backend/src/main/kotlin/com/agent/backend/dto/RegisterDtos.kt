@@ -11,7 +11,9 @@ data class RegisterRequest(
     @field:NotBlank
     val password: String,
 
-    val displayName: String? = null
+    val displayName: String? = null,
+
+    val subscribeToNewsletter: Boolean = false
 )
 
 data class RegisterResponse(

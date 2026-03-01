@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId } from '../composables/useAuth.ts'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { login, logout, loggingIn, accessToken, email, refreshProfile, authError, needsVerification, verificationEmail, resendVerificationEmail, userId, isAdmin } from '../composables/useAuth.ts'
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
 import RegisterModal from './RegisterModal.vue'
-import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle } from 'lucide-vue-next'
+import AccountSettingsModal from './AccountSettingsModal.vue'
+import { User, LogOut, RefreshCw, AlertTriangle, Loader, LogIn, Mail, CheckCircle, ShieldCheck, Settings } from 'lucide-vue-next'
 
 const { refreshWalletState, clearWalletState } = useWalletState()
 
@@ -12,6 +13,7 @@ const username = ref('')
 const password = ref('')
 const showDropdown = ref(false)
 const showRegister = ref(false)
+const showSettings = ref(false)
 const containerRef = ref<HTMLElement>()
 const buttonRef = ref<HTMLElement>()
 const dropdownContentRef = ref<HTMLElement>()
@@ -274,6 +276,24 @@ onUnmounted(() => {
         </button>
 
         <button
+          class="w-full rounded-lg bg-gray-100 dark:bg-white/10 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2"
+          @click="showSettings = true; showDropdown = false"
+        >
+          <Settings :size="16" />
+          <span>Account Settings</span>
+        </button>
+
+        <a
+          v-if="isAdmin"
+          href="/app/admin"
+          @click="showDropdown = false"
+          class="w-full rounded-lg bg-cosmic-500/10 dark:bg-cosmic-500/20 px-4 py-2 text-sm font-medium text-cosmic-700 dark:text-cosmic-300 hover:bg-cosmic-500/20 dark:hover:bg-cosmic-500/30 transition border border-cosmic-500/30 flex items-center justify-center gap-2 no-underline"
+        >
+          <ShieldCheck :size="16" />
+          <span>Admin Panel</span>
+        </a>
+
+        <button
           class="w-full rounded-lg bg-gradient-to-r from-red-500 to-pink-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition flex items-center justify-center gap-2 shadow-md"
           @click="onLogout"
         >
@@ -291,5 +311,6 @@ onUnmounted(() => {
     </Teleport>
 
     <RegisterModal v-if="showRegister" @registered="onRegistered" @close="closeRegister" />
+    <AccountSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>
