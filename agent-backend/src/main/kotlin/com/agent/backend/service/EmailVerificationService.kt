@@ -130,14 +130,16 @@ class EmailVerificationService(
                 }
             }
 
-            // Update resend tracking
-            existingToken.resendCount++
-            existingToken.lastResentAt = Instant.now()
-            emailVerificationTokenRepository.save(existingToken)
+            logger.info { "Resending verification email for user $userId (current resend count: ${existingToken.resendCount})" }
 
-            logger.info { "Resending verification email for user $userId (resend count: ${existingToken.resendCount})" }
-
-            return emailService.sendVerificationEmail(user.email!!, existingToken.token)
+            // Update resend tracking ONLY after a successful send — preserving the cooldown on failure
+            val sent = emailService.sendVerificationEmail(user.email!!, existingToken.token)
+            if (sent) {
+                existingToken.resendCount++
+                existingToken.lastResentAt = Instant.now()
+                emailVerificationTokenRepository.save(existingToken)
+            }
+            return sent
         } else {
             // No active token exists, create a new one
             logger.info { "No active token found for user $userId, creating new one" }
