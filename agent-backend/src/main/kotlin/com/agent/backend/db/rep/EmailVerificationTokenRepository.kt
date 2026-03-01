@@ -17,10 +17,10 @@ interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToke
         SELECT t FROM EmailVerificationToken t
         WHERE t.userId = :userId
         AND t.verifiedAt IS NULL
-        AND t.expiresAt > :now
+        AND t.expiresAt > CURRENT_TIMESTAMP
         """
     )
-    fun findActiveByUserId(userId: Long, now: Instant = Instant.now()): Optional<EmailVerificationToken>
+    fun findActiveByUserId(userId: Long): Optional<EmailVerificationToken>
 
     @Modifying
     @Query("DELETE FROM EmailVerificationToken t WHERE t.expiresAt < :now")
