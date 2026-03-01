@@ -106,6 +106,8 @@ async function handleResendVerification() {
       resendSuccess.value = true
       setTimeout(() => { resendSuccess.value = false }, 5000)
     }
+  } catch {
+    localError.value = 'Failed to send verification email. Please try again.'
   } finally {
     resendingVerification.value = false
   }
@@ -382,7 +384,7 @@ onMounted(() => {
          RIGHT ZONE — Dark solid panel + features
     ══════════════════════════════════════════ -->
     <div
-      class="hidden lg:flex flex-col justify-center px-14 xl:px-20 py-16 flex-1"
+      class="hidden lg:flex flex-col justify-center px-14 xl:px-20 py-16 flex-1 relative"
       style="background: #06060f;"
     >
       <!-- Subtle top-right glow -->
