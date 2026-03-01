@@ -74,178 +74,162 @@
           v-for="order in paginatedOrders"
           :key="order.id"
           :class="[
-            'order-item p-4 rounded-xl transition-colors',
+            'order-item rounded-xl transition-colors',
             order.fulfilled
               ? 'order-fulfilled bg-gray-50 dark:bg-gray-800/30'
               : 'order-active bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50',
           ]"
       >
-        <!-- Main content row -->
-        <div class="flex items-center gap-4 justify-between">
-
-          <!-- Left Section: Action Icon and Details -->
-          <div class="flex items-center gap-4 flex-1 min-w-0">
-
-            <!-- Action Icon -->
-            <div class="flex-shrink-0">
-              <div
-                  :class="[
-                    'w-12 h-12 rounded-xl flex items-center justify-center',
-                    order.fulfilled ? 'opacity-50' : '',
-                    order.action === 'buy'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  ]"
-              >
-                <CirclePlus v-if="order.action === 'buy'" :size="22"/>
-                <CircleMinus v-else :size="22"/>
-              </div>
+        <!-- ── MOBILE layout (< lg) ── -->
+        <div class="lg:hidden p-3">
+          <div class="flex items-center gap-3">
+            <!-- Small icon -->
+            <div
+                :class="[
+                  'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                  order.fulfilled ? 'opacity-50' : '',
+                  order.action === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                ]"
+            >
+              <CirclePlus v-if="order.action === 'buy'" :size="16"/>
+              <CircleMinus v-else :size="16"/>
             </div>
 
-            <!-- Order Details -->
-            <div class="flex-1 min-w-0 space-y-1.5">
-              <!-- Action and Amount -->
-              <div class="flex items-baseline gap-2.5">
-                <span
-                    :class="[
-                      'font-bold text-lg uppercase',
-                      order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
-                    ]"
-                >
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+              <!-- Action + amount + symbol -->
+              <div class="flex items-baseline gap-1.5">
+                <span :class="['text-sm font-bold uppercase', order.fulfilled ? 'text-gray-400' : 'text-gray-900 dark:text-white']">
                   {{ order.action }}
                 </span>
-                <span
-                    :class="[
-                      'font-mono text-lg font-semibold',
-                      order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
-                    ]"
-                >
+                <span :class="['font-mono text-sm font-semibold', order.fulfilled ? 'text-gray-400' : 'text-gray-900 dark:text-white']">
                   {{ formatAmount(order.amount) }}
                 </span>
-                <span class="text-base text-gray-500 dark:text-gray-400 font-medium">
-                  {{ order.symbol || 'Token' }}
-                </span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ order.symbol || 'Token' }}</span>
               </div>
-
-              <!-- Jetton Master Address -->
-              <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <!-- Trigger condition inline -->
+              <div v-if="order.targetPrice && order.direction" class="flex items-center gap-1 mt-0.5">
+                <ArrowUp v-if="order.direction === 'UP'" :size="11" class="text-emerald-400 flex-shrink-0" stroke-width="2.5"/>
+                <ArrowDown v-else :size="11" class="text-orange-400 flex-shrink-0" stroke-width="2.5"/>
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                  Price {{ order.direction === 'UP' ? 'above' : 'below' }}
+                  <span class="font-mono font-semibold text-gray-700 dark:text-gray-300">${{ formatTargetPrice(order.targetPrice) }}</span>
+                </span>
+                <span class="text-xs text-gray-500 dark:text-gray-500 ml-2">{{ formatDate(order.createdAt) }}</span>
+              </div>
+              <!-- Address row -->
+              <div class="flex items-center gap-1.5 mt-0.5">
                 <span
                     @click="copyAddress(order.jettonMaster, order.id)"
-                    class="truncate cursor-pointer hover:text-cyan-400 transition-colors"
-                    title="Click to copy jetton master address"
-                >
-                  {{ formatAddress(order.jettonMaster) }}
-                </span>
+                    class="text-xs text-gray-500 dark:text-gray-500 truncate cursor-pointer hover:text-cyan-400 transition-colors"
+                >{{ formatAddress(order.jettonMaster) }}</span>
                 <button
                     @click="copyAddress(order.jettonMaster, order.id)"
                     :class="{'copied': copiedOrderId === order.id}"
-                    class="copy-btn p-0.5 hover:text-cyan-400 transition-all duration-200"
-                    title="Copy address"
+                    class="copy-btn text-gray-500 hover:text-cyan-400 transition-all duration-200 flex-shrink-0"
                 >
-                  <svg v-if="copiedOrderId !== order.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                       viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  <svg v-if="copiedOrderId !== order.id" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                   </svg>
-                  <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </button>
               </div>
-
-              <!-- Date -->
-              <div class="text-xs text-gray-500 dark:text-gray-500">
-                {{ formatDate(order.createdAt) }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Section: Cards -->
-          <div class="flex items-stretch gap-2 flex-shrink-0">
-
-            <!-- Trigger Price Card -->
-            <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
-              <div
-                  :class="[
-                    'trigger-card h-full px-4 py-3 rounded-xl border-2',
-                    order.direction === 'UP'
-                      ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20'
-                      : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20'
-                  ]"
-              >
-                <div class="flex flex-col items-center gap-2">
-                  <!-- Direction Arrow -->
-                  <div class="flex items-center gap-2">
-                    <ArrowUp
-                        v-if="order.direction === 'UP'"
-                        :size="20"
-                        class="text-emerald-400"
-                        stroke-width="2.5"
-                    />
-                    <ArrowDown
-                        v-else
-                        :size="20"
-                        class="text-orange-400"
-                        stroke-width="2.5"
-                    />
-                  </div>
-
-                  <!-- Trigger Text -->
-                  <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                    Price {{ order.direction === 'UP' ? 'above' : 'below' }}
-                  </div>
-
-                  <!-- Target Price -->
-                  <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">
-                    ${{ formatTargetPrice(order.targetPrice) }}
-                  </div>
-                </div>
-              </div>
             </div>
 
-            <!-- Action Card: Cancel (active) or Filled (fulfilled) -->
-            <div class="flex-shrink-0 flex">
-
-              <!-- Cancel card for active orders -->
+            <!-- Action badge -->
+            <div class="flex-shrink-0 self-center">
               <button
                   v-if="!order.fulfilled"
                   @click.stop="deleteOrder(order.id)"
                   :disabled="deletingOrderId !== null"
                   :class="[
-                    'action-card h-full px-4 py-3 rounded-xl border-2 min-w-[72px]',
-                    'flex flex-col items-center justify-center gap-2',
-                    'transition-all duration-200',
+                    'flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all duration-200',
                     deletingOrderId === order.id
-                      ? 'bg-red-500/20 border-red-500/50 dark:bg-red-500/15 dark:border-red-500/40 cursor-wait'
-                      : 'bg-red-500/10 border-red-500/30 dark:bg-red-500/5 dark:border-red-500/20 hover:bg-red-500/20 hover:border-red-500/50 dark:hover:bg-red-500/15 dark:hover:border-red-500/40',
-                    deletingOrderId !== null && deletingOrderId !== order.id
-                      ? 'opacity-50 cursor-not-allowed'
-                      : '',
+                      ? 'bg-red-500/20 border-red-500/40 text-red-400 cursor-wait'
+                      : 'bg-red-500/10 border-red-500/25 text-red-400 hover:bg-red-500/20 hover:border-red-500/40',
+                    deletingOrderId !== null && deletingOrderId !== order.id ? 'opacity-40 cursor-not-allowed' : ''
                   ]"
-                  title="Cancel order"
               >
-                <div v-if="deletingOrderId === order.id"
-                     class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"/>
-                <Trash2 v-else :size="16" class="text-red-400"/>
-                <span v-show="deletingOrderId !== order.id" class="text-xs font-medium text-red-400 whitespace-nowrap">
-                  Cancel
-                </span>
+                <div v-if="deletingOrderId === order.id" class="w-3 h-3 rounded-full border-b border-red-400 animate-spin"/>
+                <Trash2 v-else :size="12"/>
+                <span v-if="deletingOrderId !== order.id">Cancel</span>
               </button>
-
-              <!-- Filled indicator card for fulfilled orders -->
               <div
                   v-else
-                  class="h-full px-4 py-3 rounded-xl border-2 min-w-[72px] bg-emerald-500/5 border-emerald-500/20 dark:border-emerald-500/15 flex flex-col items-center justify-center gap-2"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border bg-emerald-500/5 border-emerald-500/20 text-emerald-400 text-xs font-medium opacity-70"
               >
-                <Check :size="16" class="text-emerald-400 opacity-70"/>
-                <span class="text-xs font-medium text-emerald-500 dark:text-emerald-400 opacity-70 whitespace-nowrap">
-                  Filled
-                </span>
+                <Check :size="12"/>
+                Filled
               </div>
-
             </div>
           </div>
+        </div>
 
+        <!-- ── DESKTOP layout (lg+) ── -->
+        <div class="hidden lg:block p-4">
+          <div class="flex items-center gap-4 justify-between">
+            <!-- Left: icon + details -->
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+              <div class="flex-shrink-0">
+                <div
+                    :class="[
+                      'w-12 h-12 rounded-xl flex items-center justify-center',
+                      order.fulfilled ? 'opacity-50' : '',
+                      order.action === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                    ]"
+                >
+                  <CirclePlus v-if="order.action === 'buy'" :size="22"/>
+                  <CircleMinus v-else :size="22"/>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 space-y-1.5">
+                <div class="flex items-baseline gap-2.5">
+                  <span :class="['font-bold text-lg uppercase', order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white']">{{ order.action }}</span>
+                  <span :class="['font-mono text-lg font-semibold', order.fulfilled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white']">{{ formatAmount(order.amount) }}</span>
+                  <span class="text-base text-gray-500 dark:text-gray-400 font-medium">{{ order.symbol || 'Token' }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  <span @click="copyAddress(order.jettonMaster, order.id)" class="truncate cursor-pointer hover:text-cyan-400 transition-colors" title="Click to copy">{{ formatAddress(order.jettonMaster) }}</span>
+                  <button @click="copyAddress(order.jettonMaster, order.id)" :class="{'copied': copiedOrderId === order.id}" class="copy-btn p-0.5 hover:text-cyan-400 transition-all duration-200">
+                    <svg v-if="copiedOrderId !== order.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </button>
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-500">{{ formatDate(order.createdAt) }}</div>
+              </div>
+            </div>
+            <!-- Right: trigger + action cards -->
+            <div class="flex items-stretch gap-2 flex-shrink-0">
+              <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
+                <div :class="['trigger-card h-full px-4 py-3 rounded-xl border-2', order.direction === 'UP' ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20' : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20']">
+                  <div class="flex flex-col items-center gap-2">
+                    <ArrowUp v-if="order.direction === 'UP'" :size="20" class="text-emerald-400" stroke-width="2.5"/>
+                    <ArrowDown v-else :size="20" class="text-orange-400" stroke-width="2.5"/>
+                    <div class="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Price {{ order.direction === 'UP' ? 'above' : 'below' }}</div>
+                    <div class="font-mono font-bold text-lg text-gray-900 dark:text-white">${{ formatTargetPrice(order.targetPrice) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-shrink-0 flex">
+                <button
+                    v-if="!order.fulfilled"
+                    @click.stop="deleteOrder(order.id)"
+                    :disabled="deletingOrderId !== null"
+                    :class="['action-card h-full px-4 py-3 rounded-xl border-2 min-w-[72px] flex flex-col items-center justify-center gap-2 transition-all duration-200', deletingOrderId === order.id ? 'bg-red-500/20 border-red-500/50 dark:bg-red-500/15 dark:border-red-500/40 cursor-wait' : 'bg-red-500/10 border-red-500/30 dark:bg-red-500/5 dark:border-red-500/20 hover:bg-red-500/20 hover:border-red-500/50 dark:hover:bg-red-500/15 dark:hover:border-red-500/40', deletingOrderId !== null && deletingOrderId !== order.id ? 'opacity-50 cursor-not-allowed' : '']"
+                >
+                  <div v-if="deletingOrderId === order.id" class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"/>
+                  <Trash2 v-else :size="16" class="text-red-400"/>
+                  <span v-show="deletingOrderId !== order.id" class="text-xs font-medium text-red-400 whitespace-nowrap">Cancel</span>
+                </button>
+                <div v-else class="h-full px-4 py-3 rounded-xl border-2 min-w-[72px] bg-emerald-500/5 border-emerald-500/20 dark:border-emerald-500/15 flex flex-col items-center justify-center gap-2">
+                  <Check :size="16" class="text-emerald-400 opacity-70"/>
+                  <span class="text-xs font-medium text-emerald-500 dark:text-emerald-400 opacity-70 whitespace-nowrap">Filled</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
