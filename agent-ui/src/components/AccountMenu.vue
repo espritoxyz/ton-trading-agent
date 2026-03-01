@@ -4,7 +4,7 @@ import { logout, accessToken, email, refreshProfile, userId, isAdmin } from '../
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
 import AccountSettingsModal from './AccountSettingsModal.vue'
-import { User, LogOut, RefreshCw, LogIn, ShieldCheck, Settings } from 'lucide-vue-next'
+import { User, LogOut, LogIn, ShieldCheck, Settings } from 'lucide-vue-next'
 
 const { refreshWalletState, clearWalletState } = useWalletState()
 
@@ -23,12 +23,6 @@ function onLogout() {
   logout()
   clearWalletState()
   showDropdown.value = false
-}
-
-async function onRefresh() {
-  if (userId.value) {
-    await Promise.all([refreshProfile(), refreshWalletState(userId.value)])
-  }
 }
 
 function toggleDropdown() {
@@ -108,14 +102,6 @@ onUnmounted(() => {
               <div class="text-sm text-gray-900 dark:text-white font-medium truncate">{{ email ?? '—' }}</div>
             </div>
           </div>
-
-          <button
-            class="w-full rounded-lg bg-gray-100 dark:bg-white/10 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2"
-            @click="onRefresh"
-          >
-            <RefreshCw :size="16" />
-            <span>Refresh Profile</span>
-          </button>
 
           <button
             class="w-full rounded-lg bg-gray-100 dark:bg-white/10 px-4 py-2 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition border border-gray-300 dark:border-white/20 flex items-center justify-center gap-2"
