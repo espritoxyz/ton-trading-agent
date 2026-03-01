@@ -7,7 +7,7 @@ import {
 } from '../composables/useAuth'
 import { useWalletState } from '../composables/useWalletState'
 import {
-  Sparkles, Mail, Lock, User, AlertTriangle, Loader, CheckCircle,
+  Mail, Lock, User, AlertTriangle, Loader, CheckCircle,
   Bell, Bot, ArrowLeftRight, ListOrdered, ShieldCheck, TrendingUp,
   ChevronRight
 } from 'lucide-vue-next'
@@ -198,37 +198,13 @@ onMounted(() => {
         <div class="bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-2xl p-7 shadow-2xl">
 
           <!-- Header -->
-          <div class="mb-5">
+          <div class="mb-6">
             <h2 class="text-xl font-bold text-white mb-1">
-              {{ isLogin ? 'Welcome back' : 'Create account' }}
+              {{ isLogin ? 'Welcome back' : 'Create your account' }}
             </h2>
             <p class="text-sm text-white/40">
-              {{ isLogin ? 'Sign in to your Esprito AI account' : 'Start trading on TON blockchain' }}
+              {{ isLogin ? 'Sign in to continue to Esprito AI' : 'Join Esprito AI — free to start' }}
             </p>
-          </div>
-
-          <!-- Tab switcher -->
-          <div class="flex bg-white/[0.05] rounded-xl p-1 mb-5 border border-white/[0.07]">
-            <button
-              type="button"
-              @click="switchMode('login')"
-              :class="[
-                'flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-200',
-                isLogin
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                  : 'text-white/35 hover:text-white/60'
-              ]"
-            >Sign In</button>
-            <button
-              type="button"
-              @click="switchMode('register')"
-              :class="[
-                'flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-200',
-                !isLogin
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                  : 'text-white/35 hover:text-white/60'
-              ]"
-            >Sign Up</button>
           </div>
 
           <!-- ── LOGIN FORM ── -->
@@ -276,8 +252,20 @@ onMounted(() => {
             <button type="submit" :disabled="submitting || !loginUsername || !loginPassword"
               class="w-full cosmic-button rounded-xl py-3 text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1">
               <Loader v-if="submitting" :size="15" class="animate-spin" />
-              <span v-else class="flex items-center gap-2">Sign In <ChevronRight :size="15" /></span>
+              <span v-else class="flex items-center gap-2">Continue <ChevronRight :size="15" /></span>
             </button>
+
+            <!-- Switch to register -->
+            <div class="flex items-center gap-3 mt-5">
+              <div class="flex-1 h-px bg-white/[0.07]"></div>
+            </div>
+            <p class="text-center text-xs text-white/35 mt-3">
+              Don't have an account?
+              <button type="button" @click="switchMode('register')"
+                class="text-indigo-400 hover:text-indigo-300 font-semibold transition ml-1">
+                Sign up for free
+              </button>
+            </p>
           </form>
 
           <!-- ── REGISTER FORM ── -->
@@ -335,31 +323,32 @@ onMounted(() => {
               <button type="submit" :disabled="submitting || !regEmail || !regPassword"
                 class="w-full cosmic-button rounded-xl py-3 text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 <Loader v-if="submitting" :size="15" class="animate-spin" />
-                <span v-else class="flex items-center gap-2"><Sparkles :size="15" />Create Account</span>
+                <span v-else class="flex items-center gap-2">Continue <ChevronRight :size="15" /></span>
               </button>
+
+              <!-- Switch to login -->
+              <div class="flex items-center gap-3 mt-5">
+                <div class="flex-1 h-px bg-white/[0.07]"></div>
+              </div>
+              <p class="text-center text-xs text-white/35 mt-3">
+                Already have an account?
+                <button type="button" @click="switchMode('login')"
+                  class="text-indigo-400 hover:text-indigo-300 font-semibold transition ml-1">
+                  Sign in
+                </button>
+              </p>
             </form>
           </div>
 
         </div>
 
-        <!-- Below form: switch mode + legal -->
-        <div class="mt-5 space-y-3">
-          <p class="text-center text-xs text-white/30">
-            <span v-if="isLogin">Don't have an account? </span>
-            <span v-else>Already have an account? </span>
-            <button type="button" @click="switchMode(isLogin ? 'register' : 'login')"
-              class="text-indigo-400 hover:text-indigo-300 font-semibold transition underline underline-offset-2">
-              {{ isLogin ? 'Sign up for free' : 'Sign in' }}
-            </button>
-          </p>
-
-          <p class="text-center text-xs text-white/20 leading-relaxed">
-            By continuing, you agree to our
-            <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-white/40 hover:text-white/60 underline underline-offset-2 transition">Terms of Service</a>
-            and
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-white/40 hover:text-white/60 underline underline-offset-2 transition">Privacy Policy</a>.
-          </p>
-        </div>
+        <!-- Below form: legal notice -->
+        <p class="text-center text-xs text-white/50 leading-relaxed mt-5">
+          By continuing, you agree to our
+          <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-white underline underline-offset-2 transition">Terms of Service</a>
+          and
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-white underline underline-offset-2 transition">Privacy Policy</a>.
+        </p>
 
       </div>
     </div>
