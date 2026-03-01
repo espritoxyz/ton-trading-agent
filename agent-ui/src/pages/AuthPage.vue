@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import {
   login, register, accessToken, authError,
   needsVerification, verificationEmail, resendVerificationEmail,
@@ -9,7 +9,7 @@ import { useWalletState } from '../composables/useWalletState'
 import {
   Mail, Lock, AlertTriangle, Loader, CheckCircle,
   Bot, ArrowLeftRight, ListOrdered, ShieldCheck, TrendingUp,
-  ChevronRight
+  ChevronRight, Pencil
 } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{ mode?: 'login' | 'register' }>(), { mode: 'login' })
@@ -17,9 +17,11 @@ const props = withDefaults(defineProps<{ mode?: 'login' | 'register' }>(), { mod
 const { refreshWalletState } = useWalletState()
 
 const isLogin = ref(props.mode === 'login')
+const loginStep = ref<'email' | 'password'>('email')
 
 const loginUsername = ref('')
 const loginPassword = ref('')
+const passwordInputRef = ref<HTMLInputElement>()
 const regEmail = ref('')
 const regPassword = ref('')
 const subscribeToNewsletter = ref(true)
@@ -38,10 +40,25 @@ function navigateTo(path: string) {
 
 function switchMode(newMode: 'login' | 'register') {
   isLogin.value = newMode === 'login'
+  loginStep.value = 'email'
   localError.value = null
   authError.value = null
   needsVerification.value = false
   navigateTo(newMode === 'login' ? '/login' : '/register')
+}
+
+async function onLoginEmailContinue() {
+  loginStep.value = 'password'
+  await nextTick()
+  passwordInputRef.value?.focus()
+}
+
+function onLoginBack() {
+  loginStep.value = 'email'
+  loginPassword.value = ''
+  localError.value = null
+  authError.value = null
+  needsVerification.value = false
 }
 
 async function onLogin() {
@@ -199,26 +216,58 @@ onMounted(() => {
           <!-- Header -->
           <div class="mb-6">
             <h2 class="text-xl font-bold text-white mb-1">
-              {{ isLogin ? 'Welcome back' : 'Create your account' }}
+              <template v-if="!isLogin">Create your account</template>
+              <template v-else-if="loginStep === 'email'">Welcome back</template>
+              <template v-else>Enter your password</template>
             </h2>
-            <p class="text-sm text-white/40">
-              {{ isLogin ? 'Sign in to continue to Esprito AI' : 'Join Esprito AI — free to start' }}
-            </p>
+            <!-- Step 1 or register: subtitle text -->
+            <p v-if="!isLogin" class="text-sm text-white/40">Join Esprito AI — free to start</p>
+            <p v-else-if="loginStep === 'email'" class="text-sm text-white/40">Sign in to continue to Esprito AI</p>
+            <!-- Step 2: show email with edit link -->
+            <div v-else class="flex items-center gap-2 mt-1">
+              <span class="text-sm text-white/55 font-medium truncate">{{ loginUsername }}</span>
+              <button type="button" @click="onLoginBack"
+                class="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition flex-shrink-0">
+                <Pencil :size="11" />
+                <span>Edit</span>
+              </button>
+            </div>
           </div>
 
-          <!-- ── LOGIN FORM ── -->
-          <form v-if="isLogin" class="space-y-4" @submit.prevent="onLogin">
+          <!-- ── LOGIN: STEP 1 — Email ── -->
+          <form v-if="isLogin && loginStep === 'email'" class="space-y-4" @submit.prevent="onLoginEmailContinue">
             <div>
               <label class="text-xs font-medium text-white/45 mb-1.5 flex items-center gap-1.5">
                 <Mail :size="11" />Email or username
               </label>
               <input v-model="loginUsername" type="text" placeholder="your@email.com" required autocomplete="username" class="auth-input" />
             </div>
+
+            <button type="submit" :disabled="!loginUsername"
+              class="w-full cosmic-button rounded-xl py-3 text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1">
+              <span class="flex items-center gap-2">Continue <ChevronRight :size="15" /></span>
+            </button>
+
+            <!-- Switch to register -->
+            <div class="flex items-center gap-3 mt-5">
+              <div class="flex-1 h-px bg-white/[0.07]"></div>
+            </div>
+            <p class="text-center text-xs text-white/35 mt-3">
+              Don't have an account?
+              <button type="button" @click="switchMode('register')"
+                class="text-indigo-400 hover:text-indigo-300 font-semibold transition ml-1">
+                Sign up for free
+              </button>
+            </p>
+          </form>
+
+          <!-- ── LOGIN: STEP 2 — Password ── -->
+          <form v-else-if="isLogin && loginStep === 'password'" class="space-y-4" @submit.prevent="onLogin">
             <div>
               <label class="text-xs font-medium text-white/45 mb-1.5 flex items-center gap-1.5">
                 <Lock :size="11" />Password
               </label>
-              <input v-model="loginPassword" type="password" placeholder="••••••••" required autocomplete="current-password" class="auth-input" />
+              <input ref="passwordInputRef" v-model="loginPassword" type="password" placeholder="••••••••" required autocomplete="current-password" class="auth-input" />
             </div>
 
             <!-- Email verification needed -->
@@ -248,23 +297,11 @@ onMounted(() => {
               <span class="text-xs text-red-300">{{ localError }}</span>
             </div>
 
-            <button type="submit" :disabled="submitting || !loginUsername || !loginPassword"
+            <button type="submit" :disabled="submitting || !loginPassword"
               class="w-full cosmic-button rounded-xl py-3 text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1">
               <Loader v-if="submitting" :size="15" class="animate-spin" />
               <span v-else class="flex items-center gap-2">Continue <ChevronRight :size="15" /></span>
             </button>
-
-            <!-- Switch to register -->
-            <div class="flex items-center gap-3 mt-5">
-              <div class="flex-1 h-px bg-white/[0.07]"></div>
-            </div>
-            <p class="text-center text-xs text-white/35 mt-3">
-              Don't have an account?
-              <button type="button" @click="switchMode('register')"
-                class="text-indigo-400 hover:text-indigo-300 font-semibold transition ml-1">
-                Sign up for free
-              </button>
-            </p>
           </form>
 
           <!-- ── REGISTER FORM ── -->
