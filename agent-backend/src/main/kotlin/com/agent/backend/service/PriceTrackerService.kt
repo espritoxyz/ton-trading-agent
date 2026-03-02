@@ -75,7 +75,7 @@ class PriceTrackerService(
             targetPrice = targetPrice,
             direction = direction,
         )
-        logger.debug { "[price-tracker] Tracker created: $tracker" }
+        logger.debug { "[price-tracker] Tracker created: id=${tracker.id}" }
         val saved = priceTrackers.save(tracker)
 
         // If user asked to trigger when price is equal and it's already equal now, trigger immediately
@@ -116,7 +116,7 @@ class PriceTrackerService(
         }
 
         priceTrackers.save(tracker)
-        logger.debug { "[price-tracker] Order created: $saved" }
+        logger.debug { "[price-tracker] Order created: id=${saved.id}" }
 
         return saved
     }
