@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { logout, accessToken, email, refreshProfile, userId, isAdmin } from '../composables/useAuth.ts'
 import { useWalletState } from '../composables/useWalletState.ts'
 import { APP_VERSION } from '../config'
@@ -12,7 +12,12 @@ const showDropdown = ref(false)
 const showSettings = ref(false)
 const buttonRef = ref<HTMLElement>()
 const dropdownContentRef = ref<HTMLElement>()
-const dropdownPosition = ref({ top: 0, right: 0 })
+
+const VIEWPORT_PADDING_PX = 8
+const DROPDOWN_OFFSET_PX = 8
+
+const dropdownPosition = ref({ top: 0, left: 0 })
+
 
 function navigateTo(path: string) {
   history.pushState({}, '', path)
@@ -25,16 +30,44 @@ function onLogout() {
   showDropdown.value = false
 }
 
-function toggleDropdown() {
-  showDropdown.value = !showDropdown.value
-  if (showDropdown.value && buttonRef.value) {
-    const rect = buttonRef.value.getBoundingClientRect()
-    dropdownPosition.value = {
-      top: rect.bottom + 8,
-      right: window.innerWidth - rect.right
-    }
-  }
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }
+
+async function toggleDropdown() {
+  showDropdown.value = !showDropdown.value
+  if (!showDropdown.value || !buttonRef.value) return
+
+  // 1) Предварительно ставим позицию под кнопкой, чтобы дропдаун отрендерился и его можно было измерить
+  const rect = buttonRef.value.getBoundingClientRect()
+  dropdownPosition.value = {
+    top: rect.bottom + DROPDOWN_OFFSET_PX,
+    left: rect.right
+  }
+
+  await nextTick()
+
+  const dropdownEl = dropdownContentRef.value
+  if (!dropdownEl) return
+
+  const { width: dropdownWidth, height: dropdownHeight } = dropdownEl.getBoundingClientRect()
+
+  // 2) Горизонталь: выравниваем дропдаун по правому краю кнопки, но не даём вылезти за экран
+  const desiredLeft = rect.right - dropdownWidth
+  const minLeft = VIEWPORT_PADDING_PX
+  const maxLeft = window.innerWidth - dropdownWidth - VIEWPORT_PADDING_PX
+  const left = clamp(desiredLeft, minLeft, Math.max(minLeft, maxLeft))
+
+  // 3) Вертикаль: по умолчанию открываем вниз, но если не помещается — открываем вверх
+  const desiredTopDown = rect.bottom + DROPDOWN_OFFSET_PX
+  const desiredTopUp = rect.top - dropdownHeight - DROPDOWN_OFFSET_PX
+
+  const fitsDown = desiredTopDown + dropdownHeight + VIEWPORT_PADDING_PX <= window.innerHeight
+  const top = fitsDown ? desiredTopDown : clamp(desiredTopUp, VIEWPORT_PADDING_PX, window.innerHeight - dropdownHeight - VIEWPORT_PADDING_PX)
+
+  dropdownPosition.value = { top, left }
+}
+
 
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as Node
@@ -89,9 +122,10 @@ onUnmounted(() => {
       <div
         v-if="showDropdown && accessToken"
         ref="dropdownContentRef"
-        class="fixed w-72 glass-card p-4 shadow-xl border border-gray-200 dark:border-white/20 rounded-xl z-[9999]"
-        :style="{ top: dropdownPosition.top + 'px', right: dropdownPosition.right + 'px' }"
+        class="fixed w-72 max-w-[calc(100vw-1rem)] glass-card p-4 shadow-xl border border-gray-200 dark:border-white/20 rounded-xl z-[9999]"
+        :style="{ top: dropdownPosition.top + 'px', left: dropdownPosition.left + 'px' }"
       >
+
         <div class="space-y-3">
           <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-white/10">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cosmic-500 to-purple-600 flex items-center justify-center shadow-lg">
