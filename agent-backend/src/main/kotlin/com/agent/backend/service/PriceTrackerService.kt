@@ -6,14 +6,15 @@ import com.agent.backend.db.entity.Order
 import com.agent.backend.db.entity.PriceTracker
 import com.agent.backend.db.rep.OrderRepository
 import com.agent.backend.db.rep.PriceTrackerRepository
+import com.agent.llm.tool.dto.PriceDirection
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.scheduling.annotation.Scheduled
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import kotlin.math.abs
+import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PriceTrackerService(
@@ -25,8 +26,8 @@ class PriceTrackerService(
     private val notificationService: NotificationService,
     private val appUtils: com.agent.backend.AppUtils,
 ) {
-
     private val logger = KotlinLogging.logger {}
+    private val absTol = 1e-12
 
     fun listByUser(userId: Long): List<PriceTracker> =
         priceTrackers.findAllByUserId(userId)
@@ -35,23 +36,38 @@ class PriceTrackerService(
         priceTrackers.findAllByUserId(userId).filter { !it.triggered }
 
     @Transactional
-    fun createTracker(userId: Long, jettonMaster: String, targetPrice: Double): PriceTracker {
+    fun createTracker(
+        userId: Long,
+        jettonMaster: String,
+        targetPrice: Double,
+        llmDirection: PriceDirection
+    ): PriceTracker {
         val asset = stonfiAssetsCacheService.getAssetByContractAddress(jettonMaster)
         val currentPrice = asset?.dexUsdPrice
-        val direction = when {
-            currentPrice == null -> {
-                logger.warn { "No current price for $jettonMaster, defaulting direction to UP" }
-                Direction.UP
+
+        val direction = when (llmDirection) {
+            // Preset direction coming from LLM
+            PriceDirection.UP, PriceDirection.DOWN -> {
+                Direction.fromLlmDirection(llmDirection)
             }
 
-            isGreaterOrEqual(currentPrice, targetPrice) -> Direction.DOWN
-            isLessOrEqual(currentPrice, targetPrice) -> Direction.UP
-            else -> {
-                logger.warn { "Unreachable state for currentPrice=$currentPrice, targetPrice=$targetPrice" }
-                Direction.UP
+            // Need to infer direction based on current price vs target
+            PriceDirection.EQUAL -> {
+                when {
+                    currentPrice == null -> {
+                        logger.warn { "[price-tracker] No current price for $jettonMaster, defaulting direction to UP" }
+                        Direction.UP
+                    }
+                    // If price is already (almost) equal, we'll trigger tracker right after persisting it
+                    currentPrice nearlyEquals targetPrice -> Direction.UP
+                    currentPrice isGreater targetPrice -> Direction.DOWN
+                    currentPrice isLess targetPrice -> Direction.UP
+                    else -> {
+                        error("Unreachable state for currentPrice=$currentPrice, targetPrice=$targetPrice")
+                    }
+                }
             }
         }
-
 
         val tracker = PriceTracker(
             userId = userId,
@@ -59,7 +75,14 @@ class PriceTrackerService(
             targetPrice = targetPrice,
             direction = direction,
         )
-        return priceTrackers.save(tracker)
+        val saved = priceTrackers.save(tracker)
+
+        // If user asked to trigger when price is equal and it's already equal now, trigger immediately
+        if (llmDirection == PriceDirection.EQUAL && currentPrice != null && (currentPrice nearlyEquals targetPrice)) {
+            triggerPriceTracker(saved)
+        }
+
+        return saved
     }
 
     @Transactional
@@ -69,6 +92,7 @@ class PriceTrackerService(
         action: String,
         amount: Double,
         targetPrice: Double,
+        llmDirection: PriceDirection,
         receivedJettonMaster: String,
     ): Order {
         // Prohibit orders where neither side is a stablecoin (TON/USDT) to avoid unsupported pairs.
@@ -77,20 +101,19 @@ class PriceTrackerService(
         }
 
         val order = Order(
-
             userId = userId,
             jettonMaster = jettonMaster,
             action = action,
             amount = amount,
             receivedJettonMaster = receivedJettonMaster,
         )
-
-
         val saved = orders.save(order)
 
-        val tracker = createTracker(userId, jettonMaster, targetPrice).apply {
+        val tracker = createTracker(userId, jettonMaster, targetPrice, llmDirection).apply {
             orderId = saved.id
+            if (triggered) triggerOrderForTracker(this, orderId!!)
         }
+
         priceTrackers.save(tracker)
 
         return saved
@@ -112,85 +135,99 @@ class PriceTrackerService(
             val asset = stonfiAssetsCacheService.getAssetByContractAddress(t.jettonMaster)
             val price = asset?.dexUsdPrice
             if (price == null) {
-                logger.warn { "Price was not found for ${t.jettonMaster}" }
+                logger.warn { "[price-tracker] Price was not found for ${t.jettonMaster}" }
                 continue
             }
 
             val triggeredNow = when (t.direction) {
-                Direction.DOWN -> isLessOrEqual(price, t.targetPrice)
-                Direction.UP -> isGreaterOrEqual(price, t.targetPrice)
+                Direction.DOWN -> price isLess t.targetPrice
+                Direction.UP -> price isGreater t.targetPrice
             }
-
 
             if (triggeredNow) {
-                t.triggered = true
-                logger.debug { "Triggered tracker $t" }
-                priceTrackers.save(t)
-
-                 t.orderId?.let { orderId ->
-                    val order = orders.findById(orderId).orElse(null)
-                    if (order == null) {
-                        logger.warn { "[price-tracker] Triggered tracker ${t.id} references missing order $orderId" }
-                    } else if (!order.fulfilled) {
-                        try {
-                            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol
-                                ?: order.jettonMaster
-
-                            executeOrderSwap(order)
-                            order.fulfilled = true
-                            orders.save(order)
-                            logger.info {
-                                "[price-tracker] Order ${order.id} fulfilled for user=${order.userId}: " +
-                                        "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
-                            }
-
-                            // Notify user that order conditions are met and swap is being initiated
-                            try {
-                                val metadata = mapOf<String, Any>(
-                                    "orderId" to (order.id ?: 0L),
-                                    "jettonMaster" to order.jettonMaster,
-                                    "side" to order.action,
-                                    "quantity" to order.amount.toPlainString(),
-                                    "symbol" to symbol,
-                                    "price" to t.targetPrice.toPlainString(),
-                                    "fillType" to "fully"
-                                )
-                                val (title, message) = notificationService.generateNotificationText(
-                                    NotificationType.ORDER_FILLED, metadata
-                                )
-                                notificationEventPublisher.publishNotificationEvent(
-                                    userId = order.userId,
-                                    type = "ORDER_FILLED",
-                                    title = title,
-                                    message = message,
-                                    metadata = metadata
-                                )
-                            } catch (e: Exception) {
-                                logger.warn(e) { "[price-tracker] Failed to publish ORDER_FILLED notification for order ${order.id}" }
-                            }
-                        } catch (e: Exception) {
-                            logger.error(e) { "[price-tracker] Failed to execute swap for order ${order.id}" }
-                        }
-                    }
-                } ?: notifyUser(t.userId, t)
+                triggerPriceTracker(t)
             }
+        }
+    }
+    
+    private fun triggerPriceTracker(tracker: PriceTracker) {
+        tracker.triggered = true
+        logger.debug { "[price-tracker] Triggered tracker $tracker" }
+        priceTrackers.save(tracker)
+
+        tracker.orderId?.let { orderId ->
+            triggerOrderForTracker(tracker, orderId)
+        } ?: notifyUser(tracker.userId, tracker)
+    }
+
+    private fun triggerOrderForTracker(tracker: PriceTracker, orderId: Long) {
+        val order = orders.findById(orderId).orElse(null)
+        if (order == null) {
+            logger.warn { "[price-tracker] Triggered tracker ${tracker.id} references missing order $orderId" }
+            return
+        }
+
+        if (order.fulfilled) {
+            return
+        }
+
+        try {
+            val symbol = stonfiAssetsCacheService.getAssetByContractAddress(order.jettonMaster)?.symbol
+                ?: order.jettonMaster
+
+            executeOrderSwap(order)
+            order.fulfilled = true
+            orders.save(order)
+            logger.info {
+                "[price-tracker] Order ${order.id} fulfilled for user=${order.userId}: " +
+                        "action=${order.action}, jetton=${order.jettonMaster}, amount=${order.amount}"
+            }
+
+            // Notify user that order conditions are met and swap is being initiated
+            try {
+                val metadata = mapOf<String, Any>(
+                    "orderId" to (order.id ?: 0L),
+                    "jettonMaster" to order.jettonMaster,
+                    "side" to order.action,
+                    "quantity" to order.amount.toPlainString(),
+                    "symbol" to symbol,
+                    "price" to tracker.targetPrice.toPlainString(),
+                    "fillType" to "fully"
+                )
+                val (title, message) = notificationService.generateNotificationText(
+                    NotificationType.ORDER_FILLED, metadata
+                )
+                notificationEventPublisher.publishNotificationEvent(
+                    userId = order.userId,
+                    type = "ORDER_FILLED",
+                    title = title,
+                    message = message,
+                    metadata = metadata
+                )
+            } catch (e: Exception) {
+                logger.warn(e) { "[price-tracker] Failed to publish ORDER_FILLED notification for order ${order.id}" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "[price-tracker] Failed to execute swap for order ${order.id}" }
         }
     }
 
     private fun Double.toPlainString(): String =
+
+
         BigDecimal.valueOf(this)
             .round(MathContext(6, RoundingMode.HALF_UP))
             .stripTrailingZeros()
             .toPlainString()
 
-    private fun nearlyEquals(a: Double, b: Double, absTol: Double = 1e-8): Boolean {
-        val diff = abs(a - b)
+    private infix fun Double.nearlyEquals(b: Double): Boolean {
+        val diff = abs(this - b)
         return diff <= absTol
     }
 
-    private fun isGreaterOrEqual(a: Double, b: Double): Boolean = a > b || nearlyEquals(a, b)
+    private infix fun Double.isGreater(b: Double): Boolean = this > b
 
-    private fun isLessOrEqual(a: Double, b: Double): Boolean = a < b || nearlyEquals(a, b)
+    private infix fun Double.isLess(b: Double): Boolean = this < b
 
     private fun executeOrderSwap(order: Order) {
         orderService.executeOrderSwap(order)

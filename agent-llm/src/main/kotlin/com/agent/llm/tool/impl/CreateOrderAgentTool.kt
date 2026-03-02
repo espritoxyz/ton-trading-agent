@@ -29,6 +29,7 @@ class CreateOrderAgentTool(
             amount = args.amount,
             targetPrice = args.targetPrice,
             receivedJettonMaster = args.receivedJettonMaster,
+            direction = args.direction,
         )
 
         return result
