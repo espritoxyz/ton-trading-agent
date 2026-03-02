@@ -2,7 +2,6 @@ package com.agent.backend.llm
 
 import com.agent.backend.AppUtils
 import com.agent.backend.rabbitmq.RabbitConfig
-
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationService
 import com.agent.backend.service.OrderService
@@ -11,23 +10,23 @@ import com.agent.backend.service.StonfiAssetsCacheService
 import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.backend.service.WalletService
 import com.agent.llm.tool.api.BlockchainAdapter
+import com.agent.llm.tool.dto.PriceDirection
 import com.explyt.ai.dto.ToolResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.Instant
+import java.util.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
-
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import java.math.BigDecimal
-import java.math.RoundingMode
-import java.time.Instant
-import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -434,8 +433,8 @@ class AgentBlockchainAdapter(
         return best?.toString() ?: ""
     }
 
-    override fun createPriceTracker(jettonMaster: String, targetPrice: Double) {
-        priceTrackerService.createTracker(userId, jettonMaster, targetPrice)
+    override fun createPriceTracker(jettonMaster: String, targetPrice: Double, direction: PriceDirection) {
+        priceTrackerService.createTracker(userId, jettonMaster, targetPrice, direction)
     }
 
     override fun listPriceTrackers(): String {
@@ -467,7 +466,8 @@ class AgentBlockchainAdapter(
         action: String,
         amount: Double,
         targetPrice: Double,
-        receivedJettonMaster: String?,
+        direction: PriceDirection,
+        receivedJettonMaster: String?
     ): String {
         return try {
             // If LLM/tool didn't specify, default received asset to TON from address book
@@ -480,6 +480,7 @@ class AgentBlockchainAdapter(
                 amount = amount,
                 targetPrice = targetPrice,
                 receivedJettonMaster = effectiveReceived,
+                llmDirection = direction
             )
             notificationService.broadcastWalletRefresh(userId)
 
