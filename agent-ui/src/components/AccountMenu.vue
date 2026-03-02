@@ -38,7 +38,6 @@ async function toggleDropdown() {
   showDropdown.value = !showDropdown.value
   if (!showDropdown.value || !buttonRef.value) return
 
-  // 1) Предварительно ставим позицию под кнопкой, чтобы дропдаун отрендерился и его можно было измерить
   const rect = buttonRef.value.getBoundingClientRect()
   dropdownPosition.value = {
     top: rect.bottom + DROPDOWN_OFFSET_PX,
@@ -52,13 +51,11 @@ async function toggleDropdown() {
 
   const { width: dropdownWidth, height: dropdownHeight } = dropdownEl.getBoundingClientRect()
 
-  // 2) Горизонталь: выравниваем дропдаун по правому краю кнопки, но не даём вылезти за экран
   const desiredLeft = rect.right - dropdownWidth
   const minLeft = VIEWPORT_PADDING_PX
   const maxLeft = window.innerWidth - dropdownWidth - VIEWPORT_PADDING_PX
   const left = clamp(desiredLeft, minLeft, Math.max(minLeft, maxLeft))
 
-  // 3) Вертикаль: по умолчанию открываем вниз, но если не помещается — открываем вверх
   const desiredTopDown = rect.bottom + DROPDOWN_OFFSET_PX
   const desiredTopUp = rect.top - dropdownHeight - DROPDOWN_OFFSET_PX
 
