@@ -480,6 +480,7 @@ class AgentBlockchainAdapter(
                 amount = amount,
                 targetPrice = targetPrice,
                 receivedJettonMaster = effectiveReceived,
+                llmDirection = direction
             )
             notificationService.broadcastWalletRefresh(userId)
 
