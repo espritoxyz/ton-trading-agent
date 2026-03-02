@@ -179,7 +179,7 @@ function handleTopUpCompleted() {
     </div>
 
     <div class="flex-1 min-h-0 w-full overflow-hidden relative">
-      <div ref="scroller" class="h-full min-h-0 space-y-4 overflow-y-auto overscroll-contain p-6 w-full chat-scroller">
+      <div ref="scroller" class="h-full min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6 w-full chat-scroller">
         <MessageBubble
           v-for="(m, i) in messages"
           :key="m.id + i"
@@ -224,6 +224,16 @@ function handleTopUpCompleted() {
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.5) transparent;
   scrollbar-gutter: stable;
+}
+
+@media (max-width: 1023px) {
+  .chat-scroller {
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+  }
+  .chat-scroller::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .fade-scale-enter-active, .fade-scale-leave-active {

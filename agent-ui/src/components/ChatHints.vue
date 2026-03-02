@@ -12,7 +12,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex gap-2 px-6 pb-3 overflow-hidden flex-nowrap">
+  <div class="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none flex-nowrap">
     <button
       v-for="hint in shuffled"
       :key="hint.label"
