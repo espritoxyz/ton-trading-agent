@@ -23,7 +23,7 @@ class CreatePriceTrackerAgentTool(
 
     override suspend fun payload(args: CreatePriceTrackerArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        bcAdapter.createPriceTracker(args.jettonMaster, args.targetPrice)
+        bcAdapter.createPriceTracker(args.jettonMaster, args.targetPrice, args.direction)
 
         return "Track for ${args.jettonMaster} reaching ${args.targetPrice} USD created"
     }

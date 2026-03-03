@@ -66,6 +66,9 @@ email:
     api-url: https://api.resend.com
     from-email: ${EMAIL_FROM:noreply@yourdomain.com}
     from-name: ${EMAIL_FROM_NAME:Esprito AI}
+    retry:
+      max-attempts: 3
+      delay-ms: 500
   verification:
     token-ttl-hours: 24
     base-url: ${APP_BASE_URL:http://localhost:80}
@@ -80,3 +83,9 @@ notification:
 addressbook:
   ton: EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c
   usdt: EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs
+
+newsletter:
+  verification-token-ttl-hours: 48
+  pending-verification-ttl-days: 7
+  resend-max-count: 3
+  resend-min-interval-minutes: 5

@@ -5,7 +5,8 @@ import ChatPanel from '../components/ChatPanel.vue'
 import AssetsList from '../components/AssetsList.vue'
 import TransactionHistory from '../components/TransactionHistory.vue'
 import OrdersList from '../components/OrdersList.vue'
-import {ClipboardList, MessageSquare, Receipt, Wallet} from 'lucide-vue-next'
+import TopUpModal from '../components/TopUpModal.vue'
+import {ClipboardList, MessageSquare, Plus, Receipt, Wallet} from 'lucide-vue-next'
 import {accessToken, userId} from '../composables/useAuth.ts'
 import {useWalletState} from '../composables/useWalletState.ts'
 import {lastIncomingNotification} from '../composables/useNotifications.ts'
@@ -56,10 +57,10 @@ onUnmounted(() => {
 })
 
 const tabs = [
-  {id: 'overview' as const, label: 'Overview', icon: MessageSquare},
-  {id: 'assets' as const, label: 'Assets', icon: Wallet},
-  {id: 'transactions' as const, label: 'Transactions', icon: Receipt},
-  {id: 'orders' as const, label: 'Orders', icon: ClipboardList}
+  {id: 'overview' as const, label: 'Overview', mobileLabel: 'Chat', icon: MessageSquare},
+  {id: 'assets' as const, label: 'Assets', mobileLabel: 'Assets', icon: Wallet},
+  {id: 'transactions' as const, label: 'Transactions', mobileLabel: 'History', icon: Receipt},
+  {id: 'orders' as const, label: 'Orders', mobileLabel: 'Orders', icon: ClipboardList}
 ]
 
 // Provide tabs to AppLayout
@@ -67,18 +68,54 @@ const setNavigationTabs = inject<any>('setNavigationTabs', null)
 if (setNavigationTabs) {
   setNavigationTabs(tabs, activeTab)
 }
+
+// Mobile wallet strip
+const showMobileDeposit = ref(false)
+const { balanceUsd, loadingWalletState: walletLoading } = walletStateInstance
+const mobileBalance = computed(() => {
+  if (walletLoading.value) return '...'
+  const b = balanceUsd.value
+  if (!b || isNaN(b)) return '$0.00'
+  if (b >= 1_000_000) return `$${(b / 1_000_000).toFixed(2)}M`
+  if (b >= 1_000) return `$${(b / 1_000).toFixed(2)}K`
+  return `$${b.toFixed(2)}`
+})
 </script>
 
 <template>
   <div class="h-full min-h-0">
     <!-- Overview Tab -->
-    <div v-if="activeTab === 'overview'" class="grid h-full gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-      <div class="flex h-full min-h-0">
-        <ChatPanel/>
+    <div v-if="activeTab === 'overview'" class="h-full min-h-0 flex flex-col gap-2 overflow-hidden">
+      <!-- Mobile-only compact wallet strip -->
+      <div v-if="loggedIn" class="lg:hidden shrink-0 flex items-center gap-3 px-3 py-2 glass-card rounded-xl">
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shadow-sm shrink-0">
+          <Wallet :size="13" class="text-white" />
+        </div>
+        <span class="text-base font-bold gradient-text">{{ mobileBalance }}</span>
+        <div class="flex items-center gap-1">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span class="text-xs text-gray-500 dark:text-gray-400">Live</span>
+        </div>
+        <button
+          @click="showMobileDeposit = true"
+          class="ml-auto shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-semibold shadow-sm"
+        >
+          <Plus :size="11" />
+          Deposit
+        </button>
       </div>
-      <div class="flex h-full flex-col gap-4">
-        <BalanceCard compact/>
+
+      <!-- Content grid: ChatPanel always visible, BalanceCard only on desktop -->
+      <div class="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div class="flex h-full flex-col min-h-0 min-w-0">
+          <ChatPanel/>
+        </div>
+        <div class="hidden lg:flex h-full flex-col gap-4">
+          <BalanceCard compact/>
+        </div>
       </div>
+
+      <TopUpModal v-if="showMobileDeposit" @close="showMobileDeposit = false" @completed="showMobileDeposit = false" />
     </div>
 
     <!-- Assets Tab -->

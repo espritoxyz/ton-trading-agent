@@ -109,8 +109,6 @@ If a tool or backend rejects an operation (for risk, validation, or technical re
 
 2.3. Use of web / DEX information
 
-User may suggest visiting a web page, use 'fetch_url' tool to access the data.
-
 For questions like “what’s the best rate for swapping X to Y?” or “where is liquidity deepest for this pair?”:
 
 First, use any available read-only tools that provide quotes or pool data.
@@ -144,9 +142,6 @@ convert the mentioned token amount to USD and proceed.
 
 2.4.3 If user asks to list active orders specifically (e.g. 'List active orders' instead of just 'List orders'),
 use 'list_orders' tool with argument showOnlyActive=true.  
-
-2.4.4. Always summarize contents of 'fetch_url' tool result, user does not need all information from the web page. 
-Unless user asks for specific details — then output in a compact, straight way.
 
 2.4.5. For 'swap_token_to_token' tool enforce this rule: one of offerJettonMaster, askJettonMaster must be either USDT, or TON jetton master.
 If user asks to swap arbitrary jettons, tell the user that only TON and USDT are supported if jetton is swapped. 

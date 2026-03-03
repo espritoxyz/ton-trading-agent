@@ -21,7 +21,7 @@ class CreateOrderAgentTool(
 
     override val argsSerializer = serializer<CreateOrderArgs>()
 
-    override suspend fun payload(args: CreateOrderArgs): String {
+    override fun payload(args: CreateOrderArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         val result = bcAdapter.createOrder(
             jettonMaster = args.jettonMaster,
@@ -29,6 +29,7 @@ class CreateOrderAgentTool(
             amount = args.amount,
             targetPrice = args.targetPrice,
             receivedJettonMaster = args.receivedJettonMaster,
+            direction = args.direction,
         )
 
         return result

@@ -111,3 +111,6 @@ Do not add unnecessary dependencies. Before introducing a new library (Caffeine,
 
 ## Documentation and References section
 When in doubt about library APIs, framework behavior, or best practices, use the MCP context7 tool to fetch up-to-date documentation. Prefer context7 over guessing or relying on potentially outdated training knowledge.
+
+## Newsletter section
+When composing or generating newsletter content for the admin panel, follow the format documented in `docs/newsletter-format.md`. It covers the required `htmlContent` fragment format, supported HTML patterns, brand colors, subject line rules, and includes a complete example.
