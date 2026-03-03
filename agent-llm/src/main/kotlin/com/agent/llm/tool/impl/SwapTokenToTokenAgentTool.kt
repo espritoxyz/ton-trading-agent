@@ -23,7 +23,7 @@ class SwapTokenToTokenAgentTool(
 
     override val argsSerializer = serializer<SwapTokenToTokenArgs>()
 
-    override fun payload(args: SwapTokenToTokenArgs): String = with(args) {
+    override suspend fun payload(args: SwapTokenToTokenArgs): String = with(args) {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
 
         return bcAdapter.swapTokenToToken(

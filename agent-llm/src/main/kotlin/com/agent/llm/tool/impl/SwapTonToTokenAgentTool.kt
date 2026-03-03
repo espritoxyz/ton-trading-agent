@@ -24,7 +24,7 @@ class SwapTonToTokenAgentTool(
 
     override val argsSerializer = serializer<SwapTonToTokenArgs>()
 
-    override fun payload(args: SwapTonToTokenArgs): String = with(args) {
+    override suspend fun payload(args: SwapTonToTokenArgs): String = with(args) {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.swapTonToToken(jettonMaster, minimalTokenAmount)
 

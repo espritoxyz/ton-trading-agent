@@ -22,7 +22,7 @@ class ShowTopUpAgentTool(
 
     override val argsSerializer = serializer<ShowTopUpArgs>()
 
-    override fun payload(args: ShowTopUpArgs): String {
+    override suspend fun payload(args: ShowTopUpArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
 
         return "Top-up dialog has been displayed. The user can click the button to view deposit instructions with a unique code and wallet address. They need to include the code in the transaction comment when sending TON or Jettons."

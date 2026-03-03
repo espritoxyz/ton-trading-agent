@@ -21,7 +21,7 @@ class CreatePriceTrackerAgentTool(
 
     override val argsSerializer = serializer<CreatePriceTrackerArgs>()
 
-    override fun payload(args: CreatePriceTrackerArgs): String {
+    override suspend fun payload(args: CreatePriceTrackerArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.createPriceTracker(args.jettonMaster, args.targetPrice, args.direction)
 

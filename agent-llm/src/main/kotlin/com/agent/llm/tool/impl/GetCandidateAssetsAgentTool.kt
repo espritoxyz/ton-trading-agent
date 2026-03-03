@@ -21,7 +21,7 @@ class GetCandidateAssetsAgentTool(
 
     override val argsSerializer = serializer<GetCandidateAssetsArgs>()
 
-    override fun payload(args: GetCandidateAssetsArgs): String {
+    override suspend fun payload(args: GetCandidateAssetsArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         return bcAdapter.getCandidateAssets(args.symbol)
     }
