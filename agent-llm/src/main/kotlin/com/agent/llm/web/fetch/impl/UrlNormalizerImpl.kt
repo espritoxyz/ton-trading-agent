@@ -25,6 +25,8 @@ class UrlNormalizerImpl : UrlNormalizer {
         val url = raw.toHttpUrlOrNull()
             ?: throw IllegalArgumentException("Invalid URL: $raw")
 
+        logger.debug { "Url port ${url.port}" }
+
         // Security measure: forbid URLs with an explicit non-default port to avoid access to internal network
         if (url.port != 80 && url.port != 443) {
             logger.warn { "Blocked URL with non-standard port ${url.port}: $raw" }
