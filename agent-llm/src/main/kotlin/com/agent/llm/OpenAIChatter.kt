@@ -27,6 +27,8 @@ import kotlinx.serialization.json.Json
 
 private val logger = KotlinLogging.logger {}
 
+class ConfirmationDeclinedException : Exception("Confirmation declined by user")
+
 class OpenAIChatter(
     private val chatHistory: List<LlmChatMessage>,
     private val bcAdapter: BlockchainAdapter
@@ -111,6 +113,8 @@ class OpenAIChatter(
                 "Approved tool calls: ${approvedPlanned.size}/${plannedToolCalls.size} -> ${approvedPlanned.map { it.call.name }}"
             }
 
+            if (approvedPlanned.isEmpty()) throw ConfirmationDeclinedException()
+            
             return approvedPlanned.map { plannedToolCall ->
                 val tc = plannedToolCall.call
 
