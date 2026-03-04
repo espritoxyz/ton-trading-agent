@@ -7,9 +7,36 @@ export const subject = ref<string | null>(null)
 export const userId = ref<number | null>(null)
 export const loggingIn = ref(false)
 export const authError = ref<string | null>(null)
+export const authErrorCode = ref<string | null>(null)
 export const needsVerification = ref(false)
 export const verificationEmail = ref<string | null>(null)
 export const isAdmin = ref(false)
+
+/** Maps backend AuthErrorCode to a user-friendly UI message. */
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+    INVALID_CREDENTIALS: 'The email or password you entered is incorrect. Please try again.',
+    ACCOUNT_DISABLED: 'This account has been disabled. Please contact support.',
+    ACCOUNT_NOT_VERIFIED: 'Please verify your email address before signing in.',
+    ACCOUNT_LOCKED: 'Too many failed attempts. Your account is temporarily locked — please try again later.',
+    USER_ALREADY_EXISTS: 'An account with this email already exists. Try signing in instead.',
+    WEAK_PASSWORD: 'Password doesn\'t meet the security requirements. Please choose a stronger one.',
+    INVALID_EMAIL: 'Please enter a valid email address.',
+    AUTH_PROVIDER_UNAVAILABLE: 'Authentication service is temporarily unavailable. Please try again later.',
+    TOO_MANY_REQUESTS: 'Too many requests — please wait a moment and try again.',
+    INTERNAL_ERROR: 'Something went wrong. Please try again later.',
+}
+
+/** Resolves a human-readable error from an Axios error, preferring structured code. */
+function resolveAuthError(e: any, fallback: string): string {
+    const data = e?.response?.data
+    const code = data?.code as string | undefined
+    if (code && AUTH_ERROR_MESSAGES[code]) {
+        authErrorCode.value = code
+        return AUTH_ERROR_MESSAGES[code]
+    }
+    authErrorCode.value = null
+    return data?.message || e?.message || fallback
+}
 
 watch(accessToken, (token) => {
     if (!token) { isAdmin.value = false; return }
@@ -37,13 +64,15 @@ export async function login(username: string, password: string) {
         accessToken.value = token
         await refreshProfile()
     } catch (e: any) {
-        const errorMsg = e?.response?.data?.message || e?.message || 'Login failed'
+        const errorMsg = resolveAuthError(e, 'Login failed')
 
-        // Check if account needs email verification
-        if (errorMsg.includes('Account is not fully set up') || errorMsg.includes('not fully set up')) {
+        // Check if account needs email verification (by structured code or legacy string match)
+        if (authErrorCode.value === 'ACCOUNT_NOT_VERIFIED'
+            || errorMsg.includes('Account is not fully set up')
+            || errorMsg.includes('not fully set up')) {
             needsVerification.value = true
             verificationEmail.value = username
-            authError.value = 'Please verify your email address before logging in'
+            authError.value = AUTH_ERROR_MESSAGES['ACCOUNT_NOT_VERIFIED']
         } else {
             authError.value = errorMsg
         }
@@ -59,7 +88,7 @@ export async function register(emailInput: string, passwordInput: string, displa
         const { data } = await api.post('/auth/register', { email: emailInput, password: passwordInput, displayName, subscribeToNewsletter: subscribeToNewsletter ?? false }, { headers: { Authorization: undefined } })
         return data
     } catch (e: any) {
-        authError.value = e?.response?.data?.message ?? e?.message ?? 'Registration failed'
+        authError.value = resolveAuthError(e, 'Registration failed')
         throw e
     }
 }
