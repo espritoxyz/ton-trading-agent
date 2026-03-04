@@ -12,13 +12,21 @@ import EmailVerificationPage from './components/EmailVerificationPage.vue'
 import Dashboard from "./pages/Dashboard.vue";
 import AdminPage from "./pages/AdminPage.vue";
 import AuthPage from "./pages/AuthPage.vue";
-import { isAdmin } from './composables/useAuth'
+import { isAdmin, accessToken } from './composables/useAuth'
 import NewsletterConfirmPage from "./pages/NewsletterConfirmPage.vue";
 import NewsletterUnsubscribePage from "./pages/NewsletterUnsubscribePage.vue";
 
 const route = ref(window.location.pathname || '/')
 const instance = getCurrentInstance()
 const metrika = instance?.appContext.config.globalProperties.$metrika
+const isLoggedIn = computed(() => !!accessToken.value)
+
+// Redirect unauthenticated users away from /app to /login
+watch([route, isLoggedIn], ([currentRoute, loggedIn]) => {
+  if (currentRoute.startsWith('/app') && !loggedIn) {
+    navigate('/login')
+  }
+}, { immediate: true })
 
 // Extract verification token from URL
 const verificationToken = computed(() => {
