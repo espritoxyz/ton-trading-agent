@@ -33,7 +33,7 @@ class SendTokenAgentTool(
     override fun confirmationText(args: String): String {
         val serArgs = Json.decodeFromString(argsSerializer, args)
         return with(serArgs) {
-            "Send $tokenAmount of $jettonMaster to $receiverAddress"
+            "Send $tokenAmount $jettonTicker to $receiverAddress"
         }
     }
 }

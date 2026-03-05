@@ -7,5 +7,6 @@ import kotlinx.serialization.Serializable
 data class SendTokenArgs(
     val tokenAmount: Double,
     val jettonMaster: String,
+    val jettonTicker: String,
     val receiverAddress: String,
 ) : AgentToolArgs
