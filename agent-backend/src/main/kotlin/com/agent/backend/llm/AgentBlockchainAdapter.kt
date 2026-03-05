@@ -486,7 +486,7 @@ class AgentBlockchainAdapter(
             )
             notificationService.broadcastWalletRefresh(userId)
 
-            "Order created for $jettonTicker: action=$action, amount=$amount, targetPrice=$targetPrice, receive in $effectiveReceivedTicker"
+            "Order created for $jettonTicker: $action amount=$amount when targetPrice=$targetPrice, receive in $effectiveReceivedTicker"
         } catch (e: Exception) {
             val msg = "Failed to create order for $jettonMaster: ${e.message}"
             logger.warn(e) { msg }
