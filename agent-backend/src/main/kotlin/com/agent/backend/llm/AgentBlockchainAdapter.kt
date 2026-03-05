@@ -470,8 +470,10 @@ class AgentBlockchainAdapter(
         receivedJettonMaster: String?
     ): String {
         return try {
+            val jettonTicker = assetsCache.getAssetByContractAddress(jettonMaster)?.symbol
             // If LLM/tool didn't specify, default received asset to TON from address book
             val effectiveReceived = receivedJettonMaster ?: appUtils.tonAddress
+            val effectiveReceivedTicker = assetsCache.getAssetByContractAddress(effectiveReceived)?.symbol
 
             priceTrackerService.createOrderWithTracker(
                 userId = userId,
@@ -484,7 +486,7 @@ class AgentBlockchainAdapter(
             )
             notificationService.broadcastWalletRefresh(userId)
 
-            "Order created for $jettonMaster: action=$action, amount=$amount, targetPrice=$targetPrice, receive in $effectiveReceived"
+            "Order created for $jettonTicker: action=$action, amount=$amount, targetPrice=$targetPrice, receive in $effectiveReceivedTicker"
         } catch (e: Exception) {
             val msg = "Failed to create order for $jettonMaster: ${e.message}"
             logger.warn(e) { msg }
