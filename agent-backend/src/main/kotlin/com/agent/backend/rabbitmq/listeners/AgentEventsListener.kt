@@ -1,7 +1,6 @@
 package com.agent.backend.rabbitmq.listeners
 
 import com.agent.backend.db.entity.NotificationType
-import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationEventPublisher
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class AgentEventsListener(
-    private val jobService: ChatJobService,
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
     private val notificationEventPublisher: NotificationEventPublisher,
@@ -40,13 +38,14 @@ class AgentEventsListener(
                 "agent-llm.send-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val amount = data["tonAmount"]
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing send-ton result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing send-ton result for user $userId: success=$success, error=$error" }
 
                     // Record outgoing transaction if successful
                     if (success && txId != null && receiver != null) {
@@ -91,15 +90,16 @@ class AgentEventsListener(
                 "agent-llm.send-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val amount = data["tokenAmount"]
                     val amountNano = (data["tokenAmountNano"] as? Number)?.toLong()
                     val jettonMaster = data["jettonMaster"] as? String
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing send-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing send-token result for user $userId: success=$success, error=$error" }
 
                     // Record outgoing token transaction if successful
                     if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
@@ -142,14 +142,15 @@ class AgentEventsListener(
                 "agent-llm.swap-ton-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val jettonMaster = data["requestedJettonMaster"] as? String
                     val swapTonAmount = data["requestedSwapTonAmount"] as? Number
                     val minimalTokenAmount = data["requestedMinimalTokenAmount"] as? Number
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {
@@ -182,14 +183,15 @@ class AgentEventsListener(
                 "agent-llm.swap-token-to-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val jettonMaster = data["requestedJettonMaster"] as? String
                     val swapTokenAmountNano = data["requestedSwapTokenAmount"] as? Number
                     val minimalTonAmount = data["requestedMinimalTonAmount"] as? Number
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {
@@ -221,15 +223,16 @@ class AgentEventsListener(
                 "agent-llm.swap-token-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val offerJettonMaster = data["requestedOfferJettonMaster"] as? String
                     val askJettonMaster = data["requestedAskJettonMaster"] as? String
                     val swapOfferTokenAmountNano = data["requestedSwapOfferTokenAmount"] as? Number
                     val askTokenAmount = data["askNano"] as? Number
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing swap-token-to-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-token-to-token result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {

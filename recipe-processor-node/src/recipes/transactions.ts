@@ -1,23 +1,16 @@
 import {internal, toNano, TonClient, WalletContractV5R1} from "@ton/ton";
 import https, {RequestOptions} from "https";
 import {mnemonicToPrivateKey} from "@ton/crypto";
-import {Address, SendMode, beginCell, Cell, toNano as coreToNano} from "@ton/core";
+import {Address, SendMode, beginCell, Cell, toNano as coreToNano, fromNano} from "@ton/core";
 import {randomBytes} from "crypto";
 import {bufToHex, sleep, waitForSeqnoIncrement} from "../utils.js";
+import {interpretTransaction} from "./utils.js";
+import type {SuccessReport, ErrorReport} from "./reports.js";
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
 const apiKey = process.env.TONCENTER_API_KEY || "";
 
-// utils imported from ./utils.js
-
-/**
- * Sends specified TON amount to a given recipient address.
- * @param amountTon amount in TON (number or string), e.g. 0.3
- * @param receiverAddress TON address (raw or user-friendly)
- * @param userMnemonic user's mnemonic phrase as array of words
- * @returns txId (hex) when located in recent transactions
- */
-export async function sendTon(amountTon: number | string, receiverAddress: string, userMnemonic: string[]): Promise<string> {
+export async function sendTon(amountTon: number | string, receiverAddress: string, userMnemonic: string[]): Promise<SuccessReport | ErrorReport> {
     if (!receiverAddress) throw new Error("receiverAddress is required");
     const amountStr = String(amountTon);
 
@@ -58,29 +51,19 @@ export async function sendTon(amountTon: number | string, receiverAddress: strin
     console.log("Transfer confirmed");
 
     const txs = await client.getTransactions(wallet.address, { limit: 10 });
+    const tx = txs[0];
+    const totalFee = Number(fromNano(tx.totalFees.coins));
 
-    const tx = txs.find((t) => {
-        const outs =
-            typeof t.outMessages.values === "function"
-                ? Array.from(t.outMessages.values())
-                : Object.values(t.outMessages as any);
+    const { ok, exitCode, reason, txId } = interpretTransaction(tx);
 
-        return (
-            t.inMessage?.info.type === "external-in" &&
-            outs.some((m: any) =>
-                m.info?.type === "internal" &&
-                (m.info.dest?.equals?.(recipient) ?? m.info.dest?.toString() === recipient.toString()) &&
-                m.info.value?.coins >= amount
-            )
-        );
-    });
+    if (!ok) {
+        const error = reason || "Transaction failed";
+        console.error("sendTon failed", { txId, exitCode, error });
+        return { ok: false, txId, totalFee, exitCode, error };
+    }
 
-    if (!tx) throw new Error("Transaction not found");
-
-    const rawHash = tx.hash();
-    const txId = bufToHex(rawHash);
     console.log("tx id:", txId);
-    return txId;
+    return { ok: true, txId, totalFee };
 }
 
 export async function sendToken(
@@ -89,7 +72,7 @@ export async function sendToken(
     receiverAddress: string,
     userMnemonic: string[],
     forwardTonAmount: number | string = 0.0,
-): Promise<string> {
+): Promise<SuccessReport | ErrorReport> {
     if (!jettonMasterAddress) throw new Error("jettonMasterAddress is required");
     if (!receiverAddress) throw new Error("receiverAddress is required");
 
@@ -161,29 +144,21 @@ export async function sendToken(
     console.log("Jetton transfer confirmed");
 
     const txs = await client.getTransactions(wallet.address, { limit: 10 });
+    const tx = txs[0];
+    const totalFee = Number(fromNano(tx.totalFees.coins));
 
-    const tx = txs.find((t) => {
-        const outs =
-            typeof t.outMessages.values === "function"
-                ? Array.from(t.outMessages.values())
-                : Object.values(t.outMessages as any);
+    const { ok, exitCode, reason, txId } = interpretTransaction(tx);
 
-        return (
-            t.inMessage?.info.type === "external-in" &&
-            outs.some((m: any) =>
-                m.info?.type === "internal" &&
-                (m.info.dest?.equals?.(jettonWallet) ?? m.info.dest?.toString() === jettonWallet.toString())
-            )
-        );
-    });
+    if (!ok) {
+        const error = reason || "Jetton transaction failed";
+        console.error("sendToken failed", { txId, exitCode, error });
+        return { ok: false, txId, totalFee, exitCode, error };
+    }
 
-    if (!tx) throw new Error("Jetton transaction not found");
-
-    const rawHash = tx.hash();
-    const txId = bufToHex(rawHash);
     console.log("jetton tx id:", txId);
-    return txId;
+    return { ok: true, txId, totalFee };
 }
+
 
 async function estimateJettonTransferFee(jettonWallet: Address, body: Cell): Promise<{ valueForGas: bigint }> {
     const fallback = coreToNano("0.05"); // conservative default when estimation fails
