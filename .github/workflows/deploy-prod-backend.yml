@@ -12,8 +12,8 @@ on:
       - ".github/workflows/deploy-prod-backend.yml"
 
 concurrency:
-  group: esprito-prod-backend
-  cancel-in-progress: true
+  group: esprito-prod-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:

@@ -4,9 +4,6 @@ import com.agent.llm.tool.api.AgentToolArgs
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SendTokenArgs(
-    val tokenAmount: Double,
-    val jettonMaster: String,
-    val jettonTicker: String,
-    val receiverAddress: String,
+class FetchUrlArgs(
+    val url: String,
 ) : AgentToolArgs

@@ -1,11 +1,11 @@
 package com.agent.backend.service
 
+import com.agent.backend.dto.AuthErrorCode
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.RegisterRequest
 import com.agent.backend.dto.RegisterResponse
 import com.agent.backend.dto.TokenResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
-import jakarta.security.auth.message.AuthException
 import jakarta.servlet.UnavailableException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Lazy
@@ -38,6 +38,40 @@ class AuthService(
         .baseUrl(baseUrl)
         .build()
 
+    companion object {
+        private val ERROR_DESCRIPTION_REGEX = """"error_description"\s*:\s*"([^"]+)"""".toRegex()
+        private val ERROR_CODE_REGEX = """"error"\s*:\s*"([^"]+)"""".toRegex()
+
+        /** Maps Keycloak error_description to a structured [AuthErrorCode]. */
+        fun mapKeycloakError(errorDescription: String, errorCode: String?): AuthErrorCode = when {
+            errorDescription.contains("invalid", ignoreCase = true)
+                    && errorDescription.contains("credentials", ignoreCase = true) -> AuthErrorCode.INVALID_CREDENTIALS
+            errorDescription.contains("Invalid user credentials", ignoreCase = true) -> AuthErrorCode.INVALID_CREDENTIALS
+            errorDescription.contains("Account disabled", ignoreCase = true) -> AuthErrorCode.ACCOUNT_DISABLED
+            errorDescription.contains("Account is not fully set up", ignoreCase = true) -> AuthErrorCode.ACCOUNT_NOT_VERIFIED
+            errorDescription.contains("not fully set up", ignoreCase = true) -> AuthErrorCode.ACCOUNT_NOT_VERIFIED
+            errorDescription.contains("User is disabled", ignoreCase = true) -> AuthErrorCode.ACCOUNT_DISABLED
+            errorDescription.contains("temporarily locked", ignoreCase = true) -> AuthErrorCode.ACCOUNT_LOCKED
+            errorDescription.contains("temporarily disabled", ignoreCase = true) -> AuthErrorCode.ACCOUNT_LOCKED
+            errorCode == "invalid_grant" -> AuthErrorCode.INVALID_CREDENTIALS
+            else -> AuthErrorCode.INVALID_CREDENTIALS
+        }
+
+        /** Provides a human-readable message for the given [AuthErrorCode]. */
+        fun humanReadableMessage(code: AuthErrorCode): String = when (code) {
+            AuthErrorCode.INVALID_CREDENTIALS -> "The email or password you entered is incorrect. Please try again."
+            AuthErrorCode.ACCOUNT_DISABLED -> "This account has been disabled. Please contact support."
+            AuthErrorCode.ACCOUNT_NOT_VERIFIED -> "Please verify your email address before signing in."
+            AuthErrorCode.ACCOUNT_LOCKED -> "Too many failed login attempts. Your account is temporarily locked. Please try again later."
+            AuthErrorCode.USER_ALREADY_EXISTS -> "An account with this email address already exists."
+            AuthErrorCode.WEAK_PASSWORD -> "Password does not meet the security requirements. Please choose a stronger password."
+            AuthErrorCode.INVALID_EMAIL -> "Please enter a valid email address."
+            AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE -> "Authentication service is temporarily unavailable. Please try again later."
+            AuthErrorCode.TOO_MANY_REQUESTS -> "Too many requests. Please wait a moment and try again."
+            AuthErrorCode.INTERNAL_ERROR -> "Something went wrong. Please try again later."
+        }
+    }
+
     fun directLogin(req: LoginRequest): TokenResponse = runCatching {
         val form = LinkedMultiValueMap<String, String>().apply {
             add("grant_type", "password")
@@ -66,16 +100,20 @@ class AuthService(
                 logger.warn { "Keycloak error: status={$status}, www-auth={$wwwAuth}, body={$body}" }
 
                 if (status in 400..499) {
-                    // Try to extract error_description from Keycloak error response
-                    val errorMessage = try {
-                        val errorMatch = """"error_description"\s*:\s*"([^"]+)"""".toRegex().find(body)
-                        errorMatch?.groupValues?.get(1) ?: "Invalid credentials"
-                    } catch (e: Exception) {
-                        "Invalid credentials"
-                    }
-                    throw AuthException(errorMessage)
+                    val errorDescription = try {
+                        ERROR_DESCRIPTION_REGEX.find(body)?.groupValues?.get(1)
+                    } catch (_: Exception) { null }
+                    val errorCode = try {
+                        ERROR_CODE_REGEX.find(body)?.groupValues?.get(1)
+                    } catch (_: Exception) { null }
+
+                    val authErrorCode = mapKeycloakError(
+                        errorDescription ?: "Invalid credentials",
+                        errorCode
+                    )
+                    throw AuthenticationException(authErrorCode, humanReadableMessage(authErrorCode))
                 }
-                throw AuthException("Keycloak auth failed: $status")
+                throw AuthenticationException(AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE, humanReadableMessage(AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE))
             }
 
             else -> {

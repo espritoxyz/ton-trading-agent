@@ -3,9 +3,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import {
   login, register, accessToken, authError,
   needsVerification, verificationEmail, resendVerificationEmail,
-  userId, refreshProfile
 } from '../composables/useAuth'
-import { useWalletState } from '../composables/useWalletState'
 import {
   Mail, Lock, AlertTriangle, Loader, CheckCircle,
   Bot, ArrowLeftRight, ListOrdered, Link2, TrendingUp,
@@ -13,8 +11,6 @@ import {
 } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{ mode?: 'login' | 'register' }>(), { mode: 'login' })
-
-const { refreshWalletState } = useWalletState()
 
 const isLogin = ref(props.mode === 'login')
 const loginStep = ref<'email' | 'password'>('email')
@@ -69,8 +65,6 @@ async function onLogin() {
     await login(loginUsername.value, loginPassword.value)
     loginPassword.value = ''
     if (accessToken.value) {
-      await refreshProfile()
-      if (userId.value) await refreshWalletState(userId.value)
       navigateTo('/app')
     }
   } catch {

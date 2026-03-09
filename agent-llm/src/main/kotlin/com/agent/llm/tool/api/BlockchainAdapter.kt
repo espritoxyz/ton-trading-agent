@@ -1,5 +1,6 @@
 package com.agent.llm.tool.api
 
+import com.agent.llm.tool.dto.PriceDirection
 import com.explyt.ai.dto.ToolResponse
 import java.util.*
 
@@ -14,7 +15,6 @@ abstract class BlockchainAdapter(val userId: Long) {
     abstract fun getTokenToTon(jettonMaster: String): String
 
     abstract fun sendTonToAddress(amount: Double, receiverAddress: String)
-
 
     abstract fun sendTokenToAddress(tokenAmount: Double, jettonMaster: String, receiverAddress: String)
 
@@ -32,7 +32,7 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun getCandidateAssets(symbol: String): String
 
-    abstract fun createPriceTracker(jettonMaster: String, targetPrice: Double)
+    abstract fun createPriceTracker(jettonMaster: String, targetPrice: Double, direction: PriceDirection)
 
     abstract fun listPriceTrackers(): String
 
@@ -43,6 +43,7 @@ abstract class BlockchainAdapter(val userId: Long) {
         action: String,
         amount: Double,
         targetPrice: Double,
+        direction: PriceDirection,
         receivedJettonMaster: String? = null,
     ): String
 
@@ -50,7 +51,6 @@ abstract class BlockchainAdapter(val userId: Long) {
     abstract fun listOrders(activeOnly: Boolean): String
 
     abstract fun deleteOrders(ids: List<Long>)
-
 
     open suspend fun awaitExternalResults(toolResponses: List<ToolResponse>): List<ToolResponse> = toolResponses
 }

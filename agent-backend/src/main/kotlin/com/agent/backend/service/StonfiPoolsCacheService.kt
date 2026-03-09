@@ -61,7 +61,8 @@ class StonfiPoolsCacheService(
         try {
             refreshPoolsInternal()
         } catch (e: Exception) {
-            logger.warn(e) { "[stonfi] Initial pools fetch failed" }
+            logger.error(e) { "[stonfi] Initial pools fetch failed" }
+            throw e
         }
     }
 
@@ -70,7 +71,7 @@ class StonfiPoolsCacheService(
         try {
             refreshPoolsInternal()
         } catch (e: Exception) {
-            logger.warn(e) { "[stonfi] Scheduled pools refresh failed" }
+            logger.error(e) { "[stonfi] Scheduled pools refresh failed" }
         }
     }
 
@@ -87,7 +88,7 @@ class StonfiPoolsCacheService(
             .retrieve()
             .body(PoolListResponse::class.java)
 
-        val pools = response?.poolList ?: emptyList()
+        val pools = response?.poolList ?: throw RuntimeException("No pool list in response")
         poolsRef.set(pools)
         lastUpdatedAt = System.currentTimeMillis()
     }

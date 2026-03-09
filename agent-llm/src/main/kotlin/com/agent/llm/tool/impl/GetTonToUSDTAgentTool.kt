@@ -21,7 +21,7 @@ class GetTonToUSDTAgentTool(
 
     override val argsSerializer = serializer<GetTonToUSDTArgs>()
 
-    override fun payload(args: GetTonToUSDTArgs): String {
+    override suspend fun payload(args: GetTonToUSDTArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         return bcAdapter.getTonToUSDT().toString()
     }

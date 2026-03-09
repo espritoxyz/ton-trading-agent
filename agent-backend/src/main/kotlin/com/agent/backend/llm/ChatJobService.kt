@@ -17,6 +17,7 @@ import com.agent.backend.service.StonfiPoolsCacheService
 import com.agent.backend.service.WalletService
 import com.agent.llm.ChatterStatus
 import com.agent.llm.OpenAIChatter
+import com.agent.llm.ConfirmationDeclinedException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CompletableDeferred
@@ -174,6 +175,11 @@ class ChatJobService(
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.COMPLETED)
             job.reply = stringResponse
+        } catch (e: ConfirmationDeclinedException) {
+            logger.debug { "Confirmation declined for messageId=${job.messageId}" }
+            job.reply = "Confirmation declined by user"
+            job.completedAt = Instant.now()
+            job.status = AtomicReference(ChatterStatus.COMPLETED)
         } catch (e: Exception) {
             logger.error(e) {}
             job.reply = "Error while processing your request."

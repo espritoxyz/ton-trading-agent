@@ -37,7 +37,8 @@ class StonfiAssetsCacheService(
     }
 
     private data class AssetListResponse(
-        val asset_list: List<StonfiAsset> = emptyList()
+        @JsonProperty("asset_list")
+        val assetList: List<StonfiAsset> = emptyList()
     )
 
     private val client: RestClient = RestClient.builder()
@@ -99,7 +100,8 @@ class StonfiAssetsCacheService(
         try {
             refreshAssetsInternal()
         } catch (e: Exception) {
-            logger.warn(e) { "[stonfi] Initial assets fetch failed" }
+            logger.error(e) { "[stonfi] Initial assets fetch failed" }
+            throw e
         }
     }
 
@@ -108,7 +110,7 @@ class StonfiAssetsCacheService(
         try {
             refreshAssetsInternal()
         } catch (e: Exception) {
-            logger.warn(e) { "[stonfi] Scheduled assets refresh failed" }
+            logger.error(e) { "[stonfi] Scheduled assets refresh failed" }
         }
     }
 
@@ -125,7 +127,7 @@ class StonfiAssetsCacheService(
             .retrieve()
             .body(AssetListResponse::class.java)
 
-        val assets = response?.asset_list ?: emptyList()
+        val assets = response?.assetList ?: throw RuntimeException("No asset list in response")
         assetsRef.set(assets)
 
         val indexed = assets.mapNotNull { a ->

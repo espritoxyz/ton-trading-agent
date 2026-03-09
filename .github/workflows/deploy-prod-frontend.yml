@@ -7,8 +7,8 @@ on:
       - "agent-ui/**"
 
 concurrency:
-  group: esprito-prod-frontend
-  cancel-in-progress: true
+  group: esprito-prod-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:

@@ -108,7 +108,8 @@
                 <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ order.symbol || 'Token' }}</span>
               </div>
               <!-- Trigger condition inline -->
-              <div v-if="order.targetPrice && order.direction" class="flex items-center gap-1 mt-0.5">
+              <div v-if="order.targetPrice !== null && order.targetPrice !== undefined && order.direction" class="flex items-center gap-1 mt-0.5">
+
                 <ArrowUp v-if="order.direction === 'UP'" :size="11" class="text-emerald-400 flex-shrink-0" stroke-width="2.5"/>
                 <ArrowDown v-else :size="11" class="text-orange-400 flex-shrink-0" stroke-width="2.5"/>
                 <span class="text-xs text-gray-500 dark:text-gray-400">
@@ -202,7 +203,8 @@
             </div>
             <!-- Right: trigger + action cards -->
             <div class="flex items-stretch gap-2 flex-shrink-0">
-              <div v-if="order.targetPrice && order.direction" class="flex-shrink-0">
+              <div v-if="order.targetPrice !== null && order.targetPrice !== undefined && order.direction" class="flex-shrink-0">
+
                 <div :class="['trigger-card h-full px-4 py-3 rounded-xl border-2', order.direction === 'UP' ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-500/5 dark:border-emerald-500/20' : 'bg-orange-500/10 border-orange-500/30 dark:bg-orange-500/5 dark:border-orange-500/20']">
                   <div class="flex flex-col items-center gap-2">
                     <ArrowUp v-if="order.direction === 'UP'" :size="20" class="text-emerald-400" stroke-width="2.5"/>

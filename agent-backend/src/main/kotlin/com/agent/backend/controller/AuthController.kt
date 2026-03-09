@@ -2,6 +2,8 @@ package com.agent.backend.controller
 
 import com.agent.backend.JwtUtils.parseClaims
 import com.agent.backend.db.rep.AgentUserRepository
+import com.agent.backend.dto.AuthErrorCode
+import com.agent.backend.dto.AuthErrorResponse
 import com.agent.backend.dto.LoginRequest
 import com.agent.backend.dto.ProfileResponse
 import com.agent.backend.dto.RegisterRequest
@@ -12,6 +14,7 @@ import com.agent.backend.dto.VerifyEmailResponse
 import com.agent.backend.security.EncryptionService
 import com.agent.backend.db.entity.ConfirmationIssuer
 import com.agent.backend.service.AuthService
+import com.agent.backend.service.AuthenticationException
 import com.agent.backend.service.EmailVerificationService
 import com.agent.backend.service.NewsletterService
 import com.agent.backend.service.OfflineTokenService
@@ -53,9 +56,16 @@ class AuthController(
         logger.info { "login request: ${body.username}" }
         val tokens = try {
             authService.directLogin(body)
-        } catch (e: jakarta.security.auth.message.AuthException) {
-            logger.warn(e) { "Login failed: auth service returned error" }
-            return ResponseEntity.status(401).body(mapOf("message" to (e.message ?: "Invalid credentials")))
+        } catch (e: AuthenticationException) {
+            logger.warn(e) { "Login failed: ${e.errorCode}" }
+            val status = when (e.errorCode) {
+                AuthErrorCode.ACCOUNT_LOCKED, AuthErrorCode.TOO_MANY_REQUESTS -> HttpStatus.TOO_MANY_REQUESTS
+                AuthErrorCode.ACCOUNT_DISABLED -> HttpStatus.FORBIDDEN
+                AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE
+                else -> HttpStatus.UNAUTHORIZED
+            }
+            return ResponseEntity.status(status)
+                .body(AuthErrorResponse(code = e.errorCode, message = e.message ?: "Authentication failed"))
         }
 
         var savedErr: String? = null
@@ -121,23 +131,25 @@ class AuthController(
             ResponseEntity.status(201).body(resp)
         } catch (e: IllegalArgumentException) {
             logger.warn(e) { "Registration conflict/validation" }
-            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("message" to (e.message ?: "conflict")))
+            val code = if (e.message?.contains("already exists", ignoreCase = true) == true)
+                AuthErrorCode.USER_ALREADY_EXISTS else AuthErrorCode.INVALID_EMAIL
+            ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(AuthErrorResponse(code = code, message = AuthService.humanReadableMessage(code)))
         } catch (e: RestClientResponseException) {
             logger.error(e) { "Keycloak admin API error" }
-            val status = try {
-                e.statusCode
-            } catch (_: Exception) {
-                HttpStatus.BAD_GATEWAY
-            }
-            ResponseEntity.status(status).body(mapOf("message" to (e.responseBodyAsString ?: "upstream error")))
+            val code = AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(AuthErrorResponse(code = code, message = AuthService.humanReadableMessage(code)))
         } catch (e: UnavailableException) {
             logger.error(e) { "Auth provider unavailable" }
+            val code = AuthErrorCode.AUTH_PROVIDER_UNAVAILABLE
             ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(mapOf("message" to (e.message ?: "auth provider unavailable")))
+                .body(AuthErrorResponse(code = code, message = AuthService.humanReadableMessage(code)))
         } catch (e: Exception) {
             logger.error(e) { "Registration failed" }
+            val code = AuthErrorCode.INTERNAL_ERROR
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(mapOf("message" to (e.message ?: "internal error")))
+                .body(AuthErrorResponse(code = code, message = AuthService.humanReadableMessage(code)))
         }
     }
 

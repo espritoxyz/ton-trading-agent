@@ -1,5 +1,6 @@
 package com.agent.backend.db.entity
 
+import com.agent.llm.tool.dto.PriceDirection
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -44,5 +45,14 @@ class PriceTracker(
 
 enum class Direction {
     UP,
-    DOWN,
+    DOWN;
+
+    companion object {
+        // ыыыы
+        fun fromLlmDirection(value: PriceDirection): Direction = when(value) {
+            PriceDirection.UP -> UP
+            PriceDirection.DOWN -> DOWN
+            PriceDirection.EQUAL -> UP
+        }
+    }
 }

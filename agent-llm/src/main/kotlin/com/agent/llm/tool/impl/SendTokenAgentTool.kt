@@ -23,7 +23,7 @@ class SendTokenAgentTool(
 
     override val argsSerializer = serializer<SendTokenArgs>()
 
-    override fun payload(args: SendTokenArgs): String {
+    override suspend fun payload(args: SendTokenArgs): String {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
         bcAdapter.sendTokenToAddress(args.tokenAmount, args.jettonMaster, args.receiverAddress)
 
@@ -33,7 +33,7 @@ class SendTokenAgentTool(
     override fun confirmationText(args: String): String {
         val serArgs = Json.decodeFromString(argsSerializer, args)
         return with(serArgs) {
-            "Send $tokenAmount of $jettonMaster to $receiverAddress"
+            "Send $tokenAmount $jettonTicker to $receiverAddress"
         }
     }
 }
