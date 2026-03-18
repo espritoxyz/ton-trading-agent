@@ -16,7 +16,6 @@ data class WalletTransactionDto(
     val senderAddress: String?,
     val recipientAddress: String?,
     val comment: String?,
-    /** Network fee in nanotons. Present for outgoing transactions only. */
     val feeNano: Long?,
     val createdAt: Instant
 )

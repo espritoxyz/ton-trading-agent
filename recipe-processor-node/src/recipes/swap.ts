@@ -9,7 +9,6 @@ import type {SuccessReport, ErrorReport} from "./reports.js";
 
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
-
 const apiKey = process.env.TONCENTER_API_KEY || "";
 const tonJettonMaster = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c";
 
@@ -30,10 +29,10 @@ export async function swapTokenToToken(
     });
 
     try {
-        const client = new TonClient({endpoint, apiKey});
+        const client = new TonClient({ endpoint, apiKey });
 
-        const {publicKey, secretKey} = await mnemonicToPrivateKey(userMnemonic);
-        const wallet = WalletContractV5R1.create({publicKey, workchain: 0});
+        const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
+        const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
         // swapOfferTokenAmount is expected to be in smallest units (nanojettons) of offer token
@@ -41,8 +40,8 @@ export async function swapTokenToToken(
         console.log("[swap] Computed offerJettons (nanojettons) for jetton->jetton", offerJettons.toString());
 
         const apiClient = new StonApiClient();
-        const offerAddrStr = offerJettonMaster.toString({bounceable: true});
-        const askAddrStr = askJettonMaster.toString({bounceable: true});
+        const offerAddrStr = offerJettonMaster.toString({ bounceable: true });
+        const askAddrStr = askJettonMaster.toString({ bounceable: true });
 
         console.log("[swap] Calling STON.fi simulateSwap (jetton -> jetton)", {
             offerAddress: offerAddrStr,
@@ -60,7 +59,7 @@ export async function swapTokenToToken(
 
         console.log("[swap] simulationResult (jetton -> jetton)", simulationResult);
 
-        const {router: routerInfo, offerUnits, askUnits, minAskUnits} = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -71,7 +70,7 @@ export async function swapTokenToToken(
 
         const minAsk = String(minAskUnits ?? "0");
         const askAmount = Number(askUnits ?? "0")
-        console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> jetton)", {offerUnits, minAsk});
+        console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> jetton)", { offerUnits, minAsk });
 
         const dexContracts = dexFactory(routerInfo);
         const routerWrapper = dexContracts.Router.create(routerInfo.address);
@@ -101,7 +100,7 @@ export async function swapTokenToToken(
 
         await waitSeqno(provider, before);
 
-        const txs = await client.getTransactions(wallet.address, {limit: 5});
+        const txs = await client.getTransactions(wallet.address, { limit: 5 });
         console.log("[swap] Got transactions", txs?.length);
 
         // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
@@ -138,24 +137,24 @@ export async function swapTokenToTon(
 
     console.log("[swap] swapTokenToTon called", {
         userId,
-        jettonMaster: jettonMaster.toString({bounceable: false}),
+        jettonMaster: jettonMaster.toString({ bounceable: false }),
         minimalTonAmount,
         swapTokenAmount,
         preferredPoolAddress,
     });
 
     try {
-        const client = new TonClient({endpoint, apiKey});
+        const client = new TonClient({ endpoint, apiKey });
 
-        const {publicKey, secretKey} = await mnemonicToPrivateKey(userMnemonic);
-        const wallet = WalletContractV5R1.create({publicKey, workchain: 0});
+        const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
+        const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
         const offerJettons = BigInt(swapTokenAmount);
         console.log("[swap] Computed offerJettons (nanojettons)", offerJettons.toString());
 
         const apiClient = new StonApiClient();
-        const jettonAddrStr = jettonMaster.toString({bounceable: true});
+        const jettonAddrStr = jettonMaster.toString({ bounceable: true });
 
         console.log("[swap] Calling STON.fi simulateSwap (jetton -> TON)", {
             offerAddress: jettonAddrStr,
@@ -173,7 +172,7 @@ export async function swapTokenToTon(
 
         console.log("[swap] simulationResult (jetton -> TON)", simulationResult);
 
-        const {router: routerInfo, offerUnits, askUnits, minAskUnits} = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -184,7 +183,7 @@ export async function swapTokenToTon(
 
         const minAsk = String(minAskUnits ?? "0");
         const askAmount = Number(askUnits ?? "0")
-        console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> TON)", {offerUnits, minAsk});
+        console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> TON)", { offerUnits, minAsk });
 
         const dexContracts = dexFactory(routerInfo);
         const routerWrapper = dexContracts.Router.create(routerInfo.address);
@@ -251,24 +250,24 @@ export async function swapTonToToken(
 ): Promise<SuccessReport | ErrorReport> {
 
     console.log("[swap] swapTonToToken called", {
-        jettonMaster: jettonMaster.toString({bounceable: false}),
+        jettonMaster: jettonMaster.toString({ bounceable: false }),
         minimalTokenAmount,
         swapTonAmount,
         preferredPoolAddress,
     });
 
     try {
-        const client = new TonClient({endpoint, apiKey});
+        const client = new TonClient({ endpoint, apiKey });
 
-        const {publicKey, secretKey} = await mnemonicToPrivateKey(userMnemonic);
-        const wallet = WalletContractV5R1.create({publicKey, workchain: 0});
+        const { publicKey, secretKey } = await mnemonicToPrivateKey(userMnemonic);
+        const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
         const offerTON = toNano(swapTonAmount);
         console.log("[swap] Computed offerTON (nanotons)", offerTON.toString());
 
         const apiClient = new StonApiClient();
-        const jettonAddrStr = jettonMaster.toString({bounceable: true});
+        const jettonAddrStr = jettonMaster.toString({ bounceable: true });
 
         console.log("[swap] Calling STON.fi simulateSwap", {
             offerAddress: tonJettonMaster,
@@ -286,7 +285,7 @@ export async function swapTonToToken(
 
         console.log("[swap] simulationResult", simulationResult);
 
-        const {router: routerInfo, offerUnits, askUnits, minAskUnits, askAddress} = simulationResult;
+        const { router: routerInfo, offerUnits, askUnits, minAskUnits, askAddress } = simulationResult;
 
         if (!routerInfo) {
             return {
@@ -297,7 +296,7 @@ export async function swapTonToToken(
 
         const minAsk = String(minAskUnits ?? "0");
         const askAmount = Number(askUnits ?? "0")
-        console.log("[swap] Using simulation-based offerUnits/minAskUnits", {offerUnits, minAsk});
+        console.log("[swap] Using simulation-based offerUnits/minAskUnits", { offerUnits, minAsk });
 
         const dexContracts = dexFactory(routerInfo);
         const routerWrapper = dexContracts.Router.create(routerInfo.address);
@@ -329,7 +328,7 @@ export async function swapTonToToken(
 
         await waitSeqno(provider, before);
 
-        const txs = await client.getTransactions(wallet.address, {limit: 5});
+        const txs = await client.getTransactions(wallet.address, { limit: 5 });
         console.log("[swap] Got transactions", txs?.length);
 
         // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
