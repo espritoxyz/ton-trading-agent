@@ -230,6 +230,8 @@ export async function swapTokenToTon(
             minAskNano: minAsk,
             logPrefix: "Swap (jetton -> TON)",
             allTxs: txs,
+            // Jetton→TON: wallet receives swap-result TON — exclude it from "refund"
+            swapTonReceivedNano: String(askUnits ?? "0"),
         });
     } catch (e: any) {
         console.error("[swap] swapTokenToTon failed", e);
@@ -343,6 +345,8 @@ export async function swapTonToToken(
             minAskNano: minAsk,
             logPrefix: "Swap (TON -> jetton)",
             allTxs: txs,
+            // TON→Jetton: outgoing message includes the swap amount — exclude it from "gas sent"
+            swapTonSentNano: String(offerUnits ?? offerTON.toString()),
         });
     } catch (e: any) {
         console.error("[swap] swapTonToToken failed", e);

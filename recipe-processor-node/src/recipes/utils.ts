@@ -14,14 +14,34 @@ export function findOurTransaction(txs: Transaction[]): Transaction {
 }
 
 /**
- * Compute the real gas cost of a Ston.fi swap from the wallet's perspective:
- *   outgoing attached value  (what the wallet sent to the router)
- * − incoming excess refund   (what Ston.fi sent back as unused gas)
- * − tx.totalFees.coins       (validator compute fee, already deducted from balance)
+ * Compute the real gas cost of a Ston.fi swap from the wallet's perspective.
  *
- * Falls back to tx.totalFees.coins alone when the excess-refund tx is not in the list.
+ * Formula:
+ *   gasSent      = outgoing − swapTonSent       (TON we paid purely for gas)
+ *   gasRefunded  = incoming − swapTonReceived    (TON returned as excess)
+ *   realFee      = gasSent − gasRefunded + validatorFee
+ *
+ * – For TON→Jetton: outgoing includes the swap amount, so we subtract it.
+ * – For Jetton→TON: incoming includes the swap result, so we subtract it.
+ * – For Jetton→Jetton: both adjustments are zero; outgoing is pure gas.
+ *
+ * Only transactions with lt > ourTx.lt are considered incoming
+ * to avoid counting unrelated older transactions.
+ *
+ * Falls back to tx.totalFees.coins when the result is non-positive.
  */
-export function computeRealFee(ourTx: Transaction, allTxs: Transaction[]): number {
+export function computeRealFee(
+    ourTx: Transaction,
+    allTxs: Transaction[],
+    opts?: {
+        /** Jetton→TON: expected TON received from swap (nanotons string) */
+        swapTonReceivedNano?: bigint;
+        /** TON→Jetton: TON amount sent for the swap (nanotons string) */
+        swapTonSentNano?: bigint;
+    },
+): number {
+    const ourLt = ourTx.lt;
+
     // Sum of TON attached to all outgoing messages from our wallet tx
     let outgoing = BigInt(0);
     for (const msg of ourTx.outMessages.values()) {
@@ -31,20 +51,37 @@ export function computeRealFee(ourTx: Transaction, allTxs: Transaction[]): numbe
         }
     }
 
-    // Sum of TON received back from internal messages (excess refunds from Ston.fi)
-    let refund = BigInt(0);
+    // Sum of TON received AFTER our tx (by logical time) — excess refunds + swap results
+    let incoming = BigInt(0);
     for (const tx of allTxs) {
         if (tx === ourTx) continue;
+        if (tx.lt <= ourLt) continue; // ignore older unrelated transactions
         const inInfo = tx.inMessage?.info as any;
         if (inInfo?.type === 'internal' && inInfo?.value?.coins != null) {
-            refund += BigInt(inInfo.value.coins);
+            incoming += BigInt(inInfo.value.coins);
         }
     }
 
     const validatorFee = BigInt(ourTx.totalFees.coins);
-    const realFeeNano = outgoing - refund + validatorFee;
+    const swapTonReceived = opts?.swapTonReceivedNano ?? BigInt(0);
+    const swapTonSent = opts?.swapTonSentNano ?? BigInt(0);
 
-    // Guard against negative (shouldn't happen, but be safe)
+    const gasSent = outgoing - swapTonSent;
+    const gasRefunded = incoming - swapTonReceived;
+    const realFeeNano = gasSent - gasRefunded + validatorFee;
+
+    console.log("[fee] computeRealFee", {
+        outgoing: outgoing.toString(),
+        incoming: incoming.toString(),
+        swapTonSent: swapTonSent.toString(),
+        swapTonReceived: swapTonReceived.toString(),
+        validatorFee: validatorFee.toString(),
+        gasSent: gasSent.toString(),
+        gasRefunded: gasRefunded.toString(),
+        realFeeNano: realFeeNano.toString(),
+    });
+
+    // Guard against non-positive (simulation vs actual mismatch)
     return Number(fromNano(realFeeNano > BigInt(0) ? realFeeNano : validatorFee));
 }
 
@@ -172,11 +209,18 @@ export function buildReport(
         askNano: number;
         logPrefix: string;
         allTxs?: Transaction[];
+        /** Jetton→TON: expected TON received from swap (nanotons string) */
+        swapTonReceivedNano?: string;
+        /** TON→Jetton: TON amount sent for the swap (nanotons string) */
+        swapTonSentNano?: string;
     },
 ): SuccessReport | ErrorReport {
     const { ok, phase, exitCode, reason, desc, txId } = interpretTransaction(tx);
     const totalFee = context.allTxs
-        ? computeRealFee(tx, context.allTxs)
+        ? computeRealFee(tx, context.allTxs, {
+            swapTonReceivedNano: context.swapTonReceivedNano ? BigInt(context.swapTonReceivedNano) : undefined,
+            swapTonSentNano: context.swapTonSentNano ? BigInt(context.swapTonSentNano) : undefined,
+        })
         : Number(fromNano(tx.totalFees.coins));
 
     if (!ok) {

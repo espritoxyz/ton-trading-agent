@@ -183,6 +183,11 @@ export function useChat(userId?: number) {
                 delay = Math.min(delay * 1.6, 4000)
             }
 
+            // Remove stale confirmation bubbles — they can no longer be acted upon
+            messages.value = messages.value.filter(
+                (m) => !m.utilityKind || m.utilityMeta?.messageId !== messageId
+            )
+
             updateSystemMessage(
                 messageId,
                 'Still processing… please try again in a moment.'
