@@ -40,8 +40,10 @@ export async function fetchWalletBalance(walletAddress: string, userId: number):
 
     const jettons: JettonBalance[] = [];
     for (const jetton of jettonsData.balances) {
+        // Normalise to bounceable (EQ...) — same format used everywhere else in the system
+        const masterAddr = jetton.jetton.address.toString({ bounceable: true, testOnly: false });
         jettons.push({
-            jettonMasterAddress: jetton.jetton.address.toString(),
+            jettonMasterAddress: masterAddr,
             balance: jetton.balance.toString(),
             symbol: jetton.jetton.symbol,
             decimals: jetton.jetton.decimals,

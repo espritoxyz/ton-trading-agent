@@ -41,6 +41,8 @@ data class TransactionData(
     val senderAddress: String?,
     val recipientAddress: String?,
     val comment: String?,
+    /** Network fee in nanotons. Present for outgoing transactions only. */
+    val feeNano: Long?,
     val createdAt: Instant
 )
 
@@ -63,6 +65,8 @@ data class SwapData(
     val fromAmount: String,
     val toAmount: String,
     val transactionId: String?,
+    /** Network fee in nanotons paid for the swap transaction. */
+    val feeNano: Long?,
     val createdAt: Instant
 )
 

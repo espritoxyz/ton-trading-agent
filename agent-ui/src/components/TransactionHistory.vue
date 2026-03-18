@@ -60,6 +60,17 @@
 
     <!-- Activity List -->
     <div v-else class="space-y-1">
+      <!-- Desktop column headers -->
+      <div class="hidden lg:flex items-center gap-2.5 px-4 pb-1 text-xs text-gray-400 dark:text-gray-600 font-medium select-none">
+        <div class="w-28 flex-shrink-0">Date</div>
+        <div class="w-7 flex-shrink-0" />
+        <div class="w-36 flex-shrink-0">Type</div>
+        <div class="flex-1">Address</div>
+        <div class="flex-shrink-0">Amount</div>
+        <div class="w-24 flex-shrink-0 text-right">Fee</div>
+        <div class="w-3.5 flex-shrink-0 ml-1" />
+      </div>
+
       <template v-for="item in paginatedActivity" :key="item.itemType + '-' + item.id">
 
         <!-- Swap item -->
@@ -88,6 +99,13 @@
               <span class="text-gray-400 dark:text-gray-400">–{{ item.fromAmount }} {{ item.fromAsset }}</span>
               <span class="text-gray-600 dark:text-gray-600">›</span>
               <span class="text-cyan-400">+{{ item.toAmount }} {{ item.toAsset }}</span>
+            </div>
+            <!-- Fee -->
+            <div class="hidden lg:block w-24 flex-shrink-0 text-right font-mono text-xs tabular-nums">
+              <span v-if="item.feeNano" class="text-gray-500 dark:text-gray-400">
+                –{{ formatFee(item.feeNano) }} TON
+              </span>
+              <span v-else class="text-gray-400 dark:text-gray-600">—</span>
             </div>
             <!-- View link -->
             <a
@@ -155,6 +173,13 @@
                 {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
               </span>
             </div>
+            <!-- Fee column: fixed width so numbers align across all rows -->
+            <div class="hidden lg:block w-24 flex-shrink-0 text-right font-mono text-xs tabular-nums">
+              <span v-if="item.feeNano" class="text-gray-400 dark:text-gray-500">
+                –{{ formatFee(item.feeNano) }} TON
+              </span>
+              <span v-else class="text-gray-500 dark:text-gray-600">—</span>
+            </div>
             <!-- View link -->
             <a
                 :href="getTonViewerUrl(item.transactionHash)"
@@ -166,11 +191,14 @@
               <ExternalLink :size="13" />
             </a>
           </div>
-          <!-- Row 2 (mobile only): date + address -->
+          <!-- Row 2 (mobile only): date + address + fee -->
           <div class="flex items-center gap-2 mt-1.5 pl-9 lg:hidden">
             <span class="text-xs text-gray-500 dark:text-gray-500 tabular-nums">{{ formatDate(item.createdAt) }}</span>
             <span class="text-xs text-cyan-400 font-medium ml-2 truncate">
               {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
+            </span>
+            <span v-if="item.feeNano" class="text-xs font-mono tabular-nums text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0">
+              fee: –{{ formatFee(item.feeNano) }} TON
             </span>
           </div>
         </div>
@@ -248,6 +276,15 @@ const formatAmount = (amountNano: string | number, decimals: number = 9): string
     // Jetton - show 2 decimals
     return amount.toFixed(2)
   }
+}
+
+/**
+ * Format fee from nanotons to readable TON string (4 significant decimals)
+ */
+const formatFee = (feeNano: number): string => {
+  const fee = feeNano / 1_000_000_000
+  // Always show 4 decimal places so numbers stay aligned
+  return fee.toFixed(4)
 }
 
 /**

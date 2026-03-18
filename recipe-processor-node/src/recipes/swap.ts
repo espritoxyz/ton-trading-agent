@@ -4,7 +4,7 @@ import {mnemonicToPrivateKey} from "@ton/crypto";
 import {dexFactory} from "@ston-fi/sdk";
 import {StonApiClient} from "@ston-fi/api";
 import {waitSeqno} from "../utils.js";
-import {buildReport} from "./utils.js";
+import {buildReport, findOurTransaction} from "./utils.js";
 import type {SuccessReport, ErrorReport} from "./reports.js";
 
 
@@ -104,7 +104,8 @@ export async function swapTokenToToken(
         const txs = await client.getTransactions(wallet.address, {limit: 5});
         console.log("[swap] Got transactions", txs?.length);
 
-        const tx: any = txs[0];
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
         return buildReport(tx, {
             router: routerInfo.address,
@@ -115,6 +116,7 @@ export async function swapTokenToToken(
             minAskNano: minAsk,
             askNano: askAmount,
             logPrefix: "Swap (jetton -> jetton)",
+            allTxs: txs,
         });
     } catch (e: any) {
         console.error("[swap] swapTokenToToken failed", e);
@@ -215,7 +217,8 @@ export async function swapTokenToTon(
         const txs = await client.getTransactions(wallet.address, {limit: 5});
         console.log("[swap] Got transactions", txs?.length);
 
-        const tx: any = txs[0];
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
         return buildReport(tx, {
             router: routerInfo.address,
@@ -226,6 +229,7 @@ export async function swapTokenToTon(
             askNano: askAmount,
             minAskNano: minAsk,
             logPrefix: "Swap (jetton -> TON)",
+            allTxs: txs,
         });
     } catch (e: any) {
         console.error("[swap] swapTokenToTon failed", e);
@@ -326,7 +330,8 @@ export async function swapTonToToken(
         const txs = await client.getTransactions(wallet.address, {limit: 5});
         console.log("[swap] Got transactions", txs?.length);
 
-        const tx: any = txs[0];
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
         return buildReport(tx, {
             router: routerInfo.address,
@@ -337,6 +342,7 @@ export async function swapTonToToken(
             askNano: askAmount,
             minAskNano: minAsk,
             logPrefix: "Swap (TON -> jetton)",
+            allTxs: txs,
         });
     } catch (e: any) {
         console.error("[swap] swapTonToToken failed", e);

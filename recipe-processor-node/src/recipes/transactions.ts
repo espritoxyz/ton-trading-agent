@@ -4,7 +4,7 @@ import {mnemonicToPrivateKey} from "@ton/crypto";
 import {Address, SendMode, beginCell, Cell, toNano as coreToNano, fromNano} from "@ton/core";
 import {randomBytes} from "crypto";
 import {bufToHex, sleep, waitForSeqnoIncrement} from "../utils.js";
-import {interpretTransaction} from "./utils.js";
+import {interpretTransaction, findOurTransaction} from "./utils.js";
 import type {SuccessReport, ErrorReport} from "./reports.js";
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
@@ -51,7 +51,8 @@ export async function sendTon(amountTon: number | string, receiverAddress: strin
     console.log("Transfer confirmed");
 
     const txs = await client.getTransactions(wallet.address, { limit: 10 });
-    const tx = txs[0];
+    // Use external-in tx (our send), not any incoming refunds/notifications
+    const tx = findOurTransaction(txs);
     const totalFee = Number(fromNano(tx.totalFees.coins));
 
     const { ok, exitCode, reason, txId } = interpretTransaction(tx);
@@ -144,7 +145,8 @@ export async function sendToken(
     console.log("Jetton transfer confirmed");
 
     const txs = await client.getTransactions(wallet.address, { limit: 10 });
-    const tx = txs[0];
+    // Use external-in tx (our send), not any incoming refunds/notifications
+    const tx = findOurTransaction(txs);
     const totalFee = Number(fromNano(tx.totalFees.coins));
 
     const { ok, exitCode, reason, txId } = interpretTransaction(tx);

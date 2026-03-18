@@ -2,6 +2,52 @@ import {bufToHex} from "../utils.js";
 import {fromNano, Transaction, TransactionActionPhase, TransactionComputePhase} from "@ton/core";
 import {ErrorReport, SuccessReport} from "./reports.js";
 
+/**
+ * Find the transaction that was triggered by an external message (i.e. our wallet's outgoing action).
+ * After a Ston.fi swap, the router sends an excess-TON refund back — that internal incoming tx
+ * lands at txs[0] and has skippedActions:1, which looks like a failure.
+ * The real tx we care about always has inMessage.info.type === 'external-in'.
+ * Falls back to txs[0] if none found.
+ */
+export function findOurTransaction(txs: Transaction[]): Transaction {
+    return txs.find(t => t.inMessage?.info.type === 'external-in') ?? txs[0];
+}
+
+/**
+ * Compute the real gas cost of a Ston.fi swap from the wallet's perspective:
+ *   outgoing attached value  (what the wallet sent to the router)
+ * − incoming excess refund   (what Ston.fi sent back as unused gas)
+ * − tx.totalFees.coins       (validator compute fee, already deducted from balance)
+ *
+ * Falls back to tx.totalFees.coins alone when the excess-refund tx is not in the list.
+ */
+export function computeRealFee(ourTx: Transaction, allTxs: Transaction[]): number {
+    // Sum of TON attached to all outgoing messages from our wallet tx
+    let outgoing = BigInt(0);
+    for (const msg of ourTx.outMessages.values()) {
+        const info = msg.info as any;
+        if (info?.type === 'internal' && info?.value?.coins != null) {
+            outgoing += BigInt(info.value.coins);
+        }
+    }
+
+    // Sum of TON received back from internal messages (excess refunds from Ston.fi)
+    let refund = BigInt(0);
+    for (const tx of allTxs) {
+        if (tx === ourTx) continue;
+        const inInfo = tx.inMessage?.info as any;
+        if (inInfo?.type === 'internal' && inInfo?.value?.coins != null) {
+            refund += BigInt(inInfo.value.coins);
+        }
+    }
+
+    const validatorFee = BigInt(ourTx.totalFees.coins);
+    const realFeeNano = outgoing - refund + validatorFee;
+
+    // Guard against negative (shouldn't happen, but be safe)
+    return Number(fromNano(realFeeNano > BigInt(0) ? realFeeNano : validatorFee));
+}
+
 function explainExitCode(code: number, phase: "compute" | "action"): string {
     if (phase === "compute" && (code === 0 || code === 1)) return "Success (compute phase)";
     if (phase === "action" && code === 0) return "Success (action phase)";
@@ -90,21 +136,18 @@ export function interpretTransaction(tx: Transaction): {
         } else if (!actionPhase) {
             phase = "action";
             reason = "Action phase is missing";
-        } else if (actionPhase.skippedActions === actionPhase.totalActions) {
-            phase = "action";
-            reason = "Action phase has all actions skipped";
         } else {
             const actionCode = actionPhase.resultCode;
             const actionOk = actionPhase.success && actionCode === 0;
 
-            if (!actionOk) {
-                phase = "action";
-                exitCode = actionCode;
-                reason = explainExitCode(exitCode, "action");
-            } else if (desc.aborted) {
+            if (desc.aborted) {
                 phase = "action";
                 exitCode = actionCode;
                 reason = "Transaction was aborted";
+            } else if (!actionOk) {
+                phase = "action";
+                exitCode = actionCode;
+                reason = explainExitCode(exitCode, "action");
             } else {
                 ok = true;
             }
@@ -128,10 +171,13 @@ export function buildReport(
         minAskNano: string;
         askNano: number;
         logPrefix: string;
+        allTxs?: Transaction[];
     },
 ): SuccessReport | ErrorReport {
     const { ok, phase, exitCode, reason, desc, txId } = interpretTransaction(tx);
-    const totalFee = Number(fromNano(tx.totalFees.coins));
+    const totalFee = context.allTxs
+        ? computeRealFee(tx, context.allTxs)
+        : Number(fromNano(tx.totalFees.coins));
 
     if (!ok) {
         const error = reason || "Unknown transaction failure";
