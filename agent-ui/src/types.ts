@@ -61,6 +61,8 @@ export interface Transaction {
     senderAddress?: string
     recipientAddress?: string
     comment?: string
+    /** Network fee in nanotons. Present for outgoing transactions only. */
+    feeNano?: number
     createdAt: string
 }
 
@@ -76,6 +78,8 @@ export interface SwapData {
     fromAmount: string
     toAmount: string
     transactionId?: string
+    /** Network fee in nanotons paid for the swap transaction. */
+    feeNano?: number
     createdAt: string
 }
 
@@ -121,6 +125,8 @@ export interface TransactionData {
     senderAddress?: string
     recipientAddress?: string
     comment?: string
+    /** Network fee in nanotons. Present for outgoing transactions only. */
+    feeNano?: number
     createdAt: string
 }
 

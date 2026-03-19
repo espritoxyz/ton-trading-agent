@@ -281,6 +281,7 @@ class WalletStateService(
             senderAddress = tx.senderAddress,
             recipientAddress = tx.recipientAddress,
             comment = tx.comment,
+            feeNano = tx.feeNano,
             createdAt = tx.createdAt
         )
     }
@@ -296,6 +297,7 @@ class WalletStateService(
         val fromAmount = metadata["fromAmount"]?.toString() ?: "unknown"
         val toAmount = metadata["toAmount"]?.toString() ?: "unknown"
         val transactionId = (metadata["transactionId"] as? String)?.takeIf { it.isNotEmpty() }
+        val feeNano = (metadata["feeNano"] as? Number)?.toLong()
 
         return SwapData(
             id = notification.id!!,
@@ -304,6 +306,7 @@ class WalletStateService(
             fromAmount = fromAmount,
             toAmount = toAmount,
             transactionId = transactionId,
+            feeNano = feeNano,
             createdAt = notification.createdAt
         )
     }

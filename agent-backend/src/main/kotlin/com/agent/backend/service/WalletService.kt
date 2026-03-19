@@ -221,7 +221,8 @@ class WalletService(
         transactionHash: String,
         amountNano: Long,
         recipientAddress: String,
-        comment: String? = null
+        comment: String? = null,
+        feeNano: Long? = null
     ) {
         val wallet = userWalletRepository.findByUserId(userId).orElse(null)
         if (wallet == null) {
@@ -252,6 +253,7 @@ class WalletService(
             senderAddress = wallet.walletAddress,
             recipientAddress = recipientAddress,
             comment = comment,
+            feeNano = feeNano,
             createdAt = Instant.now()
         )
 
@@ -288,7 +290,8 @@ class WalletService(
         recipientAddress: String,
         jettonSymbol: String? = null,
         jettonDecimals: Int? = null,
-        comment: String? = null
+        comment: String? = null,
+        feeNano: Long? = null
     ) {
         val wallet = userWalletRepository.findByUserId(userId).orElse(null)
         if (wallet == null) {
@@ -322,6 +325,7 @@ class WalletService(
             senderAddress = wallet.walletAddress,
             recipientAddress = recipientAddress,
             comment = comment,
+            feeNano = feeNano,
             createdAt = Instant.now()
         )
 

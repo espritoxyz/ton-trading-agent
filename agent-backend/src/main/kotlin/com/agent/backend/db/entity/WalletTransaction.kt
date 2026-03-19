@@ -50,6 +50,10 @@ class WalletTransaction(
     @Column(columnDefinition = "TEXT")
     var comment: String? = null,
 
+    /** Network fee paid for this transaction in nanotons. Null for incoming transactions (fee paid by sender). */
+    @Column(name = "fee_nano")
+    var feeNano: Long? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 )

@@ -1,7 +1,6 @@
 package com.agent.backend.rabbitmq.listeners
 
 import com.agent.backend.db.entity.NotificationType
-import com.agent.backend.llm.ChatJobService
 import com.agent.backend.rabbitmq.RabbitConfig
 import com.agent.backend.service.ExternalToolResultService
 import com.agent.backend.service.NotificationEventPublisher
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class AgentEventsListener(
-    private val jobService: ChatJobService,
     private val externalToolResultService: ExternalToolResultService,
     private val walletService: WalletService,
     private val notificationEventPublisher: NotificationEventPublisher,
@@ -40,13 +38,17 @@ class AgentEventsListener(
                 "agent-llm.send-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val amount = data["tonAmount"]
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
-                    val error = data["error"] as? String
+                    // totalFee arrives as TON (e.g. 0.00314), convert to nanotons
+                    val feeNano = (data["totalFee"] as? Number)
+                        ?.let { (it.toDouble() * 1_000_000_000).toLong() }
 
-                    logger.info { "[agent-events] Processing send-ton result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing send-ton result for user $userId: success=$success, error=$error" }
 
                     // Record outgoing transaction if successful
                     if (success && txId != null && receiver != null) {
@@ -61,7 +63,8 @@ class AgentEventsListener(
                                 userId = userId,
                                 transactionHash = txId,
                                 amountNano = amountNano,
-                                recipientAddress = receiver
+                                recipientAddress = receiver,
+                                feeNano = feeNano
                             )
                         } catch (e: Exception) {
                             logger.error(e) { "[agent-events] Failed to record outgoing TON transaction" }
@@ -91,15 +94,19 @@ class AgentEventsListener(
                 "agent-llm.send-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val amount = data["tokenAmount"]
                     val amountNano = (data["tokenAmountNano"] as? Number)?.toLong()
                     val jettonMaster = data["jettonMaster"] as? String
                     val receiver = data["receiverAddress"] as? String
                     val txId = data["txId"] as? String
-                    val error = data["error"] as? String
 
-                    logger.info { "[agent-events] Processing send-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing send-token result for user $userId: success=$success, error=$error" }
+
+                    val tokenFeeNano = (data["totalFee"] as? Number)
+                        ?.let { (it.toDouble() * 1_000_000_000).toLong() }
 
                     // Record outgoing token transaction if successful
                     if (success && txId != null && receiver != null && jettonMaster != null && amountNano != null) {
@@ -113,6 +120,7 @@ class AgentEventsListener(
                                 recipientAddress = receiver,
                                 jettonSymbol = asset?.symbol,
                                 jettonDecimals = asset?.decimals,
+                                feeNano = tokenFeeNano
                             )
                         } catch (e: Exception) {
                             logger.error(e) { "[agent-events] Failed to record outgoing token transaction" }
@@ -142,14 +150,19 @@ class AgentEventsListener(
                 "agent-llm.swap-ton-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val jettonMaster = data["requestedJettonMaster"] as? String
                     val swapTonAmount = data["requestedSwapTonAmount"] as? Number
-                    val minimalTokenAmount = data["requestedMinimalTokenAmount"] as? Number
-                    val error = data["error"] as? String
+                    // askNano = actual simulated token amount; fall back to requestedMinimalTokenAmount
+                    val receivedTokenAmountNano = (data["askNano"] as? Number)
+                        ?: data["requestedMinimalTokenAmount"] as? Number
+                    val feeNano = (data["totalFee"] as? Number)
+                        ?.let { (it.toDouble() * 1_000_000_000).toLong() }
 
-                    logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-ton-to-token result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {
@@ -168,11 +181,7 @@ class AgentEventsListener(
                     )
 
                     if (success) publishSwapTonToTokenNotification(
-                        userId,
-                        jettonMaster,
-                        swapTonAmount,
-                        minimalTokenAmount,
-                        txId
+                        userId, jettonMaster, swapTonAmount, receivedTokenAmountNano, txId, feeNano
                     )
 
                     logger.info { "[agent-events] Successfully completed swap-ton-to-token result for user $userId" }
@@ -182,14 +191,19 @@ class AgentEventsListener(
                 "agent-llm.swap-token-to-ton.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val jettonMaster = data["requestedJettonMaster"] as? String
                     val swapTokenAmountNano = data["requestedSwapTokenAmount"] as? Number
-                    val minimalTonAmount = data["requestedMinimalTonAmount"] as? Number
-                    val error = data["error"] as? String
+                    // askNano = actual simulated TON amount in nanotons; fall back to requestedMinimalTonAmount
+                    val receivedTonNano = (data["askNano"] as? Number)
+                        ?: data["requestedMinimalTonAmount"] as? Number
+                    val feeNano = (data["totalFee"] as? Number)
+                        ?.let { (it.toDouble() * 1_000_000_000).toLong() }
 
-                    logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-token-to-ton result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {
@@ -207,11 +221,7 @@ class AgentEventsListener(
                     )
 
                     if (success) publishSwapTokenToTonNotification(
-                        userId,
-                        jettonMaster,
-                        swapTokenAmountNano,
-                        minimalTonAmount,
-                        txId
+                        userId, jettonMaster, swapTokenAmountNano, receivedTonNano, txId, feeNano
                     )
 
                     logger.info { "[agent-events] Successfully completed swap-token-to-ton result for user $userId" }
@@ -221,15 +231,18 @@ class AgentEventsListener(
                 "agent-llm.swap-token-to-token.result" -> {
                     val messageId = (data["messageId"] as? String)?.let { UUID.fromString(it) } ?: return
                     val userId = (data["userId"] as? Number)?.toLong() ?: return
-                    val success = data["success"] as? Boolean ?: false
+                    val rawSuccess = data["success"] as? Boolean ?: false
+                    val error = data["error"] as? String
+                    val success = error == null && rawSuccess
                     val txId = data["txId"] as? String
                     val offerJettonMaster = data["requestedOfferJettonMaster"] as? String
                     val askJettonMaster = data["requestedAskJettonMaster"] as? String
                     val swapOfferTokenAmountNano = data["requestedSwapOfferTokenAmount"] as? Number
                     val askTokenAmount = data["askNano"] as? Number
-                    val error = data["error"] as? String
+                    val feeNano = (data["totalFee"] as? Number)
+                        ?.let { (it.toDouble() * 1_000_000_000).toLong() }
 
-                    logger.info { "[agent-events] Processing swap-token-to-token result for user $userId: success=$success" }
+                    logger.info { "[agent-events] Processing swap-token-to-token result for user $userId: success=$success, error=$error" }
 
                     val report = if (success) {
                         if (txId != null) {
@@ -254,6 +267,7 @@ class AgentEventsListener(
                         swapOfferTokenAmountNano = swapOfferTokenAmountNano,
                         askTokenAmountNano = askTokenAmount,
                         txId = txId,
+                        feeNano = feeNano,
                     )
 
                     logger.info { "[agent-events] Successfully completed swap-token-to-token result for user $userId" }
@@ -273,19 +287,29 @@ class AgentEventsListener(
         swapTonAmount: Number?,
         minimalTokenAmount: Number?,
         txId: String?,
+        feeNano: Long? = null,
     ) {
         try {
             val asset = jettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
             val tokenSymbol = asset?.symbol ?: jettonMaster ?: "unknown"
+            val decimals = asset?.decimals ?: 9
+            // swapTonAmount is in TON (human-readable from index.ts)
             val swapTonAmountHuman = swapTonAmount?.toString() ?: "unknown"
-            val minimalTokenAmountHuman = minimalTokenAmount?.toString() ?: "unknown"
-            val metadata = mapOf<String, Any>(
-                "fromAsset" to "TON",
-                "toAsset" to tokenSymbol,
-                "fromAmount" to swapTonAmountHuman,
-                "toAmount" to minimalTokenAmountHuman,
-                "transactionId" to (txId ?: "")
-            )
+            // minimalTokenAmount is in nanojettons (from askNano) — convert to human-readable
+            val receivedTokenAmountHuman = minimalTokenAmount?.let { nano ->
+                BigDecimal(nano.toLong())
+                    .divide(BigDecimal.TEN.pow(decimals), decimals, RoundingMode.HALF_UP)
+                    .stripTrailingZeros()
+                    .toPlainString()
+            } ?: "unknown"
+            val metadata = buildMap<String, Any> {
+                put("fromAsset", "TON")
+                put("toAsset", tokenSymbol)
+                put("fromAmount", swapTonAmountHuman)
+                put("toAmount", receivedTokenAmountHuman)
+                put("transactionId", txId ?: "")
+                feeNano?.let { put("feeNano", it) }
+            }
             val (title, message) = notificationService.generateNotificationText(
                 NotificationType.SWAP_EXECUTED,
                 metadata
@@ -308,6 +332,7 @@ class AgentEventsListener(
         swapTokenAmountNano: Number?,
         minimalTonAmount: Number?,
         txId: String?,
+        feeNano: Long? = null,
     ) {
         try {
             val asset = jettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
@@ -319,13 +344,21 @@ class AgentEventsListener(
                     .stripTrailingZeros()
                     .toPlainString()
             } ?: "unknown"
-            val metadata = mapOf<String, Any>(
-                "fromAsset" to tokenSymbol,
-                "toAsset" to "TON",
-                "fromAmount" to swapTokenAmountHuman,
-                "toAmount" to (minimalTonAmount?.toString() ?: "unknown"),
-                "transactionId" to (txId ?: "")
-            )
+            // minimalTonAmount is in nanotons (from askNano) — convert to human-readable TON
+            val toAmountHuman = minimalTonAmount?.let { nano ->
+                BigDecimal(nano.toLong())
+                    .divide(BigDecimal.TEN.pow(9), 9, RoundingMode.HALF_UP)
+                    .stripTrailingZeros()
+                    .toPlainString()
+            } ?: "unknown"
+            val metadata = buildMap<String, Any> {
+                put("fromAsset", tokenSymbol)
+                put("toAsset", "TON")
+                put("fromAmount", swapTokenAmountHuman)
+                put("toAmount", toAmountHuman)
+                put("transactionId", txId ?: "")
+                feeNano?.let { put("feeNano", it) }
+            }
             val (title, message) = notificationService.generateNotificationText(
                 NotificationType.SWAP_EXECUTED,
                 metadata
@@ -349,6 +382,7 @@ class AgentEventsListener(
         swapOfferTokenAmountNano: Number?,
         askTokenAmountNano: Number?,
         txId: String?,
+        feeNano: Long? = null,
     ) {
         try {
             val offerAsset = offerJettonMaster?.let { assetsCache.getAssetByContractAddress(it) }
@@ -372,13 +406,14 @@ class AgentEventsListener(
                     .toPlainString()
             } ?: "unknown"
 
-            val metadata = mapOf<String, Any>(
-                "fromAsset" to offerSymbol,
-                "toAsset" to askSymbol,
-                "fromAmount" to offerAmountHuman,
-                "toAmount" to askAmountHuman,
-                "transactionId" to (txId ?: ""),
-            )
+            val metadata = buildMap<String, Any> {
+                put("fromAsset", offerSymbol)
+                put("toAsset", askSymbol)
+                put("fromAmount", offerAmountHuman)
+                put("toAmount", askAmountHuman)
+                put("transactionId", txId ?: "")
+                feeNano?.let { put("feeNano", it) }
+            }
 
             val (title, message) = notificationService.generateNotificationText(
                 NotificationType.SWAP_EXECUTED,
