@@ -18,9 +18,9 @@ abstract class BlockchainAdapter(val userId: Long) {
 
     abstract fun sendTokenToAddress(tokenAmount: Double, jettonMaster: String, receiverAddress: String)
 
-    abstract fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double)
+    abstract fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double? = null, offerTonAmount: Double? = null)
 
-    abstract fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double)
+    abstract fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double? = null, offerTokenAmount: Double? = null)
 
     abstract fun swapTokenToToken(
         offerJettonMaster: String,

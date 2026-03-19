@@ -2,6 +2,24 @@ export type ChatRole = 'USER' | 'SYSTEM'
 
 export type ChatUtilityKind = 'CONFIRM_SEND_TON' | 'SHOW_TOP_UP'
 
+export type ChatUpdateStatus = 'queued' | 'processing' | 'completed' | 'error' | 'toolcalling'
+
+export interface ChatConfirmationUpdate {
+    id: string
+    toolName: string
+    text: string
+    status: 'PENDING' | 'APPROVED' | 'DECLINED'
+}
+
+/** Pushed via WebSocket from /topic/chat/{userId} */
+export interface ChatUpdateEvent {
+    messageId: string
+    userId: number
+    status: ChatUpdateStatus
+    reply: string | null
+    confirmations: ChatConfirmationUpdate[]
+}
+
 export interface ChatItem {
     id: string
     role: ChatRole
@@ -61,6 +79,8 @@ export interface Transaction {
     senderAddress?: string
     recipientAddress?: string
     comment?: string
+    /** Network fee in nanotons. Present for outgoing transactions only. */
+    feeNano?: number
     createdAt: string
 }
 
@@ -76,6 +96,8 @@ export interface SwapData {
     fromAmount: string
     toAmount: string
     transactionId?: string
+    /** Network fee in nanotons paid for the swap transaction. */
+    feeNano?: number
     createdAt: string
 }
 
@@ -121,6 +143,8 @@ export interface TransactionData {
     senderAddress?: string
     recipientAddress?: string
     comment?: string
+    /** Network fee in nanotons. Present for outgoing transactions only. */
+    feeNano?: number
     createdAt: string
 }
 

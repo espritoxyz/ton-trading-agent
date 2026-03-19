@@ -60,6 +60,16 @@
 
     <!-- Activity List -->
     <div v-else class="space-y-1">
+      <!-- Desktop column headers -->
+      <div class="hidden lg:flex items-center gap-2.5 px-4 pb-1 text-xs text-gray-400 dark:text-gray-600 font-medium select-none">
+        <div class="w-28 flex-shrink-0">Date</div>
+        <div class="w-7 flex-shrink-0" />
+        <div class="w-36 flex-shrink-0">Type</div>
+        <div class="flex-1 text-right">Details</div>
+        <div class="w-24 flex-shrink-0 text-right">Fee</div>
+        <div class="w-3.5 flex-shrink-0 ml-1" />
+      </div>
+
       <template v-for="item in paginatedActivity" :key="item.itemType + '-' + item.id">
 
         <!-- Swap item -->
@@ -79,15 +89,27 @@
             </div>
             <!-- Label -->
             <span class="text-sm font-semibold text-gray-900 dark:text-white truncate flex-1 lg:flex-none lg:w-36">Swap tokens</span>
-            <!-- Desktop counterparty -->
-            <div class="hidden lg:block flex-1 min-w-0">
+            <!-- Desktop: counterparty + amounts in one flex-1 block -->
+            <div class="hidden lg:flex flex-1 min-w-0 items-center gap-2">
               <span class="text-sm text-cyan-400 font-medium">Ston.fi</span>
+              <div class="ml-auto flex items-center gap-1 font-mono text-xs lg:text-sm flex-shrink-0">
+                <span class="text-gray-400 dark:text-gray-400">–{{ formatSwapAmount(item.fromAmount) }} {{ item.fromAsset }}</span>
+                <span class="text-gray-600 dark:text-gray-600">›</span>
+                <span class="text-cyan-400">+{{ formatSwapAmount(item.toAmount) }} {{ item.toAsset }}</span>
+              </div>
             </div>
-            <!-- Amounts -->
-            <div class="flex-shrink-0 flex items-center gap-1 font-mono text-xs lg:text-sm">
-              <span class="text-gray-400 dark:text-gray-400">–{{ item.fromAmount }} {{ item.fromAsset }}</span>
+            <!-- Mobile: amounts only -->
+            <div class="lg:hidden flex-shrink-0 flex items-center gap-1 font-mono text-xs">
+              <span class="text-gray-400 dark:text-gray-400">–{{ formatSwapAmount(item.fromAmount) }} {{ item.fromAsset }}</span>
               <span class="text-gray-600 dark:text-gray-600">›</span>
-              <span class="text-cyan-400">+{{ item.toAmount }} {{ item.toAsset }}</span>
+              <span class="text-cyan-400">+{{ formatSwapAmount(item.toAmount) }} {{ item.toAsset }}</span>
+            </div>
+            <!-- Fee -->
+            <div class="hidden lg:block w-24 flex-shrink-0 text-right font-mono text-xs tabular-nums">
+              <span v-if="item.feeNano" class="text-gray-500 dark:text-gray-400">
+                –{{ formatFee(item.feeNano) }} TON
+              </span>
+              <span v-else class="text-gray-400 dark:text-gray-600">—</span>
             </div>
             <!-- View link -->
             <a
@@ -139,21 +161,36 @@
               {{ item.direction === 'INCOMING' ? 'Received' : 'Sent' }}
               {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
             </span>
-            <!-- Desktop address -->
-            <div class="hidden lg:block flex-1 min-w-0">
-              <div class="text-sm text-cyan-400 font-medium truncate">
-                {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
+            <!-- Desktop: address + amount in one flex-1 block -->
+            <div class="hidden lg:flex flex-1 min-w-0 items-center gap-2">
+              <div class="min-w-0">
+                <div class="text-sm text-cyan-400 font-medium truncate">
+                  {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
+                </div>
+                <div v-if="item.comment" class="text-xs text-gray-500 dark:text-gray-500 italic truncate mt-0.5">
+                  "{{ item.comment }}"
+                </div>
               </div>
-              <div v-if="item.comment" class="text-xs text-gray-500 dark:text-gray-500 italic truncate mt-0.5">
-                "{{ item.comment }}"
+              <div class="ml-auto flex-shrink-0 font-mono text-sm">
+                <span :class="item.direction === 'INCOMING' ? 'text-green-400' : 'text-gray-300 dark:text-gray-300'">
+                  {{ item.direction === 'INCOMING' ? '+' : '–' }}{{ formatAmount(item.amountNano, item.jettonDecimals || 9) }}
+                  {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
+                </span>
               </div>
             </div>
-            <!-- Amount -->
-            <div class="flex-shrink-0 font-mono text-xs lg:text-sm">
+            <!-- Mobile: amount only -->
+            <div class="lg:hidden flex-shrink-0 font-mono text-xs">
               <span :class="item.direction === 'INCOMING' ? 'text-green-400' : 'text-gray-300 dark:text-gray-300'">
                 {{ item.direction === 'INCOMING' ? '+' : '–' }}{{ formatAmount(item.amountNano, item.jettonDecimals || 9) }}
                 {{ item.assetType === 'TON' ? 'TON' : (item.jettonSymbol || 'Token') }}
               </span>
+            </div>
+            <!-- Fee column: fixed width so numbers align across all rows -->
+            <div class="hidden lg:block w-24 flex-shrink-0 text-right font-mono text-xs tabular-nums">
+              <span v-if="item.feeNano" class="text-gray-400 dark:text-gray-500">
+                –{{ formatFee(item.feeNano) }} TON
+              </span>
+              <span v-else class="text-gray-500 dark:text-gray-600">—</span>
             </div>
             <!-- View link -->
             <a
@@ -166,11 +203,14 @@
               <ExternalLink :size="13" />
             </a>
           </div>
-          <!-- Row 2 (mobile only): date + address -->
+          <!-- Row 2 (mobile only): date + address + fee -->
           <div class="flex items-center gap-2 mt-1.5 pl-9 lg:hidden">
             <span class="text-xs text-gray-500 dark:text-gray-500 tabular-nums">{{ formatDate(item.createdAt) }}</span>
             <span class="text-xs text-cyan-400 font-medium ml-2 truncate">
               {{ formatAddress(item.direction === 'INCOMING' ? item.senderAddress : item.recipientAddress) }}
+            </span>
+            <span v-if="item.feeNano" class="text-xs font-mono tabular-nums text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0">
+              fee: –{{ formatFee(item.feeNano) }} TON
             </span>
           </div>
         </div>
@@ -241,13 +281,24 @@ type ActivityItem = TransactionActivity | SwapActivity
  */
 const formatAmount = (amountNano: string | number, decimals: number = 9): string => {
   const amount = Number(amountNano) / Math.pow(10, decimals)
-  if (decimals === 9) {
-    // TON - show 4 decimals
-    return amount.toFixed(4)
-  } else {
-    // Jetton - show 2 decimals
-    return amount.toFixed(2)
-  }
+  // Always show 4 decimal places for amounts
+  return amount.toFixed(4)
+}
+
+/**
+ * Format a human-readable swap amount to 4 decimal places.
+ */
+const formatSwapAmount = (value: string | number): string => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n.toFixed(4) : String(value)
+}
+
+/**
+ * Format fee from nanotons to readable TON string (2 decimal places)
+ */
+const formatFee = (feeNano: number): string => {
+  const fee = feeNano / 1_000_000_000
+  return fee.toFixed(2)
 }
 
 /**

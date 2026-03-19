@@ -1,6 +1,7 @@
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { api } from './useApi.ts'
-import type {ChatItem, ChatRole} from '../types.ts'
+import { onChatUpdate, chatUpdateCache } from './useStompClient.ts'
+import type { ChatItem, ChatRole, ChatUpdateEvent } from '../types.ts'
 
 type PostResp = {
     messageId: string
@@ -11,15 +12,6 @@ type PostResp = {
     queuedAt: string
     completedAt?: string | null
     delivery?: { mode: 'poll' | 'sse' | 'websocket'; resultUrl?: string | null }
-}
-
-type StatusResp = {
-    messageId: string
-    userId: number
-    status: 'queued' | 'processing' | 'completed' | 'error' | 'toolcalling'
-    reply: string | null
-    queuedAt: string
-    completedAt?: string | null
 }
 
 type BackendChatMessage = {
@@ -51,20 +43,15 @@ export function useChat(userId?: number) {
     const messages = ref<ChatItem[]>(loadMessages(storageKey))
     const sending = ref(false)
 
-    watch(
-        messages,
-        (val) => {
-            if (typeof window === 'undefined') return
-            localStorage.setItem(storageKey, JSON.stringify(val))
-        },
-        { deep: true }
-    )
+    // messageId of the currently in-flight request (null when idle)
+    const activeSendingMessageId = ref<string | null>(null)
 
-    function push(
-        role: ChatRole,
-        content: string,
-        backendMessageId?: string
-    ) {
+    watch(messages, (val) => {
+        if (typeof window === 'undefined') return
+        localStorage.setItem(storageKey, JSON.stringify(val))
+    }, { deep: true })
+
+    function push(role: ChatRole, content: string, backendMessageId?: string) {
         messages.value.push({
             id: `${role}_${Date.now()}_${Math.random().toString(16).slice(2)}`,
             role,
@@ -76,25 +63,81 @@ export function useChat(userId?: number) {
 
     function buildHistory(): BackendChatMessage[] {
         const all = messages.value
-        const slice =
-            all.length <= HISTORY_LIMIT ? all : all.slice(all.length - HISTORY_LIMIT)
-        return slice.map((m) => ({
-            type: m.role,
-            content: m.content
-        }))
+        const slice = all.length <= HISTORY_LIMIT ? all : all.slice(all.length - HISTORY_LIMIT)
+        return slice.map((m) => ({ type: m.role, content: m.content }))
     }
 
     function updateSystemMessage(messageId: string, newContent: string) {
-        console.debug(`Updating message ${messageId} with ${newContent}`)
-        const idx = messages.value
-            .slice()
-            .reverse()
-            .find((m) => m.backendMessageId === messageId)
-        if (!idx) {
-            console.warn(`Could not locate message ${messageId}`)
-            return
+        const msg = messages.value.slice().reverse().find((m) => m.backendMessageId === messageId)
+        if (!msg) { console.warn(`[Chat] Cannot find bubble for messageId=${messageId}`); return }
+        msg.content = newContent
+    }
+
+    function removeConfirmationBubbles(messageId: string) {
+        messages.value = messages.value.filter(
+            (m) => !m.utilityKind || m.utilityMeta?.messageId !== messageId
+        )
+    }
+
+    /** Apply a WS event to local state. Returns true if the status is terminal. */
+    function applyUpdate(event: ChatUpdateEvent): boolean {
+        const { messageId, status, reply, confirmations } = event
+
+        if (status === 'completed') {
+            removeConfirmationBubbles(messageId)
+            updateSystemMessage(messageId, reply || '…')
+            return true
         }
-        idx.content = newContent
+
+        if (status === 'error') {
+            removeConfirmationBubbles(messageId)
+            updateSystemMessage(messageId, reply || 'Error processing request.')
+            return true
+        }
+
+        if (status === 'toolcalling' && confirmations?.length) {
+            updateSystemMessage(messageId, 'Waiting for confirmations...')
+            for (const c of confirmations) {
+                const exists = messages.value.some((m) => m.backendMessageId === c.id)
+                if (!exists && c.status === 'PENDING') {
+                    const utilityKind = c.toolName === 'show_top_up_dialog'
+                        ? 'SHOW_TOP_UP' as const
+                        : 'CONFIRM_SEND_TON' as const
+                    messages.value.push({
+                        id: `CONFIRM_${c.id}`,
+                        role: 'SYSTEM',
+                        content: c.text,
+                        backendMessageId: c.id,
+                        createdAt: new Date().toISOString(),
+                        utilityKind,
+                        utilityMeta: { messageId, confirmationId: c.id }
+                    })
+                }
+            }
+        }
+
+        if (status === 'processing') {
+            updateSystemMessage(messageId, 'Processing...')
+        }
+
+        return false
+    }
+
+    const stopChatListener = onChatUpdate((event: ChatUpdateEvent) => {
+        // Always apply — even if this message wasn't sent from this tab
+        const terminal = applyUpdate(event)
+        if (activeSendingMessageId.value === event.messageId && terminal) {
+            sending.value = false
+            activeSendingMessageId.value = null
+        }
+    })
+    onUnmounted(() => stopChatListener())
+
+    // On init: replay any cached events for bubbles that are still "Thinking…"
+    // This handles the case where the user switched tabs while waiting
+    for (const [msgId, event] of chatUpdateCache) {
+        const hasStale = messages.value.some((m) => m.backendMessageId === msgId)
+        if (hasStale) applyUpdate(event)
     }
 
     async function sendMessage(text: string) {
@@ -102,104 +145,41 @@ export function useChat(userId?: number) {
         if (!trimmed) return
 
         const history = buildHistory()
-
-        // optimistic user bubble
         push('USER', trimmed)
         sending.value = true
 
         try {
-            const payload = {
+            const { data } = await api.post<PostResp>('/chat/message', {
                 content: trimmed,
                 history
-            }
-
-            const { data } = await api.post<PostResp>('/chat/message', payload)
+            })
 
             const messageId = data.messageId
 
-            // placeholder system bubble linked to messageId
-            push('SYSTEM', 'Thinking…', messageId)
-
-            // if backend already completed synchronously (unlikely, but possible)
+            // Fast path: backend already completed (shouldn't happen, but handle it)
             if (data.status === 'completed' && data.reply) {
-                updateSystemMessage(messageId, data.reply)
+                push('SYSTEM', data.reply, messageId)
+                sending.value = false
                 return
             }
 
-            let requestedConfirmations = false;
+            push('SYSTEM', 'Thinking…', messageId)
+            activeSendingMessageId.value = messageId
 
-            // queued/processing: poll
-            let delay = 600
-            for (let i = 0; i < 20; i++) {
-                await new Promise((r) => setTimeout(r, delay))
-                const status = await poll(messageId)
-                console.debug(`Current message status: ${status.status}=${status.reply}`)
-                if (status.status === 'completed' && status.reply) {
-                    updateSystemMessage(messageId, status.reply)
-                    return
+            // WS event may have arrived before we got here — check cache
+            const cached = chatUpdateCache.get(messageId)
+            if (cached) {
+                const terminal = applyUpdate(cached)
+                if (terminal) {
+                    sending.value = false
+                    activeSendingMessageId.value = null
                 }
-                if (status.status === 'error') {
-                    updateSystemMessage(messageId, status.reply || 'Error processing request.')
-                    return
-                }
-                if (status.status === 'toolcalling') {
-                    updateSystemMessage(messageId, 'Calling AI tools...')
-                    // Do NOT return; continue to fetch confirmations below
-                }
-                // fetch pending confirmations and render them as utility bubbles
-                const confs = await listConfirmations(messageId)
-                console.debug('[useChat] confirmations for', messageId, confs)
-
-                if (confs.length > 0 && confs.some(conf => conf.status !== 'APPROVED')) {
-                    updateSystemMessage(messageId, 'Waiting for confirmations...')
-                    requestedConfirmations = true
-                } else if (requestedConfirmations) {
-                    updateSystemMessage(messageId, "Processing...")
-                    requestedConfirmations = false
-                }
-
-                for (const c of confs) {
-                    const exists = messages.value.some(m => m.backendMessageId === c.id)
-                    if (!exists && c.status === 'PENDING') {
-                        // Map toolName to utilityKind
-                        let utilityKind: 'CONFIRM_SEND_TON' | 'SHOW_TOP_UP' = 'CONFIRM_SEND_TON'
-                        if (c.toolName === 'show_top_up_dialog') {
-                            utilityKind = 'SHOW_TOP_UP'
-                        } else if (c.toolName === 'send_ton_to_address') {
-                            utilityKind = 'CONFIRM_SEND_TON'
-                        }
-
-                        messages.value.push({
-                            id: `CONFIRM_${c.id}`,
-                            role: 'SYSTEM',
-                            content: c.text,
-                            backendMessageId: c.id,
-                            createdAt: new Date().toISOString(),
-                            utilityKind,
-                            utilityMeta: { messageId, confirmationId: c.id }
-                        })
-                    }
-                }
-                delay = Math.min(delay * 1.6, 4000)
             }
-
-            updateSystemMessage(
-                messageId,
-                'Still processing… please try again in a moment.'
-            )
-        } finally {
+            // Otherwise the onChatUpdate listener above will handle it
+        } catch {
             sending.value = false
+            activeSendingMessageId.value = null
         }
-    }
-
-    async function poll(messageId: string) {
-        const { data } = await api.get<StatusResp>(`/chat/messages/${messageId}`)
-        return data
-    }
-
-    async function listConfirmations(messageId: string) {
-        const { data } = await api.get<Array<{ id: string; toolName: string; text: string; status: 'PENDING' | 'APPROVED' | 'DECLINED' }>>(`/chat/messages/${messageId}/confirmations`)
-        return data
     }
 
     function clearChat() {
@@ -208,6 +188,6 @@ export function useChat(userId?: number) {
             localStorage.removeItem(storageKey)
         }
     }
-    
+
     return { messages, sending, sendMessage, clearChat } as const
 }

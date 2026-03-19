@@ -41,6 +41,7 @@ data class TransactionData(
     val senderAddress: String?,
     val recipientAddress: String?,
     val comment: String?,
+    val feeNano: Long?,
     val createdAt: Instant
 )
 
@@ -63,6 +64,7 @@ data class SwapData(
     val fromAmount: String,
     val toAmount: String,
     val transactionId: String?,
+    val feeNano: Long?,
     val createdAt: Instant
 )
 

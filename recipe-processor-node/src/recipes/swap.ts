@@ -3,35 +3,16 @@ import {Address, internal, SendMode, toNano} from "@ton/core";
 import {mnemonicToPrivateKey} from "@ton/crypto";
 import {dexFactory} from "@ston-fi/sdk";
 import {StonApiClient} from "@ston-fi/api";
-import {bufToHex, waitSeqno} from "../utils.js";
+import {waitSeqno} from "../utils.js";
+import {buildReport, findOurTransaction} from "./utils.js";
+import type {SuccessReport, ErrorReport} from "./reports.js";
 
-
-export interface SuccessReport {
-    ok: true;
-    userId: number;
-    txId: string;
-    router: string;     // friendly address
-    pool: string;       // friendly address
-    pTon: string;       // friendly address
-    jettonMinter: string; // friendly address of requested jetton
-    offerNanotons: string; // string to avoid bigint JSON issues
-    minAskNano: string;    // string
-    askNano: number;
-}
-
-export interface ErrorReport {
-    ok: false;
-    userId: number;
-    error: string;
-    details?: any;
-}
 
 const endpoint = process.env.TONCENTER_ENDPOINT || "https://toncenter.com/api/v2/jsonRPC";
 const apiKey = process.env.TONCENTER_API_KEY || "";
 const tonJettonMaster = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c";
 
 export async function swapTokenToToken(
-    userId: number,
     offerJettonMaster: Address,
     askJettonMaster: Address,
     minimalAskTokenAmount: number,
@@ -40,9 +21,8 @@ export async function swapTokenToToken(
     userMnemonic: string[],
 ): Promise<SuccessReport | ErrorReport> {
     console.log("[swap] swapTokenToToken called", {
-        userId,
-        offerJettonMaster: offerJettonMaster.toString({ bounceable: false }),
-        askJettonMaster: askJettonMaster.toString({ bounceable: false }),
+        offerJettonMaster: offerJettonMaster.toString({bounceable: false}),
+        askJettonMaster: askJettonMaster.toString({bounceable: false}),
         minimalAskTokenAmount,
         swapOfferTokenAmount,
         preferredPoolAddress,
@@ -84,9 +64,7 @@ export async function swapTokenToToken(
         if (!routerInfo) {
             return {
                 ok: false,
-                userId,
                 error: "STON.fi simulateSwap did not return router info",
-                details: simulationResult,
             };
         }
 
@@ -125,14 +103,10 @@ export async function swapTokenToToken(
         const txs = await client.getTransactions(wallet.address, { limit: 5 });
         console.log("[swap] Got transactions", txs?.length);
 
-        const raw = typeof (txs[0] as any).hash === "function" ? (txs[0] as any).hash() : (txs[0] as any).hash;
-        const txId = bufToHex(raw);
-        console.log("[swap] Swap (jetton -> jetton) succeeded with txId", txId);
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
-        return {
-            ok: true,
-            userId,
-            txId,
+        return buildReport(tx, {
             router: routerInfo.address,
             pool: routerInfo.address,
             pTon: routerInfo.ptonMasterAddress,
@@ -140,21 +114,19 @@ export async function swapTokenToToken(
             offerNanotons: String(offerUnits ?? offerJettons.toString()),
             minAskNano: minAsk,
             askNano: askAmount,
-        };
-
+            logPrefix: "Swap (jetton -> jetton)",
+            allTxs: txs,
+        });
     } catch (e: any) {
         console.error("[swap] swapTokenToToken failed", e);
         return {
             ok: false,
-            userId,
             error: e?.message || "Swap failed",
-            details: e?.response?.data ?? (e?.stack || String(e)),
         };
     }
 }
 
 export async function swapTokenToTon(
-
     userId: number,
     jettonMaster: Address,
     minimalTonAmount: number,
@@ -178,13 +150,10 @@ export async function swapTokenToTon(
         const wallet = WalletContractV5R1.create({ publicKey, workchain: 0 });
         const provider = client.open(wallet);
 
-        // Here swapTokenAmount is already expected to be in smallest jetton units (nanojettons)
         const offerJettons = BigInt(swapTokenAmount);
         console.log("[swap] Computed offerJettons (nanojettons)", offerJettons.toString());
 
-        // 1. Simulate the swap with STON.fi API (mainnet-first workflow)
         const apiClient = new StonApiClient();
-        // STON.fi API expects standard bounceable (EQ...) jetton addresses
         const jettonAddrStr = jettonMaster.toString({ bounceable: true });
 
         console.log("[swap] Calling STON.fi simulateSwap (jetton -> TON)", {
@@ -208,23 +177,18 @@ export async function swapTokenToTon(
         if (!routerInfo) {
             return {
                 ok: false,
-                userId,
                 error: "STON.fi simulateSwap did not return router info",
-                details: simulationResult,
             };
         }
 
-        // Recommended by STON.fi: reuse offerUnits and minAskUnits from simulation
         const minAsk = String(minAskUnits ?? "0");
         const askAmount = Number(askUnits ?? "0")
         console.log("[swap] Using simulation-based offerUnits/minAskUnits (jetton -> TON)", { offerUnits, minAsk });
 
-        // 2. Build DEX contracts from router metadata
         const dexContracts = dexFactory(routerInfo);
         const routerWrapper = dexContracts.Router.create(routerInfo.address);
         const routerOC = client.open(routerWrapper);
 
-        // Optional pTON helper when TON is in the route
         const pTon = dexContracts.pTON.create(routerInfo.ptonMasterAddress);
 
         const txParams = await routerOC.getSwapJettonToTonTxParams({
@@ -249,17 +213,13 @@ export async function swapTokenToTon(
 
         await waitSeqno(provider, before);
 
-        const txs = await client.getTransactions(wallet.address, { limit: 5 });
+        const txs = await client.getTransactions(wallet.address, {limit: 5});
         console.log("[swap] Got transactions", txs?.length);
 
-        const raw = typeof (txs[0] as any).hash === "function" ? (txs[0] as any).hash() : (txs[0] as any).hash;
-        const txId = bufToHex(raw);
-        console.log("[swap] Swap (jetton -> TON) succeeded with txId", txId);
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
-        return {
-            ok: true,
-            userId,
-            txId,
+        return buildReport(tx, {
             router: routerInfo.address,
             pool: routerInfo.address,
             pTon: routerInfo.ptonMasterAddress,
@@ -267,21 +227,21 @@ export async function swapTokenToTon(
             offerNanotons: String(offerUnits ?? offerJettons.toString()),
             askNano: askAmount,
             minAskNano: minAsk,
-        };
-
+            logPrefix: "Swap (jetton -> TON)",
+            allTxs: txs,
+            // Jetton→TON: wallet receives swap-result TON — exclude it from "refund"
+            swapTonReceivedNano: String(askUnits ?? "0"),
+        });
     } catch (e: any) {
         console.error("[swap] swapTokenToTon failed", e);
         return {
             ok: false,
-            userId,
             error: e?.message || "Swap failed",
-            details: e?.response?.data ?? (e?.stack || String(e)),
         };
     }
 }
 
 export async function swapTonToToken(
-    userId: number,
     jettonMaster: Address,
     minimalTokenAmount: number,
     swapTonAmount: number,
@@ -290,7 +250,6 @@ export async function swapTonToToken(
 ): Promise<SuccessReport | ErrorReport> {
 
     console.log("[swap] swapTonToToken called", {
-        userId,
         jettonMaster: jettonMaster.toString({ bounceable: false }),
         minimalTokenAmount,
         swapTonAmount,
@@ -307,9 +266,7 @@ export async function swapTonToToken(
         const offerTON = toNano(swapTonAmount);
         console.log("[swap] Computed offerTON (nanotons)", offerTON.toString());
 
-        // 1. Simulate the swap with STON.fi API (mainnet-first workflow)
         const apiClient = new StonApiClient();
-        // STON.fi API expects standard bounceable (EQ...) jetton addresses
         const jettonAddrStr = jettonMaster.toString({ bounceable: true });
 
         console.log("[swap] Calling STON.fi simulateSwap", {
@@ -333,23 +290,18 @@ export async function swapTonToToken(
         if (!routerInfo) {
             return {
                 ok: false,
-                userId,
                 error: "STON.fi simulateSwap did not return router info",
-                details: simulationResult,
             };
         }
 
-        // Recommended by STON.fi: reuse offerUnits and minAskUnits from simulation
         const minAsk = String(minAskUnits ?? "0");
         const askAmount = Number(askUnits ?? "0")
         console.log("[swap] Using simulation-based offerUnits/minAskUnits", { offerUnits, minAsk });
 
-        // 2. Build DEX contracts from router metadata
         const dexContracts = dexFactory(routerInfo);
         const routerWrapper = dexContracts.Router.create(routerInfo.address);
         const routerOC = client.open(routerWrapper);
 
-        // Optional pTON helper when TON is in the route
         const pTon = dexContracts.pTON.create(routerInfo.ptonMasterAddress);
 
         const txParams = await routerOC.getSwapTonToJettonTxParams({
@@ -379,14 +331,10 @@ export async function swapTonToToken(
         const txs = await client.getTransactions(wallet.address, { limit: 5 });
         console.log("[swap] Got transactions", txs?.length);
 
-        const raw = typeof (txs[0] as any).hash === "function" ? (txs[0] as any).hash() : (txs[0] as any).hash;
-        const txId = bufToHex(raw);
-        console.log("[swap] Swap succeeded with txId", txId);
+        // findOurTransaction picks the external-in tx (our swap), not the Ston.fi excess-TON refund
+        const tx: any = findOurTransaction(txs);
 
-        return {
-            ok: true,
-            userId,
-            txId,
+        return buildReport(tx, {
             router: routerInfo.address,
             pool: routerInfo.address,
             pTon: routerInfo.ptonMasterAddress,
@@ -394,16 +342,16 @@ export async function swapTonToToken(
             offerNanotons: String(offerUnits ?? offerTON.toString()),
             askNano: askAmount,
             minAskNano: minAsk,
-        };
-
+            logPrefix: "Swap (TON -> jetton)",
+            allTxs: txs,
+            // TON→Jetton: outgoing message includes the swap amount — exclude it from "gas sent"
+            swapTonSentNano: String(offerUnits ?? offerTON.toString()),
+        });
     } catch (e: any) {
         console.error("[swap] swapTonToToken failed", e);
         return {
-
             ok: false,
-            userId,
             error: e?.message || "Swap failed",
-            details: e?.response?.data ?? (e?.stack || String(e)),
         };
     }
 }

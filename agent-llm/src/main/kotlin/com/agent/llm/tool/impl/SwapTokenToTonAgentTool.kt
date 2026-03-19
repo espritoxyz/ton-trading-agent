@@ -17,8 +17,10 @@ class SwapTokenToTonAgentTool(
 ) : AgentTool<SwapTokenToTonArgs>(), ConfirmationRequired {
     override val definition = ToolDefinition(
         name = "swap_token_to_ton",
-        description = "Swap user's token specified by jetton master to TON" +
-                "using minimal requested TON amount ${additionalDescriptionText()}",
+        description = "Swap user's token to TON via Ston.fi. " +
+                "Provide either minimalTonAmount (how much TON to receive at minimum — the required token spend is calculated automatically) " +
+                "OR offerTokenAmount (exact number of tokens to spend — TON received depends on the current rate). " +
+                "Exactly one of the two must be non-null. ${additionalDescriptionText()}",
         argumentsSchema = ExplytJsonSchema(SwapTokenToTonArgs::class)
     )
 
@@ -26,15 +28,22 @@ class SwapTokenToTonAgentTool(
 
     override suspend fun payload(args: SwapTokenToTonArgs): String = with(args) {
         logger.debug { "FIRED \"${definition.name}\" TOOL with $args" }
-        bcAdapter.swapTokenToTon(jettonMaster, minimalTonAmount)
-
-        return "Swap of $jettonTicker to receive at least $minimalTonAmount TON initiated"
+        require(minimalTonAmount != null || offerTokenAmount != null) {
+            "swap_token_to_ton: either minimalTonAmount or offerTokenAmount must be provided"
+        }
+        bcAdapter.swapTokenToTon(jettonMaster, minimalTonAmount, offerTokenAmount)
+        return buildResultMessage(args)
     }
 
     override fun confirmationText(args: String): String {
-        val serArgs = Json.decodeFromString(argsSerializer, args)
-        return with(serArgs) {
-            "Swap token $jettonTicker to receive at least $minimalTonAmount TON"
-        }
+        val a = Json.decodeFromString(argsSerializer, args)
+        return buildResultMessage(a)
+    }
+
+    private fun buildResultMessage(a: SwapTokenToTonArgs): String = when {
+        a.offerTokenAmount != null ->
+            "Swap ${a.offerTokenAmount} ${a.jettonTicker} → TON"
+        else ->
+            "Swap ${a.jettonTicker} → TON, receive at least ${a.minimalTonAmount} TON"
     }
 }

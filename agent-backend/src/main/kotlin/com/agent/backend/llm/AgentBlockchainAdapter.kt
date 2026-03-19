@@ -146,7 +146,7 @@ class AgentBlockchainAdapter(
     }
 
 
-    override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double) {
+    override fun swapTonToToken(jettonMaster: String, minimalTokenAmount: Double?, offerTonAmount: Double?) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
         val mnemonicWords = getUserMnemonicWords()
@@ -155,47 +155,42 @@ class AgentBlockchainAdapter(
             poolsCache.getBestPoolByTokenAndTon(jettonMaster)
         } catch (e: StonfiPoolsCacheService.NoSupportedPoolException) {
             val msg = "Swap TON->token rejected: unsupported pool for $jettonMaster"
-            externalToolResultService.complete(
-                messageId = messageId,
-                toolName = "swap_ton_to_token",
-                result = msg,
-            )
+            externalToolResultService.complete(messageId = messageId, toolName = "swap_ton_to_token", result = msg)
             logger.warn(e) { msg }
             return
         } catch (e: StonfiPoolsCacheService.LowTvlPoolException) {
             val msg = "Swap TON->token rejected: low TVL for $jettonMaster"
-            externalToolResultService.complete(
-                messageId = messageId,
-                toolName = "swap_ton_to_token",
-                result = msg,
-            )
-            logger.warn(e) { "Swap TON->token rejected: low TVL for $jettonMaster" }
+            externalToolResultService.complete(messageId = messageId, toolName = "swap_ton_to_token", result = msg)
+            logger.warn(e) { msg }
             return
         }
         val poolAddress = bestPool?.address
 
-        // We still need numeric rate internally for swap calculation; reuse price logic here.
-        val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
-        val swapTonAmount = tokenToTonRate?.let {
-            // minimalTokenAmount tokens * (TON per token) = required TON (mid-price estimate)
-            (minimalTokenAmount * it)
-                .toBigDecimal()
-                .setScale(6, RoundingMode.HALF_UP)
-                .toDouble()
+        // If user explicitly specified how much TON to spend — use it directly.
+        // Otherwise back-calculate from minimalTokenAmount via mid-price rate.
+        val swapTonAmount: Double? = if (offerTonAmount != null) {
+            offerTonAmount
+        } else {
+            val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
+            tokenToTonRate?.let {
+                // minimalTokenAmount tokens * (TON per token) = required TON (mid-price estimate)
+                ((minimalTokenAmount ?: 0.0) * it)
+                    .toBigDecimal()
+                    .setScale(6, RoundingMode.HALF_UP)
+                    .toDouble()
+            }
         }
-
 
         val data = mutableMapOf(
             "messageId" to messageId.toString(),
             "userId" to userId,
             "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
-            "minimalTokenAmount" to minimalTokenAmount,
+            "minimalTokenAmount" to (minimalTokenAmount ?: 0.0),
             "poolAddress" to poolAddress,
             "mnemonic" to mnemonicWords
         )
         if (swapTonAmount != null) data["swapTonAmount"] = swapTonAmount
-
 
         val payload = mapOf(
             "type" to "agent-llm.swap-ton-to-token",
@@ -312,7 +307,7 @@ class AgentBlockchainAdapter(
     }
 
 
-    override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double) {
+    override fun swapTokenToTon(jettonMaster: String, minimalTonAmount: Double?, offerTokenAmount: Double?) {
         val wallet = walletService.getUserWallet(userId)
             ?: throw IllegalStateException("User $userId has no wallet")
         val mnemonicWords = getUserMnemonicWords()
@@ -340,30 +335,35 @@ class AgentBlockchainAdapter(
         }
 
         val poolAddress = bestPool?.address
-        val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
+        val asset = assetsCache.getAssetByContractAddress(jettonMaster)
+        val decimals = asset?.decimals ?: 9
+        val factor = BigDecimal.TEN.pow(decimals)
 
-        // Compute how many tokens are needed, then convert to smallest units (nanojettons)
-        val swapTokenAmountNano: Long? = tokenToTonRate?.let { rate ->
-            // minimalTonAmount TON / (TON per token) = required tokens (mid-price estimate)
-            val tokens = BigDecimal.valueOf(minimalTonAmount) // tokens in units (not nano)
-                .divide(BigDecimal.valueOf(rate), 12, RoundingMode.HALF_UP)
-
-            val asset = assetsCache.getAssetByContractAddress(jettonMaster)
-            val decimals = asset?.decimals ?: 9 // fallback if missing
-            val factor = BigDecimal.TEN.pow(decimals)
-
-            tokens.multiply(factor)
+        // If user specified exact offer amount — convert directly to nanojettons.
+        // Otherwise back-calculate from minimalTonAmount via mid-price rate.
+        val swapTokenAmountNano: Long? = if (offerTokenAmount != null) {
+            BigDecimal.valueOf(offerTokenAmount)
+                .multiply(factor)
                 .setScale(0, RoundingMode.CEILING)
                 .toLong()
+        } else {
+            val (tokenToTonRate, _) = computeTokenToTonInternal(jettonMaster)
+            tokenToTonRate?.let { rate ->
+                // minimalTonAmount TON / (TON per token) = required tokens (mid-price estimate)
+                BigDecimal.valueOf(minimalTonAmount ?: 0.0)
+                    .divide(BigDecimal.valueOf(rate), 12, RoundingMode.HALF_UP)
+                    .multiply(factor)
+                    .setScale(0, RoundingMode.CEILING)
+                    .toLong()
+            }
         }
-
 
         val data = mutableMapOf(
             "messageId" to messageId.toString(),
             "userId" to userId,
             "walletAddress" to wallet.walletAddress,
             "jettonMaster" to jettonMaster,
-            "minimalTonAmount" to minimalTonAmount,
+            "minimalTonAmount" to (minimalTonAmount ?: 0.0),
             "poolAddress" to poolAddress,
             "mnemonic" to mnemonicWords
         )

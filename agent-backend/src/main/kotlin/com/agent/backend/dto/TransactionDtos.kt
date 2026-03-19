@@ -16,6 +16,7 @@ data class WalletTransactionDto(
     val senderAddress: String?,
     val recipientAddress: String?,
     val comment: String?,
+    val feeNano: Long?,
     val createdAt: Instant
 )
 

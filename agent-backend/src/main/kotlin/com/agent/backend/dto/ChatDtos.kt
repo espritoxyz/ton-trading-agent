@@ -43,3 +43,26 @@ data class ChatMessageStatusResponse(
     val queuedAt: Instant,
     val completedAt: Instant?
 )
+
+/** A single confirmation item sent inside ChatUpdateEvent. */
+data class ConfirmationUpdate(
+    val id: String,
+    val toolName: String,
+    val text: String,
+    val status: String   // "PENDING" | "APPROVED" | "DECLINED"
+)
+
+/**
+ * Pushed via WebSocket to /topic/chat/{userId} whenever job state changes:
+ *  - toolcalling  : a new confirmation was requested
+ *  - processing   : all confirmations resolved, resuming
+ *  - completed    : final reply is ready
+ *  - error        : processing failed
+ */
+data class ChatUpdateEvent(
+    val messageId: UUID,
+    val userId: Long,
+    val status: String,
+    val reply: String?,
+    val confirmations: List<ConfirmationUpdate> = emptyList()
+)

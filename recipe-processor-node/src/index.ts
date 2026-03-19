@@ -72,17 +72,27 @@ await startConsumer(ch, queue, async (_msg, body) => {
             }
 
             try {
-                const txId = await sendTon(amount, receiver, mnemonic);
-                console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
+                const result = await sendTon(amount, receiver, mnemonic);
 
-                // Sync wallet balance after successful transaction
-                if (walletAddress && userId) {
+                const txId = result.ok ? result.txId : result.txId;
+                const exitCode = result.ok ? undefined : result.exitCode;
+                const error = result.ok ? undefined : result.error;
+                const success = result.ok && !error;
+                const totalFee = result.totalFee;
+
+                if (success && walletAddress && userId) {
                     try {
                         await syncWalletBalance(walletAddress, userId, ch, exchange);
                     } catch (syncErr: any) {
                         console.error(`[${SERVICE}] Failed to sync wallet balance after send-ton:`, syncErr?.message);
                         // Don't fail the operation if sync fails
                     }
+                }
+
+                if (success && txId) {
+                    console.log(`[${SERVICE}] send-ton done: txId=${txId}`);
+                } else if (error) {
+                    console.error(`[${SERVICE}] send-ton failed at TVM/action level`, { txId, exitCode, error });
                 }
 
                 publishJson(ch, exchange, "agent-llm.send-ton.result", {
@@ -94,8 +104,11 @@ await startConsumer(ch, queue, async (_msg, body) => {
                         userId,
                         tonAmount: amount,
                         receiverAddress: receiver,
-                        success: true,
+                        success,
                         txId,
+                        totalFee,
+                        exitCode,
+                        error,
                     },
                 });
             } catch (err: any) {
@@ -146,18 +159,27 @@ await startConsumer(ch, queue, async (_msg, body) => {
             }
 
             try {
-                const txId = await sendToken(jettonMaster, amountNano, receiver, mnemonic);
+                const result = await sendToken(jettonMaster, amountNano, receiver, mnemonic);
 
-                console.log(`[${SERVICE}] send-token done: txId=${txId}`);
+                const txId = result.ok ? result.txId : result.txId;
+                const exitCode = result.ok ? undefined : result.exitCode;
+                const error = result.ok ? undefined : result.error;
+                const success = result.ok && !error;
+                const totalFee = result.totalFee;
 
-                // Sync wallet balance after successful transaction
-                if (walletAddress && userId) {
+                if (success && walletAddress && userId) {
                     try {
                         await syncWalletBalance(walletAddress, userId, ch, exchange);
                     } catch (syncErr: any) {
                         console.error(`[${SERVICE}] Failed to sync wallet balance after send-token:`, syncErr?.message);
                         // Don't fail the operation if sync fails
                     }
+                }
+
+                if (success && txId) {
+                    console.log(`[${SERVICE}] send-token done: txId=${txId}`);
+                } else if (error) {
+                    console.error(`[${SERVICE}] send-token failed at TVM/action level`, { txId, exitCode, error });
                 }
 
                 publishJson(ch, exchange, "agent-llm.send-token.result", {
@@ -171,9 +193,11 @@ await startConsumer(ch, queue, async (_msg, body) => {
                         tokenAmountNano: amountNano,
                         jettonMaster,
                         receiverAddress: receiver,
-                        success: true,
+                        success,
                         txId,
-
+                        totalFee,
+                        exitCode,
+                        error,
                     },
                 });
             } catch (err: any) {
@@ -191,7 +215,6 @@ await startConsumer(ch, queue, async (_msg, body) => {
                         receiverAddress: receiver,
                         success: false,
                         error: String(err?.message || err),
-
                     },
                 });
             }
@@ -245,7 +268,6 @@ await startConsumer(ch, queue, async (_msg, body) => {
 
             try {
                 const res = await doSwapTonToToken(
-                    Number(userId),
                     Address.parse(jettonMaster),
                     Number(minimalTokenAmount),
                     swapAmtNum,
@@ -253,55 +275,46 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     mnemonic,
                 );
 
-                if (res.ok) {
-                    // Sync wallet balance after successful swap
-                    if (walletAddress && userId) {
-                        try {
-                            await syncWalletBalance(walletAddress, userId, ch, exchange);
-                        } catch (syncErr: any) {
-                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-ton-to-token:`, syncErr?.message);
-                            // Don't fail the operation if sync fails
-                        }
-                    }
+                const txId = res.ok ? res.txId : undefined;
+                const error = res.ok ? undefined : res.error;
+                const success = res.ok && !error;
+                const totalFee = res.totalFee;
 
-                    publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
-                        type: "agent-llm.swap-ton-to-token.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: true,
-                            txId: res.txId,
-                            router: res.router,
-                            pool: res.pool,
-                            pTon: res.pTon,
-                            jettonMinter: res.jettonMinter,
-                            offerNanotons: res.offerNanotons,
-                            minAskNano: res.minAskNano,
-                            requestedJettonMaster: jettonMaster,
-                            requestedMinimalTokenAmount: minimalTokenAmount,
-                            requestedSwapTonAmount: swapAmtNum,
-                        },
-                    });
-                } else {
-                    publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
-                        type: "agent-llm.swap-ton-to-token.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: false,
-                            error: res.error,
-                            details: res.details,
-                            requestedJettonMaster: jettonMaster,
-                            requestedMinimalTokenAmount: minimalTokenAmount,
-                            requestedSwapTonAmount: swapAmtNum,
-                        },
-                    });
+                if (success && walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after swap-ton-to-token:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
                 }
+
+                publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
+                    type: "agent-llm.swap-ton-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success,
+                        txId,
+                        totalFee,
+                        error,
+                        router: success ? res.router : undefined,
+                        pool: success ? res.pool : undefined,
+                        pTon: success ? res.pTon : undefined,
+                        jettonMinter: success ? res.jettonMinter : undefined,
+                        offerNanotons: success ? res.offerNanotons : undefined,
+                        minAskNano: success ? res.minAskNano : undefined,
+                        askNano: success ? res.askNano : undefined,
+                        requestedJettonMaster: jettonMaster,
+                        requestedMinimalTokenAmount: minimalTokenAmount,
+                        requestedSwapTonAmount: swapAmtNum,
+                    },
+                });
+
             } catch (err: any) {
+
                 console.error(`[${SERVICE}] swap-ton-to-token error:`, err);
                 publishJson(ch, exchange, "agent-llm.swap-ton-to-token.result", {
                     type: "agent-llm.swap-ton-to-token.result",
@@ -365,7 +378,6 @@ await startConsumer(ch, queue, async (_msg, body) => {
 
             try {
                 const res = await doSwapTokenToToken(
-                    Number(userId),
                     Address.parse(offerJettonMaster),
                     Address.parse(askJettonMaster),
                     Number(minimalAskTokenAmount),
@@ -374,81 +386,46 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     mnemonic,
                 );
 
-                if (res.ok) {
-                    if (walletAddress && userId) {
-                        try {
-                            await syncWalletBalance(walletAddress, userId, ch, exchange);
-                        } catch (syncErr: any) {
-                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-token:`, syncErr?.message);
-                        }
+                const txId = res.ok ? res.txId : undefined;
+                const error = res.ok ? undefined : res.error;
+                const success = res.ok && !error;
+                const totalFee = res.totalFee;
+
+                if (success && walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-token:`, syncErr?.message);
                     }
-
-                    console.log(`${SERVICE} token-to-token result`,
-                        {
-                            type: "agent-llm.swap-token-to-token.result",
-                            occurredAt: new Date().toISOString(),
-                            correlation: { occurredAt },
-                            data: {
-                                messageId,
-                                userId,
-                                success: true,
-                                txId: res.txId,
-                                router: res.router,
-                                pool: res.pool,
-                                pTon: res.pTon,
-                                jettonMinter: res.jettonMinter,
-                                offerNanotons: res.offerNanotons,
-                                minAskNano: res.minAskNano,
-                                askNano: res.askNano,
-                                requestedOfferJettonMaster: offerJettonMaster,
-                                requestedAskJettonMaster: askJettonMaster,
-                                requestedMinimalAskTokenAmount: minimalAskTokenAmount,
-                                requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
-                            },
-                        }
-                        )
-
-                    publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
-                        type: "agent-llm.swap-token-to-token.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: true,
-                            txId: res.txId,
-                            router: res.router,
-                            pool: res.pool,
-                            pTon: res.pTon,
-                            jettonMinter: res.jettonMinter,
-                            offerNanotons: res.offerNanotons,
-                            minAskNano: res.minAskNano,
-                            askNano: res.askNano,
-                            requestedOfferJettonMaster: offerJettonMaster,
-                            requestedAskJettonMaster: askJettonMaster,
-                            requestedMinimalAskTokenAmount: minimalAskTokenAmount,
-                            requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
-                        },
-                    });
-                } else {
-                    publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
-                        type: "agent-llm.swap-token-to-token.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: false,
-                            error: res.error,
-                            details: res.details,
-                            requestedOfferJettonMaster: offerJettonMaster,
-                            requestedAskJettonMaster: askJettonMaster,
-                            requestedMinimalAskTokenAmount: minimalAskTokenAmount,
-                            requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
-                        },
-                    });
                 }
+
+                publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
+                    type: "agent-llm.swap-token-to-token.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success,
+                        txId,
+                        totalFee,
+                        error,
+                        router: success ? res.router : undefined,
+                        pool: success ? res.pool : undefined,
+                        pTon: success ? res.pTon : undefined,
+                        jettonMinter: success ? res.jettonMinter : undefined,
+                        offerNanotons: success ? res.offerNanotons : undefined,
+                        minAskNano: success ? res.minAskNano : undefined,
+                        askNano: success ? res.askNano : undefined,
+                        requestedOfferJettonMaster: offerJettonMaster,
+                        requestedAskJettonMaster: askJettonMaster,
+                        requestedMinimalAskTokenAmount: minimalAskTokenAmount,
+                        requestedSwapOfferTokenAmount: swapOfferTokenAmtNum,
+                    },
+                });
+
             } catch (err: any) {
+
                 console.error(`[${SERVICE}] swap-token-to-token error:`, err);
                 publishJson(ch, exchange, "agent-llm.swap-token-to-token.result", {
                     type: "agent-llm.swap-token-to-token.result",
@@ -521,55 +498,46 @@ await startConsumer(ch, queue, async (_msg, body) => {
                     mnemonic,
                 );
 
-                if (res.ok) {
-                    // Sync wallet balance after successful swap
-                    if (walletAddress && userId) {
-                        try {
-                            await syncWalletBalance(walletAddress, userId, ch, exchange);
-                        } catch (syncErr: any) {
-                            console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-ton:`, syncErr?.message);
-                            // Don't fail the operation if sync fails
-                        }
-                    }
+                const txId = res.ok ? res.txId : undefined;
+                const error = res.ok ? undefined : res.error;
+                const success = res.ok && !error;
+                const totalFee = res.totalFee;
 
-                    publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
-                        type: "agent-llm.swap-token-to-ton.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: true,
-                            txId: res.txId,
-                            router: res.router,
-                            pool: res.pool,
-                            pTon: res.pTon,
-                            jettonMinter: res.jettonMinter,
-                            offerNanotons: res.offerNanotons,
-                            minAskNano: res.minAskNano,
-                            requestedJettonMaster: jettonMaster,
-                            requestedMinimalTonAmount: minimalTonAmount,
-                            requestedSwapTokenAmount: swapTokenAmtNum,
-                        },
-                    });
-                } else {
-                    publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
-                        type: "agent-llm.swap-token-to-ton.result",
-                        occurredAt: new Date().toISOString(),
-                        correlation: { occurredAt },
-                        data: {
-                            messageId,
-                            userId,
-                            success: false,
-                            error: res.error,
-                            details: res.details,
-                            requestedJettonMaster: jettonMaster,
-                            requestedMinimalTonAmount: minimalTonAmount,
-                            requestedSwapTokenAmount: swapTokenAmtNum,
-                        },
-                    });
+                if (success && walletAddress && userId) {
+                    try {
+                        await syncWalletBalance(walletAddress, userId, ch, exchange);
+                    } catch (syncErr: any) {
+                        console.error(`[${SERVICE}] Failed to sync wallet balance after swap-token-to-ton:`, syncErr?.message);
+                        // Don't fail the operation if sync fails
+                    }
                 }
+
+                publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
+                    type: "agent-llm.swap-token-to-ton.result",
+                    occurredAt: new Date().toISOString(),
+                    correlation: { occurredAt },
+                    data: {
+                        messageId,
+                        userId,
+                        success,
+                        txId,
+                        totalFee,
+                        error,
+                        router: success ? res.router : undefined,
+                        pool: success ? res.pool : undefined,
+                        pTon: success ? res.pTon : undefined,
+                        jettonMinter: success ? res.jettonMinter : undefined,
+                        offerNanotons: success ? res.offerNanotons : undefined,
+                        minAskNano: success ? res.minAskNano : undefined,
+                        askNano: success ? res.askNano : undefined,
+                        requestedJettonMaster: jettonMaster,
+                        requestedMinimalTonAmount: minimalTonAmount,
+                        requestedSwapTokenAmount: swapTokenAmtNum,
+                    },
+                });
+
             } catch (err: any) {
+
                 console.error(`[${SERVICE}] swap-token-to-ton error:`, err);
                 publishJson(ch, exchange, "agent-llm.swap-token-to-ton.result", {
                     type: "agent-llm.swap-token-to-ton.result",

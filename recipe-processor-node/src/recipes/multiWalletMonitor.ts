@@ -422,7 +422,8 @@ async function processJettonTransfer(
             amountNano: String(amountNano), // Convert BigInt to string
             assetType: "JETTON",
             senderAddress: String(sender), // Ensure string
-            jettonMasterAddress: jetton?.address ? String(jetton.address) : undefined,
+            // Normalise to bounceable (EQ...) — same format stored in DB
+            jettonMasterAddress: jetton?.address ? jetton.address.toString({ bounceable: true, testOnly: false }) : undefined,
             jettonSymbol: jetton?.symbol,
             jettonDecimals: jetton?.decimals,
             comment: comment || undefined
