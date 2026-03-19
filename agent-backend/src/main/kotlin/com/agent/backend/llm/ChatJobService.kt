@@ -4,6 +4,8 @@ import com.agent.backend.AppUtils
 import com.agent.backend.dto.ChatMessageRequest
 import com.agent.backend.dto.ChatMessageResponse
 import com.agent.backend.dto.ChatMessageStatusResponse
+import com.agent.backend.dto.ChatUpdateEvent
+import com.agent.backend.dto.ConfirmationUpdate
 import com.agent.backend.dto.DeliveryHint
 import com.agent.backend.service.ConfirmationItem
 import com.agent.backend.service.ConfirmationService
@@ -28,6 +30,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.http.HttpStatus
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
@@ -63,7 +66,11 @@ class ChatJobService(
     private val walletService: WalletService,
     private val notificationService: NotificationService,
     private val appUtils: AppUtils,
+    private val messagingTemplate: SimpMessagingTemplate,
 ) {
+    companion object {
+        private const val CHAT_TOPIC_PREFIX = "/topic/chat/"
+    }
 
     private val jobs = ConcurrentHashMap<UUID, ChatJob>()
 
@@ -105,10 +112,30 @@ class ChatJobService(
             queuedAt = now,
             completedAt = null,
             delivery = DeliveryHint(
-                mode = "poll",
-                resultUrl = "/chat/messages/$messageId"
+                mode = "websocket",
+                resultUrl = "/topic/chat/$userId"
             )
         )
+    }
+
+    /** Push a chat status update to the user's personal WebSocket topic. */
+    private fun pushChatUpdate(job: ChatJob, status: String, reply: String? = null) {
+        try {
+            val confs = confirmations.list(job.messageId).map {
+                ConfirmationUpdate(it.id.toString(), it.toolName, it.text, it.status.name)
+            }
+            val event = ChatUpdateEvent(
+                messageId = job.messageId,
+                userId = job.userId,
+                status = status,
+                reply = reply,
+                confirmations = confs
+            )
+            messagingTemplate.convertAndSend("$CHAT_TOPIC_PREFIX${job.userId}", event)
+            logger.debug { "Pushed chat update status=$status for messageId=${job.messageId}" }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to push chat update for messageId=${job.messageId}" }
+        }
     }
 
     private fun makeChatter(job: ChatJob, previousChatter: OpenAIChatter?): OpenAIChatter =
@@ -146,6 +173,8 @@ class ChatJobService(
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.ERROR)
             job.reply = "You currently have another processing request."
+            pushChatUpdate(job, "error", job.reply)
+            return
         }
         try {
             val chatter = makeChatter(job, userIdToChatter[job.userId])
@@ -166,8 +195,14 @@ class ChatJobService(
                     val deferred = CompletableDeferred<Boolean>()
                     pendingConfirmations[item.id] = deferred
                     logger.debug { "Waiting for confirmation ${item.id} on message $msgId for tool ${tc.name}" }
+
+                    // Push toolcalling event so frontend shows confirmation UI immediately
+                    pushChatUpdate(job, "toolcalling")
+
                     deferred.await().also {
                         logger.debug { "Confirmation awaited for ${item.id}" }
+                        // Resume notification: all confirmations resolved
+                        pushChatUpdate(job, "processing")
                     }
                 }
             )
@@ -175,16 +210,19 @@ class ChatJobService(
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.COMPLETED)
             job.reply = stringResponse
+            pushChatUpdate(job, "completed", stringResponse)
         } catch (e: ConfirmationDeclinedException) {
             logger.debug { "Confirmation declined for messageId=${job.messageId}" }
             job.reply = "Confirmation declined by user"
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.COMPLETED)
+            pushChatUpdate(job, "completed", job.reply)
         } catch (e: Exception) {
             logger.error(e) {}
             job.reply = "Error while processing your request."
             job.completedAt = Instant.now()
             job.status = AtomicReference(ChatterStatus.ERROR)
+            pushChatUpdate(job, "error", job.reply)
         }
     }
 
