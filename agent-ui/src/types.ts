@@ -2,6 +2,24 @@ export type ChatRole = 'USER' | 'SYSTEM'
 
 export type ChatUtilityKind = 'CONFIRM_SEND_TON' | 'SHOW_TOP_UP'
 
+export type ChatUpdateStatus = 'queued' | 'processing' | 'completed' | 'error' | 'toolcalling'
+
+export interface ChatConfirmationUpdate {
+    id: string
+    toolName: string
+    text: string
+    status: 'PENDING' | 'APPROVED' | 'DECLINED'
+}
+
+/** Pushed via WebSocket from /topic/chat/{userId} */
+export interface ChatUpdateEvent {
+    messageId: string
+    userId: number
+    status: ChatUpdateStatus
+    reply: string | null
+    confirmations: ChatConfirmationUpdate[]
+}
+
 export interface ChatItem {
     id: string
     role: ChatRole

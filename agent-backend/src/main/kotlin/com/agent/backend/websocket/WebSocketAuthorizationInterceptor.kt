@@ -31,29 +31,42 @@ class WebSocketAuthorizationInterceptor(
                 throw IllegalArgumentException("Not authenticated")
             }
 
-            // Only /topic/notifications/{userId} is supported; deny everything else
-            if (destination?.startsWith("/topic/notifications/") == true) {
-                val requestedUserId = destination.substring("/topic/notifications/".length).toLongOrNull()
+            // Resolve authenticated user's ID (used by both allowed topics)
+            val sub = principal.token.subject
+            val email = principal.token.claims["email"] as? String
+            val authenticatedUserId = provisioning.resolveOrCreate(sub, email).id!!
 
-                if (requestedUserId == null) {
-                    logger.warn { "Invalid notification topic: $destination" }
-                    throw IllegalArgumentException("Invalid topic format")
+            when {
+                destination?.startsWith("/topic/notifications/") == true -> {
+                    val requestedUserId = destination.substring("/topic/notifications/".length).toLongOrNull()
+                        ?: run {
+                            logger.warn { "Invalid notification topic: $destination" }
+                            throw IllegalArgumentException("Invalid topic format")
+                        }
+                    if (authenticatedUserId != requestedUserId) {
+                        logger.warn { "User $authenticatedUserId attempted to subscribe to notifications for $requestedUserId" }
+                        throw IllegalArgumentException("Not authorized to subscribe to this topic")
+                    }
+                    logger.info { "User $authenticatedUserId subscribed to notification topic" }
                 }
 
-                // Resolve authenticated user's ID
-                val sub = principal.token.subject
-                val email = principal.token.claims["email"] as? String
-                val authenticatedUserId = provisioning.resolveOrCreate(sub, email).id!!
-
-                if (authenticatedUserId != requestedUserId) {
-                    logger.warn { "User $authenticatedUserId attempted to subscribe to notifications for user $requestedUserId" }
-                    throw IllegalArgumentException("Not authorized to subscribe to this topic")
+                destination?.startsWith("/topic/chat/") == true -> {
+                    val requestedUserId = destination.substring("/topic/chat/".length).toLongOrNull()
+                        ?: run {
+                            logger.warn { "Invalid chat topic: $destination" }
+                            throw IllegalArgumentException("Invalid topic format")
+                        }
+                    if (authenticatedUserId != requestedUserId) {
+                        logger.warn { "User $authenticatedUserId attempted to subscribe to chat topic for $requestedUserId" }
+                        throw IllegalArgumentException("Not authorized to subscribe to this topic")
+                    }
+                    logger.info { "User $authenticatedUserId subscribed to chat topic" }
                 }
 
-                logger.info { "User $authenticatedUserId subscribed to notification topic" }
-            } else {
-                logger.warn { "Subscription to unrecognized topic denied: $destination" }
-                throw IllegalArgumentException("Subscription to topic $destination is not allowed")
+                else -> {
+                    logger.warn { "Subscription to unrecognized topic denied: $destination" }
+                    throw IllegalArgumentException("Subscription to topic $destination is not allowed")
+                }
             }
         }
 
